@@ -13,12 +13,12 @@
   const unknown=rows.filter(function(a){return a.fetch_status==='success'&&!a.published_date;}).length;
   document.getElementById('selection-count').textContent='우선 선별 '+selected.length+' · 메인 일치 '+mainOnly.length+' · 처리 중 '+rows.filter(function(a){return a.fetch_status==='pending';}).length+' · 실패 '+rows.filter(function(a){return a.fetch_status==='error';}).length+' · 날짜 미확인 '+unknown;
   (toggle.checked?rows.filter(function(a){return a.selection.selected;}):selected).forEach(function(a){
-   const item=document.createElement('div');item.style.cssText='padding:12px 0;border-bottom:1px solid #e0e5ec';
+   const item=document.createElement('div');item.className='candidate';
    const link=document.createElement('a');link.textContent=a.source_name+' · '+a.title;link.href=a.url;link.target='_blank';link.rel='noopener noreferrer';item.append(link);
-   const info=document.createElement('div');info.style.cssText='font-size:13px;color:#657285';info.textContent='발행일 '+(a.published_date||'미확인')+' · '+(a.selection.level==='full'?'우선 선별':'메인 일치')+(a.fetch_status==='error'?' · 내용 확인 실패':a.fetch_status==='pending'?' · 처리 중':'');item.append(info);
-   const reason=document.createElement('div');reason.style.fontSize='13px';reason.textContent=(a.selection.reasons.length?'기준: '+a.selection.reasons.join(' / '):'')+(a.fetch_error?' · '+a.fetch_error:'');item.append(reason);
-   if(a.excerpt.subtitle){const sub=document.createElement('p');sub.textContent=a.excerpt.subtitle;sub.style.cssText='font-weight:600;margin:8px 0';item.append(sub);}
-   if(a.excerpt.first_paragraph){const lead=document.createElement('p');lead.textContent=a.excerpt.first_paragraph;lead.style.cssText='font-size:14px;margin:8px 0';item.append(lead);}
+   const info=document.createElement('div');info.className='candidate-info';info.textContent='발행일 '+(a.published_date||'미확인')+' · '+(a.selection.level==='full'?'우선 선별':'메인 일치')+(a.fetch_status==='error'?' · 내용 확인 실패':a.fetch_status==='pending'?' · 처리 중':'');item.append(info);
+   const reason=document.createElement('div');reason.className='candidate-reason';reason.textContent=(a.selection.reasons.length?'기준: '+a.selection.reasons.join(' / '):'')+(a.fetch_error?' · '+a.fetch_error:'');item.append(reason);
+   if(a.excerpt.subtitle){const sub=document.createElement('p');sub.textContent=a.excerpt.subtitle;sub.className='candidate-sub';item.append(sub);}
+   if(a.excerpt.first_paragraph){const lead=document.createElement('p');lead.textContent=a.excerpt.first_paragraph;lead.className='candidate-lead';item.append(lead);}
    box.append(item);
   });
   if(!selected.length&&!toggle.checked){const p=document.createElement('p');p.textContent='우선 선별 기사가 없습니다. 메인 일치 기사를 확인해 주세요.';box.append(p);}

@@ -1,0 +1,10 @@
+# 내 PC에서 `npm run dev`로 시험할 때 쓰는 비밀값입니다.
+# 이 파일을 복사해서 이름을 .dev.vars 로 바꾼 뒤 값을 넣으세요. (.dev.vars는 git에 올라가지 않습니다)
+# Cloudflare에 올릴 때는 `npx wrangler secret put OPENAI_API_KEY` 처럼 따로 넣습니다.
+
+# AI 요약(GPT)을 쓰려면 OpenAI API 키를 넣으세요. 비워 두면 요약 없이 동작합니다.
+OPENAI_API_KEY=
+# 아침 브리핑을 받을 Slack/Teams 웹훅 주소입니다. 비워 두면 브리핑을 보내지 않습니다.
+BRIEFING_WEBHOOK_URL=
+# 내 PC에서 예약 수집까지 시험하려면 true로 바꾸세요.
+AUTO_ENABLED=false

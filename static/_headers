@@ -1,0 +1,6 @@
+# 화면 파일을 보낼 때 함께 붙이는 보안 설정입니다. (Cloudflare가 자동으로 읽습니다)
+/*
+  Cache-Control: no-store
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  Content-Security-Policy: default-src 'self'; connect-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'

@@ -1,0 +1,30 @@
+# Cloudflare Worker 설정 파일입니다.
+name = "smd-news"
+main = "src/index.js"
+compatibility_date = "2025-09-01"
+
+# 화면 파일(index.html, css, js)이 들어 있는 폴더입니다.
+[assets]
+directory = "./static"
+
+# 예약 수집: 1분마다 scheduled() 함수를 한 번 실행합니다.
+[triggers]
+crons = ["* * * * *"]
+
+# D1 데이터베이스 연결입니다.
+# database_id는 `npx wrangler d1 list`로 확인해서 예전 D1의 ID를 넣으세요.
+[[d1_databases]]
+binding = "DB"
+database_name = "smd-news-db"
+database_id = "28e28b03-add2-48c3-87af-9bbc17261700"
+
+# 일반 설정값입니다. (비밀이 아닌 값만 여기에 둡니다)
+# OPENAI_API_KEY, BRIEFING_WEBHOOK_URL 같은 비밀값은 `npx wrangler secret put 이름`으로 넣으세요.
+[vars]
+AUTO_ENABLED = "false"
+AUTO_SOURCE_LIMIT = "12"
+AUTO_MAX_BODY_PER_DAY = "120"
+OPENAI_MODEL = "gpt-5-mini"
+ARCHIVE_DAYS = "90"
+# 다른 주소에서 이 사이트의 버튼을 쓰게 하려면 쉼표로 구분해 넣으세요. (보통은 비워 둠)
+ALLOWED_ORIGINS = ""
