@@ -104,7 +104,7 @@ async function handleApi(request, env, path) {
   }
   if (method === "GET" && path === "/api/articles") {
     const rows = await service.articles(env);
-    return json({ storage: "D1", count: rows.length, limit: 200, articles: rows });
+    return json({ storage: "D1", count: rows.length, limit: 500, articles: rows });
   }
   if (method === "GET" && path === "/api/export.csv") {
     return exportCsv(env);
@@ -155,6 +155,14 @@ async function handleApi(request, env, path) {
     const payload = await readJson(request, env);
     const period = payload.period === "month" ? "month" : "week";
     const result = await service.makeReport(env, koreaNow().day, period);
+    if (result.error) throw httpError(503, result.error);
+    return json(result);
+  }
+
+  if (method === "POST" && path === "/api/trend-insight") {
+    // 통계 탭의 "AI 인사이트": 이번 주 핵심 이슈 3가지
+    await readJson(request, env);
+    const result = await service.makeTrendInsight(env, koreaNow().day);
     if (result.error) throw httpError(503, result.error);
     return json(result);
   }

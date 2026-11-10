@@ -24,7 +24,7 @@ export function integer(env, name, defaultValue, low, high) {
 export function automationSettings(env) {
   return {
     enabled: String(env.AUTO_ENABLED || "false").toLowerCase() === "true",
-    sourceLimit: integer(env, "AUTO_SOURCE_LIMIT", 24, 1, 30), // 하루에 목록을 확인할 정보원 수 (최대 30곳)
+    sourceLimit: integer(env, "AUTO_SOURCE_LIMIT", 24, 1, 40), // 하루에 목록을 확인할 정보원 수 (최대 40곳)
     maxBodies: integer(env, "AUTO_MAX_BODY_PER_DAY", 120, 1, 240),
   };
 }

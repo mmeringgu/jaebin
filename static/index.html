@@ -1,12 +1,15 @@
 <!doctype html>
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SMD 뉴스 클리핑</title>
+<meta name="theme-color" content="#ffffff">
+<!-- 글꼴: Pretendard (깔끔한 한글 글꼴, 인터넷에서 불러옴. 못 불러오면 맑은 고딕으로 보임) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <link rel="stylesheet" href="/style.css"></head><body id="top">
 
 <!-- 맨 위 영역: 서비스 이름 + 메인 일치 기사 스위치 -->
 <header class="topbar">
  <div class="top">
-  <div class="brand-wrap"><div class="brand">SMD 뉴스 클리핑</div><div class="sub">Strategic Marketing Division · CANON MEDICAL SYSTEMS KOREA</div></div>
-  <div class="header-actions"><label class="pill main-toggle"><span>메인 일치 기사</span><input type="checkbox" id="include-main" role="switch" checked aria-label="메인 일치 기사 포함"><span class="switch-track" aria-hidden="true"></span></label><span class="pill">시범 운영</span></div>
+  <div class="brand-wrap"><div class="brand">SMD 뉴스 클리핑</div><div class="sub">STRATEGIC MARKETING DIVISION</div></div>
+  <div class="header-actions"><label class="pill main-toggle" title="켜면 키워드가 모두 맞은 기사만 보여 줍니다"><span>전체 키워드 기사</span><input type="checkbox" id="only-full" role="switch" aria-label="전체 키워드가 맞은 기사만 보기"><span class="switch-track" aria-hidden="true"></span></label><span class="pill">시범 운영</span></div>
  </div>
  <nav class="tabs" role="tablist" aria-label="화면 선택">
   <button type="button" class="tab" role="tab" data-tab="news">📰 뉴스</button>
@@ -19,32 +22,14 @@
 <main>
  <!-- 탭 1: 뉴스 -->
  <div data-panel="news">
- <!-- 브리핑 영역: 오늘 날짜, 새 기사 안내, 카테고리별 건수 -->
+ <!-- 브리핑 영역: 오늘 날짜, 카테고리별 건수 -->
  <div class="briefing">
   <div class="briefing-top">
    <div><div class="eyebrow">MARKET &amp; POLICY INTELLIGENCE</div><div class="today" id="today-date"></div></div>
-   <p id="new-note" class="new-note"></p>
   </div>
  </div>
  <!-- 카테고리 바로가기 줄: 스크롤을 내려도 맨 위 제목줄 바로 아래에 붙어 있습니다 -->
  <nav class="summary-bar" id="summary-bar" aria-label="카테고리 바로가기"></nav>
-
- <!-- 사용 가이드: 처음 쓰는 사람을 위한 설명. 눌러서 접었다 펼 수 있습니다 -->
- <details class="guide">
-  <summary>💡 처음이세요? 화면 사용법 보기</summary>
-  <ul>
-   <li><b>제목</b>을 누르면 기사 원문이 새 창으로 열립니다.</li>
-   <li><b>▸ 자세히</b>를 누르면 AI 인사이트, 기사 앞부분, 메모, 숨기기가 펼쳐집니다.</li>
-   <li><b>AI 인사이트</b>: GPT가 기사를 읽고 CT·MRI 등 영상의학 장비 회사 입장에서 기회/위협/참고, 인사이트, 대응할 일을 정리한 것입니다. 없으면 <b>✨ AI 인사이트 만들기</b>, 예전 요약이면 <b>↻ 다시 만들기</b>를 누르세요.</li>
-   <li><b>페이지 넘기기</b>: 카테고리마다 한 페이지에 기사가 6개까지 보입니다. 더 보려면 카테고리 아래의 <b>1 · 2 · 3</b> 또는 <b>다음 ▶</b>을 누르세요.</li>
-   <li><b>🟢 기회 / 🔴 위협</b>: AI 인사이트가 우리 회사에 기회 또는 위협이라고 본 기사에 붙는 표시입니다. 위쪽 <b>모든 영향</b> 칸에서 <b>기회·위협만</b>을 고르면 중요한 기사만 모아 볼 수 있습니다.</li>
-   <li><b>☆ 별표</b>: 중요한 기사에 표시해 두는 기능입니다. 누르면 ★로 바뀌고, <b>⭐만 보기</b>로 모아 볼 수 있습니다. 주간·월간 리포트도 별표 기사를 먼저 씁니다. (모든 사람에게 똑같이 보입니다)</li>
-   <li><b>NEW</b>: 내가 이 사이트를 지난번에 열어 본 뒤로 새로 들어온 기사입니다. 내 컴퓨터(브라우저)를 기준으로 하므로 사람마다 다르게 보입니다.</li>
-   <li><b>숨기기</b>: 관련 없는 기사를 목록에서 치우는 기능입니다. 지워지지 않고, <b>숨긴 기사 보기</b>를 켜면 다시 보이며 되돌릴 수도 있습니다. (모든 사람에게 숨겨집니다)</li>
-   <li><b>외 ○개 매체</b>: 여러 매체가 같은 소식을 다루면 한 줄로 묶었다는 뜻입니다. 자세히를 누르면 다른 매체 기사도 볼 수 있습니다.</li>
-   <li><b>메인 일치 기사</b> 스위치(오른쪽 위): 켜면 관련도가 조금 낮은 기사(대표 키워드만 맞은 기사)도 함께 보여 줍니다.</li>
-  </ul>
- </details>
 
  <!-- 검색·필터 상자 -->
  <div class="toolbar">
@@ -55,9 +40,8 @@
    <select id="topic" aria-label="분야 필터"><option value="">모든 분야</option><option>AI</option><option>CT</option><option>MR</option><option>초음파</option><option>학회</option></select>
    <select id="period" aria-label="기간 필터"><option value="">전체 기간</option><option value="today">오늘</option><option value="7">최근 7일</option></select>
    <select id="impact" aria-label="AI 인사이트 영향 필터"><option value="">모든 영향</option><option value="both">기회·위협만</option><option value="기회">🟢 기회만</option><option value="위협">🔴 위협만</option></select>
-   <select id="sort" aria-label="정렬"><option value="new">최신순</option><option value="old">오래된순</option><option value="star">⭐ 먼저</option></select>
+   <select id="sort" aria-label="정렬"><option value="relevance">관련도순</option><option value="new">최신순</option></select>
    <label class="check-label"><input type="checkbox" id="only-star"> ⭐만 보기</label>
-   <label class="check-label"><input type="checkbox" id="only-new"> NEW만 보기</label>
    <label class="check-label"><input type="checkbox" id="show-hidden"> 숨긴 기사 보기</label>
   </div>
  </div>
@@ -65,9 +49,24 @@
  <div id="sections"></div>
  </div>
 
- <!-- 탭 2: 통계 (뉴스 탭에서 건 필터가 그대로 적용됩니다) -->
+ <!-- 탭 2: 통계 (뉴스 탭의 필터와 상관없이, 숨기지 않은 전체 기사로 계산합니다. 내용은 stats.js가 채웁니다) -->
  <div data-panel="stats" hidden>
- <section class="section" id="stats"></section>
+ <!-- 통계용 분야 선택: 뉴스 탭의 "분야" 칸과 같은 값입니다. 한쪽을 바꾸면 다른 쪽도 같이 바뀝니다 -->
+ <div class="toolbar stats-filter"><div class="toolbar-row">
+  <select id="stats-topic" aria-label="통계 분야 필터"><option value="">모든 분야</option><option>AI</option><option>CT</option><option>MR</option><option>초음파</option><option>학회</option></select>
+  <span id="stats-topic-note" class="muted"></span>
+ </div></div>
+ <section class="section"><div class="section-head"><h2>경쟁사·우리회사</h2><span class="basis">언론 노출 기준</span></div><div id="stats-company"></div></section>
+ <section class="section"><div class="section-head"><h2>학회&amp;병원</h2></div><div id="stats-hospital"></div></section>
+ <section class="section"><div class="section-head"><h2>정책</h2></div><div id="stats-policy"></div></section>
+ <section class="section"><div class="section-head"><h2>트렌드</h2></div>
+  <div class="stat-box"><h3>AI 월간 인사이트 <span class="muted">이번 주 핵심 이슈 3가지</span></h3>
+   <p class="desc">최근 7일 기사를 GPT가 읽고 핵심 이슈 3가지를 한 문단으로 정리합니다. 이슈마다 근거 기사 링크가 붙습니다.</p>
+   <div class="controls"><button class="button primary" id="trend-button">이번 주 인사이트 만들기</button></div>
+   <p id="trend-status" class="status" role="status" aria-live="polite"></p>
+   <div id="trend-output"></div>
+  </div>
+ </section>
  </div>
 
  <!-- 탭 3: 주간·월간 리포트 -->
@@ -86,7 +85,6 @@
  <section class="section"><div class="section-head"><h2>기사 수집</h2></div><p class="desc">정보원을 고르고 버튼을 누르면 목록·원문·발행일을 확인합니다.</p><div class="controls"><select id="collect-source" aria-label="정보원 선택"></select><button class="button primary" id="collect-button">기사 수집</button><label class="check-label"><input type="checkbox" id="show-other"> 메인 일치 기사도 보기</label></div><p id="collect-result" class="status" role="status" aria-live="polite"></p><p id="selection-count" class="muted"></p><div id="candidate-list"></div></section>
  </div>
 
- <footer>Strategic Marketing Division · 사내 시범 사이트</footer>
+ <footer><div><span class="footer-company">CANON MEDICAL SYSTEMS KOREA</span><br>Strategic Marketing Division · 사내 시범 사이트</div></footer>
 </main>
-<a class="back-top" href="#top" aria-label="맨 위로 돌아가기">↑ 맨 위로</a>
-<script defer src="/articles.js"></script><script defer src="/automation.js"></script><script defer src="/collect.js"></script><script defer src="/report.js"></script><script defer src="/source-status.js"></script></body></html>
+<script defer src="/articles.js"></script><script defer src="/stats.js"></script><script defer src="/automation.js"></script><script defer src="/collect.js"></script><script defer src="/report.js"></script><script defer src="/source-status.js"></script></body></html>

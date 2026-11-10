@@ -21,9 +21,17 @@ export function hasWord(text, word) {
   return false;
 }
 
+// 제목에 [칼럼], [기고] 같은 글자가 있는지 확인합니다.
+export function isOpinionTitle(title) {
+  const words = CONFIG.excluded_title_words || [];
+  return words.some((word) => title.includes(word));
+}
+
 // 제목이 어떤 키워드 규칙에 맞는지 찾습니다. 맞는 규칙이 없으면 빈 목록을 돌려줍니다.
 export function keywordMatch(title, source) {
   if (source.status !== "사용") return [];
+  // [칼럼]·[기고]처럼 의견 글은 뉴스가 아니므로 고르지 않습니다. (목록은 config.json의 excluded_title_words)
+  if (isOpinionTitle(title)) return [];
   const matches = [];
   for (const rule of CONFIG.rules) {
     if (rule.status !== "사용" || !source.categories.includes(rule.category)) continue;

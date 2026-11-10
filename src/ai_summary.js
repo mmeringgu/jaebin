@@ -19,21 +19,19 @@ const PROMPT = `당신은 캐논메디칼시스템즈코리아 전략마케팅�
 
 ${COMPETITORS}
 
-아래 의료 업계 기사를 읽고, 기사 요약이 아니라 "우리 회사 비즈니스에 주는 인사이트"를 한국어로 쓰세요.
+아래 의료 업계 기사를 읽고, 기사 요약이 아니라 "우리 회사 비즈니스에 주는 인사이트"를 한국어로 딱 한 줄 쓰세요.
 다음 관점 중 기사와 관련된 것만 보세요.
 - 병원의 장비 구매·교체·증설 수요 (병원 신축, 예산, 검진 수요 등)
 - 수가·급여, 특수의료장비 설치·인력·품질관리 기준 같은 정책·규제 변화
 - 위 경쟁사의 제품 출시·병원 설치·가격·업무협약 같은 움직임 (경쟁사가 나오면 이름을 밝혀 주세요)
 - AI 판독, 저선량, 신기술 등 제품·마케팅 방향
 
-형식:
+형식 (딱 두 줄만):
 영향: 기회 / 위협 / 참고 중 하나
-- 인사이트 1
-- 인사이트 2 (필요할 때만)
-대응: 영업·마케팅 담당자가 해 볼 일 한 문장
+인사이트: 우리 회사에 주는 의미 한 문장 (60자 안팎)
 
-각 줄은 짧게 쓰고, 기사에 없는 사실은 지어내지 마세요.
-영상의학 장비와 거의 관련이 없는 기사라면 "영향: 참고"와 "- 직접 관련 적음" 두 줄만 쓰세요.`;
+기사 내용을 요약하거나 제목을 되풀이하지 마세요. 기사에 없는 사실은 지어내지 마세요.
+영상의학 장비와 거의 관련이 없는 기사라면 "영향: 참고"와 "인사이트: 직접 관련 적음" 두 줄만 쓰세요.`;
 
 // 주간·월간 리포트용 요청 문구입니다. {기간}은 "이번 주" 또는 "이번 달"로 바뀝니다.
 const REPORT_PROMPT = `당신은 캐논메디칼시스템즈코리아 전략마케팅팀의 시장 분석 담당자입니다.
@@ -60,6 +58,20 @@ ${COMPETITORS}
 - 1~3줄
 
 기사 목록에 없는 내용은 지어내지 마세요.`;
+
+// 통계 탭 "AI 인사이트"용 요청 문구입니다. (이번 주 핵심 이슈 3가지)
+const TREND_PROMPT = `당신은 캐논메디칼시스템즈코리아 전략마케팅팀의 시장 분석 담당자입니다.
+우리 회사는 CT, MRI 같은 영상의학 장비를 병원에 판매합니다.
+
+아래는 이번 주에 모은 의료 업계 기사 목록입니다. 기사마다 [번호]가 붙어 있습니다.
+이번 주 핵심 이슈 3가지를 골라 아래 형식 그대로 한국어로 쓰세요.
+
+이슈1: 이슈 이름 (15자 안팎) | 근거: 기사 번호들 (예: 3, 7)
+이슈2: 이슈 이름 | 근거: 기사 번호들
+이슈3: 이슈 이름 | 근거: 기사 번호들
+요약: 세 이슈를 묶어 우리 회사 입장에서 정리한 한 문단 (4~5문장)
+
+근거 번호는 목록에 있는 번호만 쓰고, 기사에 없는 내용은 지어내지 마세요.`;
 
 // GPT에 질문을 보내 답을 받아옵니다. 키가 없거나 실패하면 빈 문자열을 돌려줍니다.
 async function askGpt(env, systemPrompt, userText, timeoutSeconds = 60) {
@@ -112,4 +124,30 @@ export async function periodReport(env, articles, period) {
   }
   // 리포트는 글이 길어 시간이 더 걸리므로 120초까지 기다립니다.
   return askGpt(env, prompt, lines.join("\n"), 120);
+}
+
+// 기사 목록을 GPT에 보내 핵심 이슈 3가지와 한 문단 요약을 받아옵니다.
+// GPT 답은 "이슈1: 이름 | 근거: 3, 7" 같은 줄이라서, 줄마다 잘라 읽습니다.
+// 돌려주는 값: { summary: "한 문단", issues: [{ name: "이슈 이름", articles: [근거 기사들] }] } (실패하면 null)
+export async function trendInsight(env, articles) {
+  const lines = articles.map((a, i) => "[" + (i + 1) + "] " + a.date + " " + a.title + " (" + a.source + ")" + (a.ai_summary ? "\n" + a.ai_summary : ""));
+  const answer = await askGpt(env, TREND_PROMPT, lines.join("\n"), 120);
+  if (!answer) return null;
+
+  const result = { summary: "", issues: [] };
+  for (const line of answer.split("\n")) {
+    const text = line.trim();
+    if (text.startsWith("요약:")) result.summary = text.slice(3).trim();
+    if (text.startsWith("이슈")) {
+      // "이슈1: 이름 | 근거: 3, 7" → 이름 "이름", 번호 [3, 7]
+      const [left, right = ""] = text.split("|");
+      const name = left.slice(left.indexOf(":") + 1).trim();
+      const numbers = right.replace("근거:", "").split(",").map((n) => Number(n.trim()));
+      // 목록에 있는 번호만 남겨 기사로 바꿉니다.
+      const picked = numbers.filter((n) => n >= 1 && n <= articles.length).map((n) => articles[n - 1]);
+      result.issues.push({ name, articles: picked.map((a) => ({ title: a.title, url: a.url, source: a.source, date: a.date })) });
+    }
+  }
+  if (!result.summary) return null;
+  return result;
 }

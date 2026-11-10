@@ -52,3 +52,8 @@ test("한국 시간 날짜 계산", () => {
   assert.deepEqual(koreaNow(Date.UTC(2026, 10, 2, 23, 30)), { day: "2026-11-03", hour: 8 });
   assert.equal(addDays("2026-03-01", -1), "2026-02-28");
 });
+
+test("[칼럼]·[기고] 같은 의견 글은 고르지 않습니다", () => {
+  assert.deepEqual(keywordMatch("[칼럼] 지멘스 MRI 시장을 보며", source), []);
+  assert.equal(keywordMatch("지멘스 MRI 신제품 공개", source).length > 0, true);
+});

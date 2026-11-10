@@ -2,10 +2,6 @@
 const categories=[{id:'company',name:'우리회사 뉴스'},{id:'policy',name:'정책'},{id:'hospital',name:'학회&병원'},{id:'competitor',name:'경쟁사'}];
 let articles = [];
 function esc(value){return String(value).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
-// NEW 표시: 지난번 방문 때 본 가장 최근 저장 시각입니다. 이보다 나중에 저장된 기사에 NEW를 붙입니다.
-let lastSeen='';
-try{lastSeen=localStorage.getItem('lastSeenSavedAt')||'';}catch(e){}
-function isNew(a){return lastSeen!==''&&a.saved_at>lastSeen;}
 // 검색어 강조: 지금 검색창에 쓴 단어입니다. 카드 글에서 이 단어를 찾아 <mark>로 감싸 노란색으로 보여줍니다.
 let searchWord='';
 function highlight(value){
@@ -30,6 +26,31 @@ function impactOf(a){
  if(line.indexOf('기회')!==-1)return '기회';
  return '참고';
 }
+// AI 인사이트에서 "한 줄"만 꺼냅니다.
+// 새 형식은 "인사이트: …" 줄, 예전 형식(여러 줄)은 첫 번째 "- …" 줄을 씁니다.
+function insightLine(a){
+ const lines=String(a.ai_summary||'').split('\n').map(function(l){return l.trim();});
+ const newLine=lines.find(function(l){return l.indexOf('인사이트:')===0;});
+ if(newLine)return newLine.slice(5).trim();
+ const oldLine=lines.find(function(l){return l.indexOf('- ')===0;});
+ return oldLine?oldLine.slice(2).trim():'';
+}
+// 기사 앞부분을 "목록에 보이는 부분(preview)"과 "자세히에서 이어지는 부분(rest)"으로 나눕니다.
+// 자세히를 눌렀을 때 이미 보이는 제목·첫 줄을 다시 보여주지 않기 위해서입니다.
+const PREVIEW_LENGTH=90; // 목록에 보여줄 글자 수 (두 줄 정도)
+function splitText(a){
+ let body=String(a.summary||'').trim();
+ // 기사 앞부분이 제목이나 부제목으로 시작하면 그 부분은 뺍니다. (이미 위에 보이므로)
+ if(body.indexOf(a.title)===0)body=body.slice(a.title.length).trim();
+ if(a.subtitle&&body.indexOf(a.subtitle)===0)body=body.slice(a.subtitle.length).trim();
+ // 부제목이 있으면 목록에는 부제목, 자세히에는 본문 앞부분 전체
+ if(a.subtitle)return {preview:a.subtitle,rest:body};
+ if(body.length<=PREVIEW_LENGTH)return {preview:body,rest:''};
+ // 단어 중간에서 자르지 않도록 90자 안쪽의 마지막 띄어쓰기에서 자릅니다.
+ let cut=body.lastIndexOf(' ',PREVIEW_LENGTH);
+ if(cut<40)cut=PREVIEW_LENGTH;
+ return {preview:body.slice(0,cut)+' …',rest:'… '+body.slice(cut).trim()};
+}
 // 영향 필터: "both"는 기회와 위협을 함께 보여줍니다.
 function matchesImpact(a,impact){
  if(!impact)return true;
@@ -38,21 +59,20 @@ function matchesImpact(a,impact){
  return kind===impact;
 }
 // 기사 한 줄을 만듭니다. (신문 브리핑형)
-// 한 줄에는 제목·매체·날짜·한 줄 미리보기만 보이고,
-// "자세히"를 누르면 AI 인사이트, 기사 앞부분, 같은 소식, 메모, 숨기기가 펼쳐집니다.
+// 한 줄에는 제목·매체·날짜·미리보기만 보이고,
+// "자세히"를 누르면 AI 인사이트(한 줄), 미리보기 뒤로 이어지는 기사 내용, 같은 소식, 숨기기가 펼쳐집니다.
 function card(a,others){
  // 정책 추적 예시 (데이터가 있을 때만)
  let track='';
  if(a.track){track='<details class="policy"><summary>정책 추적 예시 · '+esc(a.track.name)+'</summary><dl><dt>이전 기록</dt><dd>'+esc(a.track.before)+'</dd><dt>이번 기사에서 확인할 내용</dt><dd>'+esc(a.track.change)+'</dd><dt>다음 확인 사항</dt><dd>'+esc(a.track.next)+'</dd></dl><p class="policy-note">공식 자료 검증 및 자동 이력 비교 전의 화면 예시입니다.</p></details>';}
 
- // AI 인사이트가 있으면 인사이트 상자를, 없으면 "AI 인사이트 만들기" 버튼을 보여줍니다.
+ // AI 인사이트가 있으면 인사이트 한 줄 상자를, 없으면 "AI 인사이트 만들기" 버튼을 보여줍니다.
  // 예전에 만든 요약을 새 인사이트로 바꾸고 싶을 때는 상자 안의 "다시 만들기"를 누릅니다.
  let aiBox='<button type="button" class="small-button" data-summary="'+a.id+'">✨ AI 인사이트 만들기</button>';
- if(a.ai_summary){aiBox='<div class="ai-summary"><strong>AI 인사이트</strong><p>'+highlight(a.ai_summary)+'</p><button type="button" class="text-button" data-summary="'+a.id+'">↻ 다시 만들기</button></div>';}
+ const insight=insightLine(a);
+ if(insight){aiBox='<div class="ai-summary"><strong>AI 인사이트</strong><p>'+highlight(insight)+'</p><button type="button" class="text-button" data-summary="'+a.id+'">↻ 다시 만들기</button></div>';}
 
  const star='<button type="button" class="star'+(a.starred?' on':'')+'" data-star="'+a.id+'" aria-label="중요 기사 표시">'+(a.starred?'★':'☆')+'</button>';
- const newBadge=isNew(a)?'<span class="new-badge">NEW</span>':'';
- const memoBox='<div class="memo"><textarea maxlength="300" id="memo-'+a.id+'" placeholder="짧은 메모를 남겨 보세요">'+esc(a.memo||'')+'</textarea><button type="button" class="small-button" data-memo="'+a.id+'">메모 저장</button></div>';
  const hideButton='<button type="button" class="text-button" data-hide="'+a.id+'">'+(a.hidden?'다시 보이기':'이 기사 숨기기')+'</button>';
 
  // 같은 소식을 다룬 다른 매체 기사 목록입니다.
@@ -61,27 +81,27 @@ function card(a,others){
   sameChip='<span class="chip">외 '+others.length+'개 매체</span>';
   sameNews='<div class="same-news"><strong>같은 소식을 다룬 기사</strong><ul>'+others.map(function(o){return '<li><a href="'+esc(o.url)+'" target="_blank" rel="noopener noreferrer">'+esc(o.title)+'</a> <span class="muted">'+esc(o.source)+' · '+esc(o.date)+'</span></li>';}).join('')+'</ul></div>';
  }
- const memoChip=a.memo?'<span class="chip memo-chip" title="'+esc(a.memo)+'">📝 메모</span>':'';
  // 한 줄 목록의 배지: 기회는 초록, 위협은 빨강, 그 밖에 인사이트가 있으면 파란 "AI 인사이트"
  const impact=impactOf(a);
  let aiChip=a.ai_summary?'<span class="chip ai-chip">AI 인사이트</span>':'';
  if(impact==='기회')aiChip='<span class="chip impact-good">🟢 기회</span>';
  if(impact==='위협')aiChip='<span class="chip impact-bad">🔴 위협</span>';
 
- // 한 줄 미리보기: 부제목이 있으면 부제목, 없으면 기사 앞부분
- const preview=a.subtitle||a.summary||'';
+ // 미리보기: 부제목이 있으면 부제목, 없으면 기사 앞부분 90자 정도
+ const text=splitText(a);
  const tags='<div class="tags">'+a.tags.map(function(t){return '<span class="tag">'+esc(t)+'</span>';}).join('')+'</div>';
 
  return '<article class="item'+(a.hidden?' hidden-item':'')+'">'+
   '<div class="item-body">'+
-   '<div class="item-title">'+newBadge+'<a href="'+esc(a.url)+'" target="_blank" rel="noopener noreferrer">'+highlight(a.title)+'</a></div>'+
-   '<div class="item-meta"><span class="entity">'+highlight(a.entity)+'</span><span>'+esc(a.source)+'</span><span>'+esc(a.date.slice(5).replace('-','/'))+'</span>'+aiChip+sameChip+memoChip+'</div>'+
-   (preview?'<p class="item-preview">'+highlight(preview)+'</p>':'')+
+   '<div class="item-title"><a href="'+esc(a.url)+'" target="_blank" rel="noopener noreferrer">'+highlight(a.title)+'</a></div>'+
+   '<div class="item-meta"><span class="entity">'+highlight(a.entity)+'</span><span>'+esc(a.source)+'</span><span>'+esc(a.date.slice(5).replace('-','/'))+'</span>'+aiChip+sameChip+'</div>'+
+   (text.preview?'<p class="item-preview">'+highlight(text.preview)+'</p>':'')+
    '<details class="item-more"><summary>자세히</summary><div class="item-detail">'+
     aiBox+
-    '<p class="detail-text">'+highlight((a.subtitle?a.subtitle+'\n\n':'')+a.summary)+'</p>'+
-    tags+track+sameNews+memoBox+
-    '<div class="detail-foot"><a class="source" href="'+esc(a.url)+'" target="_blank" rel="noopener noreferrer">원문 보기 ↗</a>'+hideButton+'</div>'+
+    (text.rest?'<p class="detail-text">'+highlight(text.rest)+'</p>':'')+
+    tags+track+sameNews+
+    // 원문 링크는 "원문 보기" 대신 주소(URL) 자체를 보여줍니다. 길면 CSS가 끝을 "…"로 자릅니다.
+    '<div class="detail-foot"><a class="source" href="'+esc(a.url)+'" target="_blank" rel="noopener noreferrer" title="'+esc(a.url)+'">🔗 '+esc(a.url)+'</a>'+hideButton+'</div>'+
    '</div></details>'+
   '</div>'+star+
  '</article>';
@@ -108,13 +128,14 @@ function matchesPeriod(a,period){
  const days=period==='today'?0:Number(period)-1;
  return a.date>=kstDate(days);
 }
-// 정렬: 메인 일치 기사는 항상 뒤로 보내고, 그 안에서 선택한 순서대로 정렬합니다.
+// 정렬
+// - 관련도순(기본): ⭐ 표시한 기사 먼저 → 맞은 키워드가 많은 기사 → 최신 기사
+// - 최신순: 날짜가 최근인 기사 먼저
 function sortRows(rows,sort){
  return rows.sort(function(a,b){
-  const main=Number(a.match_level==='main')-Number(b.match_level==='main');
-  if(sort==='old')return main||a.date.localeCompare(b.date);
-  if(sort==='star')return main||b.starred-a.starred||b.date.localeCompare(a.date);
-  return main||b.date.localeCompare(a.date);
+  const newer=b.date.localeCompare(a.date);
+  if(sort==='new')return newer;
+  return (b.starred?1:0)-(a.starred?1:0)||(b.tags||[]).length-(a.tags||[]).length||newer;
  });
 }
 // 같은 소식 묶기: 제목을 두 글자씩 잘라(예: "캐논메디칼" → 캐논, 논메, 메디 …) 겹치는 비율을 봅니다.
@@ -144,46 +165,23 @@ function groupSameNews(rows){
  });
  return groups;
 }
-// 통계: 지금 불러온 기사로 카테고리별 건수와 경쟁사별 언급 횟수를 막대로 보여줍니다.
-function bars(title,counts){
- const names=Object.keys(counts).sort(function(a,b){return counts[b]-counts[a];}).slice(0,8);
- const max=names.length?counts[names[0]]:1;
- return '<div class="stat-box"><h3>'+title+'</h3>'+(names.length?names.map(function(n){return '<div class="bar-row"><span class="bar-name">'+esc(n)+'</span><span class="bar-track"><span class="bar-fill" style="width:'+Math.round(counts[n]/max*100)+'%"></span></span><span class="bar-num">'+counts[n]+'</span></div>';}).join(''):'<p class="muted">기사가 없습니다.</p>')+'</div>';
-}
-// 일별 추이: 최근 14일 날짜별 기사 수를 세로 막대로 보여줍니다.
-function dailyChart(list){
- const days=[];
- for(let i=13;i>=0;i--)days.push(kstDate(i));
- const counts={};
- list.forEach(function(a){counts[a.date]=(counts[a.date]||0)+1;});
- const max=Math.max.apply(null,days.map(function(d){return counts[d]||0;}).concat([1]));
- return '<div class="stat-box wide"><h3>최근 14일 날짜별 기사 수</h3><div class="day-chart">'+days.map(function(d){const n=counts[d]||0;return '<div class="day-col" title="'+d+' · '+n+'건"><span class="day-num">'+n+'</span><span class="day-bar" style="height:'+Math.round(n/max*100)+'%"></span><span class="day-label">'+d.slice(5).replace('-','/')+'</span></div>';}).join('')+'</div></div>';
-}
-function renderStats(list){
- const byCategory={},byEntity={};
- list.forEach(function(a){
-  const name=(categories.find(function(c){return c.id===a.category;})||{name:a.category}).name;
-  byCategory[name]=(byCategory[name]||0)+1;
-  if(a.category==='competitor')byEntity[a.entity]=(byEntity[a.entity]||0)+1;
- });
- document.getElementById('stats').innerHTML='<div class="section-head"><h2>간단 통계</h2><span class="count">현재 필터 기준 '+list.length+'건</span></div><div class="stat-grid">'+bars('카테고리별 기사 수',byCategory)+bars('경쟁사별 언급 횟수',byEntity)+dailyChart(list)+'</div>';
-}
 function render(){
  const q=document.getElementById('search').value.trim().toLocaleLowerCase();
  const topic=document.getElementById('topic').value;
- const includeMain=document.getElementById('include-main').checked;
+ // "전체 키워드 기사" 스위치를 켜면 키워드가 모두 맞은 기사만 보여줍니다. (끄면 대표 키워드만 맞은 기사도 함께)
+ const onlyFull=document.getElementById('only-full').checked;
  const period=document.getElementById('period').value;
  const impact=document.getElementById('impact').value;
  const sort=document.getElementById('sort').value;
  const onlyStar=document.getElementById('only-star').checked;
  const showHidden=document.getElementById('show-hidden').checked;
- const onlyNew=document.getElementById('only-new').checked;
  searchWord=q;
  const matches=articles.filter(function(a){
   const text=[a.title,a.entity,a.source,a.summary,a.ai_summary].concat(a.tags).join(' ').toLocaleLowerCase();
-  return (a.match_level!=='main'||includeMain)&&(!q||text.includes(q))&&matchesTopic(a,topic)&&matchesPeriod(a,period)&&matchesImpact(a,impact)&&(!onlyStar||a.starred)&&(!a.hidden||showHidden)&&(!onlyNew||isNew(a));
+  return (!onlyFull||a.match_level!=='main')&&(!q||text.includes(q))&&matchesTopic(a,topic)&&matchesPeriod(a,period)&&matchesImpact(a,impact)&&(!onlyStar||a.starred)&&(!a.hidden||showHidden);
  });
- renderStats(matches);
+ // 통계 탭은 필터와 상관없이 전체 기사로 다시 계산합니다. (stats.js)
+ if(typeof renderStats==='function')renderStats();
  renderBriefing(matches);
  document.getElementById('sections').innerHTML=categories.map(function(c){
   const rows=sortRows(matches.filter(function(a){return a.category===c.id;}),sort);
@@ -229,8 +227,8 @@ function renderBriefing(list){
 function changeFilters(){resetPages();render();}
 document.getElementById('search').addEventListener('input',changeFilters);
 document.getElementById('topic').addEventListener('change',changeFilters);
-document.getElementById('include-main').addEventListener('change',changeFilters);
-['period','impact','sort','only-star','show-hidden','only-new'].forEach(function(id){document.getElementById(id).addEventListener('change',changeFilters);});
+document.getElementById('only-full').addEventListener('change',changeFilters);
+['period','impact','sort','only-star','show-hidden'].forEach(function(id){document.getElementById(id).addEventListener('change',changeFilters);});
 // 서버에 저장 요청을 보냅니다. 실패하면 한국어 메시지를 띄웁니다.
 async function postJson(path,data){
  const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
@@ -239,11 +237,6 @@ async function postJson(path,data){
 }
 async function saveStar(id,starred){
  try{await postJson('/api/article-star',{id:id,starred:starred});articles.forEach(function(a){if(a.id===id)a.starred=starred?1:0;});render();}
- catch(e){alert(e.message);}
-}
-async function saveMemo(id){
- const memo=document.getElementById('memo-'+id).value.trim();
- try{await postJson('/api/article-memo',{id:id,memo:memo});articles.forEach(function(a){if(a.id===id)a.memo=memo;});render();}
  catch(e){alert(e.message);}
 }
 async function saveHidden(id,hidden){
@@ -259,8 +252,6 @@ async function remakeSummary(button,id){
 document.getElementById('sections').addEventListener('click',function(event){
  const starButton=event.target.closest('button[data-star]');
  if(starButton){const id=Number(starButton.getAttribute('data-star'));const now=articles.find(function(a){return a.id===id;});saveStar(id,!(now&&now.starred));return;}
- const memoButton=event.target.closest('button[data-memo]');
- if(memoButton){saveMemo(Number(memoButton.getAttribute('data-memo')));return;}
  const summaryButton=event.target.closest('button[data-summary]');
  if(summaryButton){remakeSummary(summaryButton,Number(summaryButton.getAttribute('data-summary')));return;}
  const hideBtn=event.target.closest('button[data-hide]');
@@ -298,12 +289,5 @@ document.querySelectorAll('.tab').forEach(function(button){
 let lastTab='news';
 try{lastTab=localStorage.getItem('lastTab')||'news';}catch(e){}
 showTab(lastTab);
-// 이번에 본 가장 최근 저장 시각을 기억해 두고, 새 기사 수를 안내합니다.
-function rememberLastSeen(){
- const newest=articles.reduce(function(max,a){return a.saved_at>max?a.saved_at:max;},'');
- const count=articles.filter(function(a){return isNew(a)&&!a.hidden;}).length;
- document.getElementById('new-note').textContent=lastSeen===''?'':(count?'지난 방문 이후 새 기사 '+count+'건':'지난 방문 이후 새 기사가 없습니다.');
- try{if(newest)localStorage.setItem('lastSeenSavedAt',newest);}catch(e){}
-}
-async function refreshArticles(){const r=await fetch('/api/articles');if(!r.ok)throw new Error('Article loading failed');articles=(await r.json()).articles;rememberLastSeen();changeFilters();}
+async function refreshArticles(){const r=await fetch('/api/articles');if(!r.ok)throw new Error('Article loading failed');articles=(await r.json()).articles;changeFilters();}
 refreshArticles().catch(function(e){document.getElementById('sections').textContent=e.message;});

@@ -1,5 +1,5 @@
 // 기사 수집·저장·예약 수집의 전체 흐름입니다. (예전 app/service.py)
-import { summarize, periodReport } from "./ai_summary.js";
+import { summarize, periodReport, trendInsight } from "./ai_summary.js";
 import { buildBriefing, sendBriefing } from "./briefing.js";
 import { loadCandidates, readArticle } from "./crawler.js";
 import { all, first, run } from "./db.js";
@@ -152,8 +152,9 @@ export async function readBody(env, source, articleId = null) {
 
     // 기사 게시와 후보 갱신을 한 번에 처리합니다.
     await db.batch([
-      db.prepare(`INSERT INTO articles(category,entity,published_date,source,title,url,summary,tags_json)
-        VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(url) DO UPDATE SET category=excluded.category,entity=excluded.entity,
+      // review_status를 'published'(게시)로 꼭 적어 줍니다. 예전 D1은 비워 두면 'draft'(임시)가 되어 화면에 안 나옵니다.
+      db.prepare(`INSERT INTO articles(category,entity,published_date,source,title,url,summary,tags_json,review_status)
+        VALUES(?,?,?,?,?,?,?,?,'published') ON CONFLICT(url) DO UPDATE SET category=excluded.category,entity=excluded.entity,
         published_date=excluded.published_date,source=excluded.source,title=excluded.title,summary=excluded.summary,
         tags_json=excluded.tags_json,is_sample=0,updated_at=CURRENT_TIMESTAMP`)
         .bind(groups[0].category, groups[0].mainMatches[0], detail.date, sourceName, candidate.title, candidate.url, JSON.stringify(excerpt), JSON.stringify(articleTags(groups))),
@@ -200,16 +201,19 @@ export async function candidates(env, sourceId = null) {
   return result;
 }
 
-// 뉴스 화면용: 게시된 기사 최대 200건 (숨긴 기사도 함께 보내고, 화면에서 보일지 정합니다)
+// 뉴스 화면용: 게시된 기사 최대 500건 (숨긴 기사도 함께 보내고, 화면에서 보일지 정합니다)
+// 통계 탭이 최근 90일을 다 보려면 넉넉해야 해서 200건 → 500건으로 늘렸습니다.
 export async function articles(env) {
-  const rows = await all(env.DB, "SELECT * FROM articles WHERE review_status IN ('published','hidden') AND is_sample=0 ORDER BY published_date DESC,id DESC");
+  const rows = await all(env.DB, "SELECT * FROM articles WHERE review_status='published' AND archived=0 AND is_sample=0 ORDER BY published_date DESC,id DESC");
   const result = [];
   for (const row of rows) {
     const excerpt = parseExcerpt(row.summary);
     if (!excerpt.first_paragraph) continue;
 
     // 이 기사를 가져온 정보원을 찾고, 지금 키워드 설정으로 다시 분류합니다.
-    const sources = SOURCES.filter((s) => hostOf(row.url) === hostOf(s.url) && (s.id === excerpt.source_id || s.name === row.source));
+    // 저장할 때 적어 둔 정보원 ID(source_id)가 같으면 그 정보원입니다.
+    // (빙 검색 기사는 주소가 bing.com이 아니라 원래 언론사 주소라서, 주소만 비교하면 못 찾고 화면에서 빠졌습니다)
+    const sources = SOURCES.filter((s) => s.id === excerpt.source_id || (hostOf(row.url) === hostOf(s.url) && s.name === row.source));
     sources.sort((a, b) => (a.id === excerpt.source_id ? 0 : 1) - (b.id === excerpt.source_id ? 0 : 1));
     let groups = [];
     for (const s of sources) {
@@ -225,9 +229,9 @@ export async function articles(env) {
       summary: excerpt.first_paragraph, ai_summary: excerpt.ai_summary || "", tags: articleTags(groups), track: null,
       is_sample: 0, content_type: "excerpt",
       starred: row.starred, memo: row.memo,
-      hidden: row.review_status === "hidden", saved_at: row.created_at,
+      hidden: row.hidden === 1, saved_at: row.created_at,
     });
-    if (result.length === 200) break;
+    if (result.length === 500) break;
   }
   return result;
 }
@@ -246,7 +250,7 @@ export async function setMemo(env, articleId, memo) {
 }
 
 export async function setHidden(env, articleId, hidden) {
-  await run(env.DB, "UPDATE articles SET review_status=? WHERE id=?", [hidden ? "hidden" : "published", articleId]);
+  await run(env.DB, "UPDATE articles SET hidden=? WHERE id=?", [hidden ? 1 : 0, articleId]);
 }
 
 // 기사의 AI 인사이트를 (다시) 만들어 저장합니다. 예전 요약이 있으면 덮어씁니다. 실패하면 빈 글자를 돌려줍니다.
@@ -269,7 +273,7 @@ export async function remakeSummary(env, articleId) {
 export async function archiveOldArticles(env) {
   const days = integer(env, "ARCHIVE_DAYS", 90, 7, 3650);
   const cutoff = addDays(koreaNow().day, -days);
-  await run(env.DB, `UPDATE articles SET review_status='archived' WHERE review_status IN ('published','hidden')
+  await run(env.DB, `UPDATE articles SET archived=1 WHERE archived=0
     AND published_date<? AND starred=0 AND memo=''`, [cutoff]);
 }
 
@@ -292,6 +296,17 @@ export async function makeReport(env, day, period) {
   const report = await periodReport(env, chosen, period);
   if (!report) return { error: "리포트를 만들지 못했습니다. OPENAI_API_KEY 설정과 인터넷 연결을 확인해 주세요." };
   return { report, article_count: chosen.length, only_starred: starred.length > 0, since, until: day };
+}
+
+// 통계 탭 "AI 인사이트": 최근 7일 기사로 이번 주 핵심 이슈 3가지와 한 문단 요약을 만듭니다.
+export async function makeTrendInsight(env, day) {
+  const since = addDays(day, -6);
+  // 키워드가 다 맞은 기사만, 비용을 줄이기 위해 40건까지 보냅니다.
+  const chosen = (await visibleArticles(env)).filter((a) => a.date >= since && a.match_level !== "main").slice(0, 40);
+  if (chosen.length === 0) return { error: "최근 7일 동안 분석할 기사가 없습니다." };
+  const insight = await trendInsight(env, chosen);
+  if (!insight) return { error: "AI 인사이트를 만들지 못했습니다. OPENAI_API_KEY 설정과 인터넷 연결을 확인해 주세요." };
+  return { ...insight, article_count: chosen.length, since, until: day };
 }
 
 // 오늘 아직 브리핑을 안 보냈다면 웹훅으로 보냅니다. 보냈으면 true.
