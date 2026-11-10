@@ -18,6 +18,14 @@
       "name": "경쟁사"
     }
   ],
+  "excluded_title_words": [
+    "[칼럼]",
+    "[기고]",
+    "[사설]",
+    "[시론]",
+    "[오피니언]",
+    "[기자수첩]"
+  ],
   "sources": [
     {
       "id": "S012",
@@ -182,7 +190,7 @@
       "id": "S001",
       "name": "의학신문",
       "label": "의학신문",
-      "status": "중지",
+      "status": "사용",
       "categories": [
         "company",
         "policy",
@@ -212,7 +220,7 @@
       "id": "S005",
       "name": "라포르시안",
       "label": "라포르시안",
-      "status": "중지",
+      "status": "사용",
       "categories": [
         "company",
         "policy",
@@ -227,7 +235,7 @@
       "id": "S006",
       "name": "의사신문",
       "label": "의사신문",
-      "status": "중지",
+      "status": "사용",
       "categories": [
         "company",
         "policy",
@@ -242,7 +250,7 @@
       "id": "S008",
       "name": "데일리팜",
       "label": "데일리팜",
-      "status": "중지",
+      "status": "사용",
       "categories": [
         "company",
         "policy",
@@ -257,7 +265,7 @@
       "id": "S009",
       "name": "보건복지부",
       "label": "보건복지부",
-      "status": "중지",
+      "status": "사용",
       "categories": [
         "policy"
       ],
@@ -281,7 +289,7 @@
       "id": "S013",
       "name": "메디파나뉴스",
       "label": "메디파나뉴스",
-      "status": "중지",
+      "status": "사용",
       "categories": [
         "company",
         "policy",
@@ -296,7 +304,7 @@
       "id": "S014",
       "name": "병원신문",
       "label": "병원신문 · 학회",
-      "status": "중지",
+      "status": "사용",
       "categories": [
         "hospital"
       ],
@@ -308,7 +316,7 @@
       "id": "S016",
       "name": "병원신문",
       "label": "병원신문 · 인사, 취임",
-      "status": "중지",
+      "status": "사용",
       "categories": [
         "hospital"
       ],
@@ -320,7 +328,7 @@
       "id": "S017",
       "name": "메디컬업저버",
       "label": "메디컬업저버",
-      "status": "중지",
+      "status": "사용",
       "categories": [
         "company",
         "policy",
@@ -335,7 +343,7 @@
       "id": "S019",
       "name": "약업신문",
       "label": "약업신문",
-      "status": "중지",
+      "status": "사용",
       "categories": [
         "company",
         "policy",
@@ -350,7 +358,7 @@
       "id": "S020",
       "name": "연합뉴스",
       "label": "연합뉴스",
-      "status": "중지",
+      "status": "사용",
       "categories": [
         "policy",
         "hospital",
@@ -364,7 +372,7 @@
       "id": "S022",
       "name": "대한병원협회",
       "label": "대한병원협회",
-      "status": "중지",
+      "status": "사용",
       "categories": [
         "policy",
         "hospital"
@@ -384,6 +392,156 @@
       "url": "https://www.cmcseoul.or.kr/",
       "listingUrl": "https://www.cmcseoul.or.kr/page/board/news",
       "kind": "cmc"
+    },
+    {
+      "id": "B001",
+      "name": "빙 뉴스 검색: 캐논메디칼",
+      "label": "빙 검색 · 캐논메디칼",
+      "status": "사용",
+      "categories": [
+        "company",
+        "policy",
+        "hospital",
+        "competitor"
+      ],
+      "url": "https://www.bing.com/",
+      "listingUrl": "https://www.bing.com/news/search?q=%EC%BA%90%EB%85%BC%EB%A9%94%EB%94%94%EC%B9%BC&format=rss&setlang=ko&cc=KR&qft=sortbydate%3D%221%22",
+      "kind": "bing"
+    },
+    {
+      "id": "B002",
+      "name": "빙 뉴스 검색: 지멘스 헬시니어스",
+      "label": "빙 검색 · 지멘스 헬시니어스",
+      "status": "사용",
+      "categories": [
+        "company",
+        "policy",
+        "hospital",
+        "competitor"
+      ],
+      "url": "https://www.bing.com/",
+      "listingUrl": "https://www.bing.com/news/search?q=%EC%A7%80%EB%A9%98%EC%8A%A4+%ED%97%AC%EC%8B%9C%EB%8B%88%EC%96%B4%EC%8A%A4&format=rss&setlang=ko&cc=KR&qft=sortbydate%3D%221%22",
+      "kind": "bing"
+    },
+    {
+      "id": "B003",
+      "name": "빙 뉴스 검색: GE헬스케어",
+      "label": "빙 검색 · GE헬스케어",
+      "status": "사용",
+      "categories": [
+        "company",
+        "policy",
+        "hospital",
+        "competitor"
+      ],
+      "url": "https://www.bing.com/",
+      "listingUrl": "https://www.bing.com/news/search?q=GE%ED%97%AC%EC%8A%A4%EC%BC%80%EC%96%B4&format=rss&setlang=ko&cc=KR&qft=sortbydate%3D%221%22",
+      "kind": "bing"
+    },
+    {
+      "id": "B004",
+      "name": "빙 뉴스 검색: 필립스 헬스케어",
+      "label": "빙 검색 · 필립스 헬스케어",
+      "status": "사용",
+      "categories": [
+        "company",
+        "policy",
+        "hospital",
+        "competitor"
+      ],
+      "url": "https://www.bing.com/",
+      "listingUrl": "https://www.bing.com/news/search?q=%ED%95%84%EB%A6%BD%EC%8A%A4+%ED%97%AC%EC%8A%A4%EC%BC%80%EC%96%B4&format=rss&setlang=ko&cc=KR&qft=sortbydate%3D%221%22",
+      "kind": "bing"
+    },
+    {
+      "id": "B005",
+      "name": "빙 뉴스 검색: 후지필름 헬스케어",
+      "label": "빙 검색 · 후지필름 헬스케어",
+      "status": "사용",
+      "categories": [
+        "company",
+        "policy",
+        "hospital",
+        "competitor"
+      ],
+      "url": "https://www.bing.com/",
+      "listingUrl": "https://www.bing.com/news/search?q=%ED%9B%84%EC%A7%80%ED%95%84%EB%A6%84+%ED%97%AC%EC%8A%A4%EC%BC%80%EC%96%B4&format=rss&setlang=ko&cc=KR&qft=sortbydate%3D%221%22",
+      "kind": "bing"
+    },
+    {
+      "id": "B006",
+      "name": "빙 뉴스 검색: 특수의료장비",
+      "label": "빙 검색 · 특수의료장비",
+      "status": "사용",
+      "categories": [
+        "company",
+        "policy",
+        "hospital",
+        "competitor"
+      ],
+      "url": "https://www.bing.com/",
+      "listingUrl": "https://www.bing.com/news/search?q=%ED%8A%B9%EC%88%98%EC%9D%98%EB%A3%8C%EC%9E%A5%EB%B9%84&format=rss&setlang=ko&cc=KR&qft=sortbydate%3D%221%22",
+      "kind": "bing"
+    },
+    {
+      "id": "B007",
+      "name": "빙 뉴스 검색: 삼성메디슨",
+      "label": "빙 검색 · 삼성메디슨",
+      "status": "사용",
+      "categories": [
+        "company",
+        "policy",
+        "hospital",
+        "competitor"
+      ],
+      "url": "https://www.bing.com/",
+      "listingUrl": "https://www.bing.com/news/search?q=%EC%82%BC%EC%84%B1%EB%A9%94%EB%94%94%EC%8A%A8&format=rss&setlang=ko&cc=KR&qft=sortbydate%3D%221%22",
+      "kind": "bing"
+    },
+    {
+      "id": "B008",
+      "name": "빙 뉴스 검색: 유나이티드 이미징",
+      "label": "빙 검색 · 유나이티드 이미징",
+      "status": "사용",
+      "categories": [
+        "company",
+        "policy",
+        "hospital",
+        "competitor"
+      ],
+      "url": "https://www.bing.com/",
+      "listingUrl": "https://www.bing.com/news/search?q=%EC%9C%A0%EB%82%98%EC%9D%B4%ED%8B%B0%EB%93%9C+%EC%9D%B4%EB%AF%B8%EC%A7%95&format=rss&setlang=ko&cc=KR&qft=sortbydate%3D%221%22",
+      "kind": "bing"
+    },
+    {
+      "id": "B009",
+      "name": "빙 뉴스 검색: 지멘스 의료",
+      "label": "빙 검색 · 지멘스 의료",
+      "status": "사용",
+      "categories": [
+        "company",
+        "policy",
+        "hospital",
+        "competitor"
+      ],
+      "url": "https://www.bing.com/",
+      "listingUrl": "https://www.bing.com/news/search?q=%EC%A7%80%EB%A9%98%EC%8A%A4+%EC%9D%98%EB%A3%8C&format=rss&setlang=ko&cc=KR&qft=sortbydate%3D%221%22",
+      "kind": "bing"
+    },
+    {
+      "id": "B010",
+      "name": "빙 뉴스 검색: GE 의료기기",
+      "label": "빙 검색 · GE 의료기기",
+      "status": "사용",
+      "categories": [
+        "company",
+        "policy",
+        "hospital",
+        "competitor"
+      ],
+      "url": "https://www.bing.com/",
+      "listingUrl": "https://www.bing.com/news/search?q=GE+%EC%9D%98%EB%A3%8C%EA%B8%B0%EA%B8%B0&format=rss&setlang=ko&cc=KR&qft=sortbydate%3D%221%22",
+      "kind": "bing"
     }
   ],
   "rules": [
@@ -660,7 +818,8 @@
       "excluded": [
         "생활가전",
         "전동칫솔",
-        "면도기"
+        "면도기",
+        "코노코필립스"
       ]
     },
     {
@@ -692,6 +851,72 @@
       "excluded": [
         "스마트폰"
       ]
+    },
+    {
+      "id": "K010",
+      "status": "사용",
+      "category": "competitor",
+      "main": [
+        "후지필름 헬스케어",
+        "후지필름헬스케어",
+        "후지필름",
+        "Fujifilm"
+      ],
+      "auxiliary": [
+        "의료영상",
+        "CT",
+        "MRI",
+        "초음파",
+        "영상진단",
+        "혈관조영",
+        "AI",
+        "심포지엄",
+        "행사",
+        "협력",
+        "병원",
+        "설치",
+        "공개",
+        "가동",
+        "연구",
+        "업무협약"
+      ],
+      "excluded": [
+        "카메라",
+        "인스탁스",
+        "화장품",
+        "디지털카메라",
+        "자기테이프",
+        "데이터센터"
+      ]
+    },
+    {
+      "id": "K011",
+      "status": "사용",
+      "category": "competitor",
+      "main": [
+        "유나이티드 이미징",
+        "유나이티드이미징",
+        "United Imaging"
+      ],
+      "auxiliary": [
+        "의료영상",
+        "CT",
+        "MRI",
+        "초음파",
+        "영상진단",
+        "혈관조영",
+        "AI",
+        "심포지엄",
+        "행사",
+        "협력",
+        "병원",
+        "설치",
+        "공개",
+        "가동",
+        "연구",
+        "업무협약"
+      ],
+      "excluded": []
     }
   ],
   "auto_order": [
@@ -706,6 +931,28 @@
     "S025",
     "S024",
     "S023",
-    "S027"
+    "S027",
+    "S001",
+    "S005",
+    "S006",
+    "S008",
+    "S009",
+    "S013",
+    "S014",
+    "S016",
+    "S017",
+    "S019",
+    "S020",
+    "S022",
+    "B001",
+    "B002",
+    "B003",
+    "B004",
+    "B005",
+    "B006",
+    "B007",
+    "B008",
+    "B009",
+    "B010"
   ]
 }

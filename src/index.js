@@ -75,9 +75,9 @@ function csvCell(value) {
 async function exportCsv(env) {
   const names = {};
   for (const c of CONFIG.categories) names[c.id] = c.name;
-  const lines = [["발행일", "카테고리", "회사·기관", "출처", "제목", "AI 요약", "첫 문단", "키워드", "중요", "메모", "원문 링크"]];
+  const lines = [["발행일", "카테고리", "회사·기관", "출처", "제목", "AI 인사이트", "첫 문단", "키워드", "중요", "메모", "원문 링크"]];
   for (const a of await service.visibleArticles(env)) {
-    // AI 요약의 "- " 줄머리는 엑셀에서 수식으로 읽히므로 "• "로 바꿉니다.
+    // AI 인사이트의 "- " 줄머리는 엑셀에서 수식으로 읽히므로 "• "로 바꿉니다.
     const aiSummary = a.ai_summary.split("\n").map((line) => (line.startsWith("- ") ? "• " + line.slice(2) : line)).join("\n");
     lines.push([a.date, names[a.category] || a.category, a.entity, a.source, a.title,
       aiSummary, a.summary, a.tags.join(", "), a.starred ? "★" : "", a.memo, a.url].map(safeCell));
@@ -104,7 +104,7 @@ async function handleApi(request, env, path) {
   }
   if (method === "GET" && path === "/api/articles") {
     const rows = await service.articles(env);
-    return json({ storage: "D1", count: rows.length, limit: 200, articles: rows });
+    return json({ storage: "D1", count: rows.length, limit: 500, articles: rows });
   }
   if (method === "GET" && path === "/api/export.csv") {
     return exportCsv(env);
@@ -119,6 +119,9 @@ async function handleApi(request, env, path) {
   }
   if (method === "GET" && path === "/api/automation-status") {
     return json(await service.automationStatus(env));
+  }
+  if (method === "GET" && path === "/api/source-status") {
+    return json({ sources: await service.sourceStatus(env) });
   }
 
   if (method === "POST" && path === "/api/article-star") {
@@ -140,16 +143,26 @@ async function handleApi(request, env, path) {
     return json({ ok: true });
   }
   if (method === "POST" && path === "/api/article-summary") {
-    // 요약이 없는 기사에 AI 요약을 다시 만듭니다.
+    // AI 인사이트가 없는 기사에 인사이트를 다시 만듭니다.
     const payload = await readJson(request, env);
     needArticleId(payload);
     const aiSummary = await service.remakeSummary(env, payload.id);
-    if (!aiSummary) throw httpError(503, "요약을 만들지 못했습니다. OPENAI_API_KEY 설정과 인터넷 연결을 확인해 주세요.");
+    if (!aiSummary) throw httpError(503, "AI 인사이트를 만들지 못했습니다. OPENAI_API_KEY 설정과 인터넷 연결을 확인해 주세요.");
     return json({ ai_summary: aiSummary });
   }
   if (method === "POST" && path === "/api/weekly-report") {
+    // 화면에서 보낸 period가 "month"이면 월간, 아니면 주간 리포트를 만듭니다.
+    const payload = await readJson(request, env);
+    const period = payload.period === "month" ? "month" : "week";
+    const result = await service.makeReport(env, koreaNow().day, period);
+    if (result.error) throw httpError(503, result.error);
+    return json(result);
+  }
+
+  if (method === "POST" && path === "/api/trend-insight") {
+    // 통계 탭의 "AI 인사이트": 이번 주 핵심 이슈 3가지
     await readJson(request, env);
-    const result = await service.makeWeeklyReport(env, koreaNow().day);
+    const result = await service.makeTrendInsight(env, koreaNow().day);
     if (result.error) throw httpError(503, result.error);
     return json(result);
   }

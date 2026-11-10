@@ -21,8 +21,8 @@ database_id = "28e28b03-add2-48c3-87af-9bbc17261700"
 # 일반 설정값입니다. (비밀이 아닌 값만 여기에 둡니다)
 # OPENAI_API_KEY, BRIEFING_WEBHOOK_URL 같은 비밀값은 `npx wrangler secret put 이름`으로 넣으세요.
 [vars]
-AUTO_ENABLED = "false"
-AUTO_SOURCE_LIMIT = "12"
+AUTO_ENABLED = "true"
+AUTO_SOURCE_LIMIT = "40"
 AUTO_MAX_BODY_PER_DAY = "120"
 OPENAI_MODEL = "gpt-5-mini"
 ARCHIVE_DAYS = "90"

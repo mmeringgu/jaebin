@@ -53,8 +53,8 @@
 ## 설정 방법
 - 일반 설정은 `wrangler.toml`의 `[vars]` 아래에 있습니다.
   ```
-  AUTO_ENABLED = "false"        # 예약 수집을 켜려면 "true"
-  AUTO_SOURCE_LIMIT = "12"      # 예약 수집할 정보원 수
+  AUTO_ENABLED = "true"         # 예약 수집 켜짐 ("false"로 바꾸면 꺼짐)
+  AUTO_SOURCE_LIMIT = "30"      # 예약 수집할 정보원 수 (최대 30, 빙 검색 6개 포함)
   AUTO_MAX_BODY_PER_DAY = "120" # 하루에 읽을 기사 수 상한
   OPENAI_MODEL = "gpt-5-mini"
   ARCHIVE_DAYS = "90"

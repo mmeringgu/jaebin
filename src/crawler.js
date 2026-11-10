@@ -164,7 +164,11 @@ export async function fetchPage(url, source, maxSize = 750000, jsonResponse = fa
         throw new Error("정보원 HTTP " + response.status + " · 서버가 수집 요청을 받지 못했습니다.");
       }
       const contentType = response.headers.get("Content-Type") || "";
-      if (!contentType.toLowerCase().includes(jsonResponse ? "json" : "text/html")) {
+      // 보통은 HTML, 빙 뉴스 검색은 RSS(XML), 메디게이트 날짜 목록은 JSON 형식이어야 합니다.
+      let expected = "text/html";
+      if (jsonResponse) expected = "json";
+      if (source.kind === "bing") expected = "xml";
+      if (!contentType.toLowerCase().includes(expected)) {
         await response.body?.cancel();
         throw new Error("응답 형식이 맞지 않습니다.");
       }
@@ -242,6 +246,15 @@ export async function parseCandidates(page, source) {
       });
     },
   });
+  // 후생신보 목록은 기사 하나에 링크가 두 개입니다. (제목 링크 + 기사 앞부분 요약 링크)
+  // 요약 링크(dd.body 안)는 표시해 두었다가 아래에서 버립니다. 그래야 제목만 남습니다.
+  if (source.kind === "whosaeng") {
+    rewriter.on("dd.body a[href]", {
+      element() {
+        if (current) current.isSummary = true;
+      },
+    });
+  }
   // 링크 안의 첫 번째 제목 태그 글자를 따로 모읍니다. (사진 설명 대신 진짜 제목을 쓰기 위해)
   for (const tag of ["h1", "h2", "h3", "h4", "h5", "h6", "strong"]) {
     rewriter.on(linkSelector + " " + tag, {
@@ -270,6 +283,7 @@ export async function parseCandidates(page, source) {
   // 같은 주소가 여러 번 나오면, 키워드가 더 잘 맞는 제목 하나만 남깁니다.
   const unique = new Map();
   for (const link of links) {
+    if (link.isSummary) continue; // 후생신보의 기사 앞부분 요약 링크는 제목이 아니므로 건너뜁니다.
     let href = link.href;
     // 서울대병원은 링크가 javascript:viewPage('123') 모양이라 실제 주소로 바꿔 줍니다.
     if (source.kind === "snuh" && /^javascript:viewPage/i.test(href)) {
@@ -284,6 +298,8 @@ export async function parseCandidates(page, source) {
     if ((title.length < 8 || source.kind === "sev") && attr && !/자세히보기|바로가기|다운로드/.test(attr)) {
       title = text(decodeEntities(attr).replace(/\s*자세히 보기$/, ""));
     }
+    // 데일리팜은 "많이 본 뉴스" 순위 숫자(1, 2, 3…)가 제목 앞에 붙어 있어서 떼어 냅니다.
+    if (source.kind === "dailypharm") title = title.replace(/^\d+\s+/, "");
     title = title.replace(/^새글\s*/, "").replace(/\s+New\s+\d{4}-\d{2}-\d{2}.*$/i, "").trim();
     if (title.length < 8 || title.length > 220) continue;
 
@@ -302,8 +318,68 @@ export async function parseCandidates(page, source) {
   return [...unique.values()].sort((a, b) => b.priority - a.priority);
 }
 
+// ───────────────────────── 빙(Bing) 뉴스 검색 ─────────────────────────
+// 빙 뉴스 검색 결과를 RSS(기사 목록을 정해진 형식으로 적은 글)로 받아 기사 후보를 만듭니다.
+// 키 발급 없이 쓸 수 있고, 기사마다 원문 주소·날짜·기사 앞부분 1~2문장·매체 이름을 줍니다.
+// 그래서 빙 기사는 원문 페이지를 따로 읽지 않고, RSS에 있는 앞부분 문장을 첫 문단으로 씁니다.
+
+const BING_DAYS = 7; // 이 날짜 수보다 오래된 기사는 빼고 받습니다.
+
+// RSS 기사 한 건(item) 글에서 <태그>…</태그> 사이 글자를 꺼냅니다. 없으면 빈 글자입니다.
+function tagText(item, tag) {
+  const start = item.indexOf("<" + tag + ">");
+  if (start === -1) return "";
+  const end = item.indexOf("</" + tag + ">", start);
+  if (end === -1) return "";
+  return text(item.slice(start + tag.length + 2, end));
+}
+
+// "Wed, 04 Nov 2026 07:47:00 GMT" 같은 RSS 날짜를 한국 날짜("2026-11-04")로 바꿉니다.
+function koreaDateOf(pubDate) {
+  const time = new Date(pubDate).getTime();
+  if (Number.isNaN(time)) return null;
+  return new Date(time + 9 * 3600000).toISOString().slice(0, 10);
+}
+
+// 빙 RSS 글에서 키워드에 맞는 기사 후보를 만듭니다.
+export function parseBingRss(page, source) {
+  const oldest = koreaDateOf(Date.now() - BING_DAYS * 86400000);
+  const items = [];
+  for (const item of page.split("<item>").slice(1)) {
+    const title = tagText(item, "title");
+    const date = koreaDateOf(tagText(item, "pubDate"));
+    const description = tagText(item, "description");
+    const media = tagText(item, "News:Source");
+    // 빙 링크(bing.com/news/apiclick.aspx?...&url=원문주소)에서 원문 주소만 꺼냅니다.
+    let url = "";
+    try {
+      url = new URL(tagText(item, "link")).searchParams.get("url") || "";
+      if (!url.startsWith("http://") && !url.startsWith("https://")) url = "";
+    } catch {
+      url = "";
+    }
+    // 제목·주소·날짜·앞부분 문장 중 하나라도 없거나, 너무 오래된 기사는 건너뜁니다.
+    if (title.length < 8 || !url || !date || !description || date < oldest) continue;
+
+    const groups = keywordMatch(title, source);
+    if (groups.length === 0) continue;
+    const level = selectionLevel(groups);
+    items.push({
+      title, url, date, description, media,
+      groups: groups.map((g) => g.id),
+      category: groups[0].category,
+      matchLevel: level,
+      priority: { full: 2, main: 1, none: 0 }[level],
+    });
+  }
+  return items;
+}
+
 // 정보원 목록 페이지를 가져와 기사 후보를 만듭니다.
 export async function loadCandidates(source) {
+  // 빙 뉴스 검색은 HTML이 아니라 RSS라서 따로 읽습니다. 키워드에 맞는 기사가 없으면 빈 목록입니다.
+  if (source.kind === "bing") return parseBingRss(await fetchPage(source.listingUrl, source), source);
+
   let page;
   try {
     page = await fetchPage(source.listingUrl, source);
@@ -578,6 +654,8 @@ export async function articleDetails(page, source, title = "") {
     const lines = joinParts(keptParts.filter((part) => !part.inFigure), "\n").split("\n");
     first = lines.map(text).find(isGood) || "";
   }
+  // 첫 문단 맨 앞의 매체 이름 표시(예: "【후생신보】")는 떼어 냅니다.
+  first = first.replace(/^【[^】]{1,10}】\s*/, "");
   if (!first) throw new Error("첫 문단을 확인하지 못했습니다.");
   if (!published) throw new Error("발행일을 확인하지 못했습니다. 기사 날짜 영역을 확인해 주세요.");
 
