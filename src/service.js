@@ -1,7 +1,8 @@
 // 기사 수집·저장·예약 수집의 전체 흐름입니다. (예전 app/service.py)
-import { summarize, periodReport, trendInsight } from "./ai_summary.js";
+import { summarize, periodReport, trendInsight, withoutImpact } from "./ai_summary.js";
 import { buildBriefing, sendBriefing } from "./briefing.js";
 import { loadCandidates, readArticle } from "./crawler.js";
+import { selectReportArticles } from "./report.js";
 import { all, first, run } from "./db.js";
 import { articleTags, hostOf, keywordMatch, selection, selectionLevel } from "./rules.js";
 import { addDays, automationSettings, CONFIG, integer, koreaNow, SOURCE_BY_ID, SOURCES } from "./settings.js";
@@ -148,7 +149,7 @@ export async function readBody(env, source, articleId = null) {
     // 빙 뉴스 검색 기사는 "빙 검색" 대신 실제 매체 이름(예: 조선일보)을 출처로 보여줍니다.
     const sourceName = excerpt.media ? excerpt.media + " (빙 검색)" : source.name;
     // 아직 AI 인사이트가 없는 기사만 GPT에 인사이트를 요청합니다.
-    if (!excerpt.ai_summary) excerpt.ai_summary = await summarize(env, candidate.title, detail.body);
+    // 기사별 AI 인사이트 생성은 사용 여부를 결정할 때까지 보류합니다.
 
     // 기사 게시와 후보 갱신을 한 번에 처리합니다.
     await db.batch([
@@ -226,9 +227,10 @@ export async function articles(env) {
       id: row.id, category: groups[0].category, match_level: selectionLevel(groups),
       entity: groups[0].mainMatches[0], date: row.published_date, source: row.source,
       title: row.title, url: row.url, subtitle: excerpt.subtitle || "",
-      summary: excerpt.first_paragraph, ai_summary: excerpt.ai_summary || "", tags: articleTags(groups), track: null,
+      summary: excerpt.first_paragraph, ai_summary: withoutImpact(excerpt.ai_summary || ""), tags: articleTags(groups), track: null,
       is_sample: 0, content_type: "excerpt",
       starred: row.starred, memo: row.memo,
+      impact_override: row.impact_override || "",
       hidden: row.hidden === 1, saved_at: row.created_at,
     });
     if (result.length === 500) break;
@@ -251,6 +253,15 @@ export async function setMemo(env, articleId, memo) {
 
 export async function setHidden(env, articleId, hidden) {
   await run(env.DB, "UPDATE articles SET hidden=? WHERE id=?", [hidden ? 1 : 0, articleId]);
+}
+
+// 수동 분류는 재수집·AI 인사이트와 독립적으로 보관합니다. 빈 값은 자동 판단으로 되돌립니다.
+export async function setImpact(env, articleId, impact) {
+  if (!Number.isInteger(articleId) || articleId <= 0 || !["", "기회", "위협"].includes(impact)) {
+    throw Object.assign(new Error("기사 번호와 기회·위협 분류를 확인해 주세요."), { status: 400 });
+  }
+  const row = await first(env.DB, "UPDATE articles SET impact_override=? WHERE id=? RETURNING id", [impact, articleId]);
+  if (!row) throw Object.assign(new Error("기사를 찾을 수 없습니다."), { status: 404 });
 }
 
 // 기사의 AI 인사이트를 (다시) 만들어 저장합니다. 예전 요약이 있으면 덮어씁니다. 실패하면 빈 글자를 돌려줍니다.
@@ -279,7 +290,7 @@ export async function archiveOldArticles(env) {
 
 // ───────────────────────── 주간·월간 리포트 · 브리핑 ─────────────────────────
 
-// 최근 기사로 GPT 리포트를 만듭니다. ⭐ 기사가 있으면 그것만 씁니다.
+// 별표 기사를 우선하고 중복 보도가 많은 다른 소식도 활용해 리포트를 만듭니다.
 // period가 "month"이면 최근 30일(월간), 그 밖에는 최근 7일(주간)입니다.
 export async function makeReport(env, day, period) {
   const isMonth = period === "month";
@@ -288,14 +299,13 @@ export async function makeReport(env, day, period) {
   const maxCount = isMonth ? 60 : 30;
 
   const since = addDays(day, -(days - 1));
-  const inRange = (await visibleArticles(env)).filter((a) => a.date >= since && a.match_level !== "main");
-  const starred = inRange.filter((a) => a.starred);
-  const chosen = (starred.length > 0 ? starred : inRange).slice(0, maxCount);
+  const inRange = (await visibleArticles(env)).filter((a) => a.date >= since && a.date <= day && (a.starred || a.match_level !== "main"));
+  const chosen = selectReportArticles(inRange, maxCount);
   if (chosen.length === 0) return { error: "최근 " + days + "일 동안 리포트에 쓸 기사가 없습니다." };
 
   const report = await periodReport(env, chosen, period);
   if (!report) return { error: "리포트를 만들지 못했습니다. OPENAI_API_KEY 설정과 인터넷 연결을 확인해 주세요." };
-  return { report, article_count: chosen.length, only_starred: starred.length > 0, since, until: day };
+  return { report, article_count: chosen.length, since, until: day };
 }
 
 // 통계 탭 "AI 인사이트": 최근 7일 기사로 이번 주 핵심 이슈 3가지와 한 문단 요약을 만듭니다.

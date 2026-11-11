@@ -55,10 +55,6 @@ async function readJson(request, env, maxBytes = 200) {
   return payload;
 }
 
-function needArticleId(payload) {
-  if (!Number.isInteger(payload.id)) throw httpError(400, "기사 번호가 필요합니다.");
-}
-
 // ───────────────────────── CSV 내보내기 ─────────────────────────
 
 // 엑셀이 =, +, -, @로 시작하는 칸을 수식으로 읽어 오류(#NAME?)가 나지 않게 앞에 '를 붙입니다.
@@ -143,12 +139,12 @@ async function handleApi(request, env, path) {
     return json({ ok: true });
   }
   if (method === "POST" && path === "/api/article-summary") {
-    // AI 인사이트가 없는 기사에 인사이트를 다시 만듭니다.
+    throw httpError(409, "기사별 AI 인사이트 생성은 현재 보류 중입니다.");
+  }
+  if (method === "POST" && path === "/api/article-impact") {
     const payload = await readJson(request, env);
-    needArticleId(payload);
-    const aiSummary = await service.remakeSummary(env, payload.id);
-    if (!aiSummary) throw httpError(503, "AI 인사이트를 만들지 못했습니다. OPENAI_API_KEY 설정과 인터넷 연결을 확인해 주세요.");
-    return json({ ai_summary: aiSummary });
+    await service.setImpact(env, payload.id, payload.impact);
+    return json({ ok: true });
   }
   if (method === "POST" && path === "/api/weekly-report") {
     // 화면에서 보낸 period가 "month"이면 월간, 아니면 주간 리포트를 만듭니다.

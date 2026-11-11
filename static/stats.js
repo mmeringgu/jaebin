@@ -222,8 +222,7 @@ function policyBoard(statuses){
    '<td class="trend-latest">'+latest+'</td></tr>';
  }).join('');
  return '<div class="stat-box wide"><h3>정책 현황판 <span class="muted">추적 중인 정책의 현재 단계</span></h3>'+
-  '<table class="trend-table policy-table"><tr><th>정책</th><th>현재 단계</th><th>근거 기사</th></tr>'+rows+'</table>'+
-  '<p class="muted trend-note">단계는 가장 최근 기사의 제목·부제목에 나온 단어(발의·논의·확정·시행 등)로 정합니다. 언론 보도 기준이라 실제와 다를 수 있습니다.</p></div>';
+  '<table class="trend-table policy-table"><tr><th>정책</th><th>현재 단계</th><th>근거 기사</th></tr>'+rows+'</table></div>';
 }
 function policyChanges(statuses){
  const changed=statuses.filter(function(s){return s.changed;});
@@ -278,7 +277,7 @@ function policySchedule(list,statuses){
   return '<li><span class="list-date">'+dayText+'</span><span class="chip'+(r.kind==='시행일'?' kind-start':'')+'">'+r.kind+'</span>'+dday+
    (r.policy?'<b>'+esc(r.policy)+'</b> · ':'')+linkOf(r.a)+'</li>';
  }).join('')+'</ul>':'<p class="muted">기사에 날짜가 적힌 시행·의견수렴 일정이 없습니다.</p>';
- return '<div class="stat-box"><h3>시행 예정 일정 <span class="muted">기사에 날짜(월·일)가 적힌 경우만</span></h3>'+body+'</div>';
+ return '<div class="stat-box"><h3>시행 예정 일정</h3>'+body+'</div>';
 }
 
 // ───── 통계 탭 전체 그리기 ─────

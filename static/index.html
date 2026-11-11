@@ -9,7 +9,7 @@
 <header class="topbar">
  <div class="top">
   <div class="brand-wrap"><div class="brand">SMD 뉴스 클리핑</div><div class="sub">STRATEGIC MARKETING DIVISION</div></div>
-  <div class="header-actions"><label class="pill main-toggle" title="켜면 키워드가 모두 맞은 기사만 보여 줍니다"><span>키워드 일치 기사만</span><input type="checkbox" id="only-full" role="switch" aria-label="키워드 일치 기사만 보기"><span class="switch-track" aria-hidden="true"></span></label><span class="pill">시범 운영</span></div>
+  <div class="header-actions"><label class="pill main-toggle" title="켜면 키워드가 모두 맞은 기사만 보여 줍니다"><span>키워드 일치 기사만</span><input type="checkbox" id="only-full" role="switch" aria-label="키워드 일치 기사만 보기"><span class="switch-track" aria-hidden="true"></span></label></div>
  </div>
  <nav class="tabs" role="tablist" aria-label="화면 선택">
   <button type="button" class="tab" role="tab" data-tab="news">📰 뉴스</button>
@@ -34,12 +34,12 @@
  <!-- 검색·필터 상자 -->
  <div class="toolbar">
   <div class="toolbar-row">
-   <input id="search" type="search" aria-label="뉴스 검색" placeholder="🔍 기사 제목, 회사·기관, 키워드 검색">
+   <input id="search" type="search" aria-label="뉴스 검색" placeholder="기사  제목, 회사/ 장비, 키워드 검색">
   </div>
   <div class="toolbar-row">
    <select id="topic" aria-label="분야 필터"><option value="">All</option><option>AI</option><option>CT</option><option>MRI</option><option>UL</option><option>VL/XR</option></select>
    <select id="period" aria-label="기간 필터"><option value="">전체 기간</option><option value="today">오늘</option><option value="7">최근 7일</option></select>
-   <select id="impact" aria-label="AI 인사이트 영향 필터"><option value="">모든 영향</option><option value="both">기회·위협만</option><option value="기회">🟢 기회만</option><option value="위협">🔴 위협만</option></select>
+   <select id="impact" aria-label="기회·위협 필터"><option value="">모든 영향</option><option value="both">기회·위협만</option><option value="기회">🟢 기회만</option><option value="위협">🔴 위협만</option></select>
    <select id="sort" aria-label="정렬"><option value="relevance">관련도순</option><option value="new">최신순</option></select>
    <label class="check-label"><input type="checkbox" id="only-star"> ⭐만 보기</label>
    <label class="check-label"><input type="checkbox" id="show-hidden"> 숨긴 기사 보기</label>
@@ -63,7 +63,7 @@
 
  <!-- 탭 3: 주간·월간 리포트 -->
  <div data-panel="report" hidden>
- <section class="section" id="report"><div class="section-head"><h2>주간·월간 리포트</h2></div><p class="desc">주간은 최근 7일, 월간은 최근 30일 기사(⭐ 표시한 기사가 있으면 그것만)로 GPT가 회의용 리포트 초안을 씁니다. 동향·기회·위협·경쟁사·지켜볼 점으로 정리됩니다.</p><div class="controls"><button class="button primary" id="report-button" data-period="week">주간 리포트 만들기</button><button class="button primary" id="report-month-button" data-period="month">월간 리포트 만들기</button><button class="button" id="report-copy" hidden>복사하기</button><button class="button" id="report-save" hidden>파일로 저장(.txt)</button></div><p id="report-status" class="status" role="status" aria-live="polite"></p><div id="report-output" class="report-output"></div></section>
+ <section class="section" id="report"><div class="section-head"><h2>주간·월간 리포트</h2></div><div class="controls"><button class="button primary" id="report-button" data-period="week">주간 리포트 만들기</button><button class="button primary" id="report-month-button" data-period="month">월간 리포트 만들기</button></div><p id="report-status" class="status" role="status" aria-live="polite"></p><div id="report-output" class="report-output"></div></section>
 
  </div>
 
@@ -79,4 +79,6 @@
 
  <footer><div><span class="footer-company">CANON MEDICAL SYSTEMS KOREA</span><br>Strategic Marketing Division · 사내 시범 사이트</div></footer>
 </main>
-<script defer src="/articles.js"></script><script defer src="/stats.js"></script><script defer src="/automation.js"></script><script defer src="/collect.js"></script><script defer src="/report.js"></script><script defer src="/source-status.js"></script></body></html>
+<button type="button" id="back-to-top" class="back-to-top" aria-label="맨 위로 이동" title="맨 위로 이동" hidden><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+<script defer src="/back-to-top.js"></script>
+<script defer src="/news-rules.js"></script><script defer src="/impact.js"></script><script defer src="/articles.js"></script><script defer src="/stats.js"></script><script defer src="/automation.js"></script><script defer src="/collect.js"></script><script defer src="/report.js"></script><script defer src="/source-status.js"></script></body></html>

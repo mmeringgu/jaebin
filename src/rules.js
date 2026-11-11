@@ -35,6 +35,8 @@ export function keywordMatch(title, source) {
   const matches = [];
   for (const rule of CONFIG.rules) {
     if (rule.status !== "사용" || !source.categories.includes(rule.category)) continue;
+    // 조합 규칙은 한 조합의 모든 단어가 제목에 함께 있어야 선별합니다.
+    if (rule.combinations && !rule.combinations.some((words) => words.every((word) => hasWord(title, word)))) continue;
     const main = rule.main.filter((word) => hasWord(title, word));
     if (main.length === 0) continue;
     if (rule.excluded.some((word) => hasWord(title, word))) continue;

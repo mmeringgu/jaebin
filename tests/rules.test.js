@@ -9,6 +9,18 @@ import { addDays, koreaNow, SOURCE_BY_ID } from "../src/settings.js";
 
 const source = SOURCE_BY_ID["S012"];
 
+test("수상·소아응급실·주가는 모든 카테고리에서 제외합니다", () => {
+  for (const title of [
+    "캐논메디칼 MRI 기술 수상",
+    "삼성메디슨 주가 상승",
+    "소아응급실 CT 급여 변경",
+    "의대 신설 및 소아응급실 확충",
+    "인공지능 영상분석 기술 수상",
+  ]) assert.deepEqual(keywordMatch(title, source), [], title);
+  assert.ok(keywordMatch("캐논메디칼 MRI 기술 공개", source).length > 0);
+  assert.ok(keywordMatch("CT 급여 변경", source).length > 0);
+});
+
 test("영어 키워드는 다른 단어 속에 섞이면 안 맞습니다", () => {
   assert.equal(hasWord("MRI 도입", "MRI"), true);
   assert.equal(hasWord("GEOMETRY", "GE"), false);
@@ -67,4 +79,72 @@ test("경쟁사 정식 이름(GE헬스케어·삼성메디슨 등)만 있어도 
 
 test("병원 보도자료 정보원은 목록에서 빠졌습니다", () => {
   for (const id of ["S023", "S024", "S025", "S026"]) assert.equal(SOURCE_BY_ID[id], undefined);
+});
+
+test("의료 AI는 지정한 다섯 조합의 두 단어가 제목에 함께 있으면 선별합니다", () => {
+  for (const [main, auxiliary] of [
+    ["인공지능", "영상판독"], ["AI", "영상판독"], ["인공지능", "영상진단"],
+    ["인공지능", "영상분석"], ["AI", "영상분석"],
+  ]) {
+    for (const title of [`${main} 기반 ${auxiliary} 기술 공개`, `${auxiliary} 정확도 높이는 ${main}`]) {
+      const matched = keywordMatch(title, source).find((rule) => rule.id === "K013");
+      assert.ok(matched, title);
+      assert.equal(matched.matchLevel, "full", title);
+    }
+  }
+});
+
+test("의료 AI 일반 기사나 조합의 한 단어만 있는 기사는 선별하지 않습니다", () => {
+  for (const title of [
+    "의료 AI 상담 서비스 도입", "의료영상 AI 투자 확대", "인공지능 신제품 공개",
+    "AI 신제품 공개", "영상판독 기술 공개", "영상진단 기술 공개", "영상분석 기술 공개",
+    "AI 영상진단 기술 공개", "RAIL 영상분석 기술 공개",
+  ]) assert.deepEqual(keywordMatch(title, source), [], title);
+  assert.equal(keywordMatch("ai 영상분석 기술 공개", source)[0].id, "K013");
+});
+
+test("의료 AI 조합에도 정보원 카테고리와 의견 기사 제외 조건을 적용합니다", () => {
+  assert.deepEqual(keywordMatch("[칼럼] AI 영상판독의 미래", source), []);
+  assert.deepEqual(keywordMatch("AI 영상판독 기술 공개", { ...source, categories: ["hospital"] }), []);
+  assert.equal(keywordMatch("의료기기법 개정 시행", source)[0].id, "K012");
+  assert.equal(keywordMatch("캐논메디칼 MRI 신제품 공개", source)[0].category, "company");
+});
+
+test("의대와 신설이 제목에 함께 있으면 병원 카테고리로 선별합니다", () => {
+  for (const title of ["지역 의대 신설 추진", "신설 의대 설립 논의"]) {
+    const matched = keywordMatch(title, source).find((rule) => rule.id === "K014");
+    assert.ok(matched, title);
+    assert.equal(matched.category, "hospital");
+    assert.equal(matched.matchLevel, "full");
+  }
+  for (const title of ["의대 교육 개선", "새 학과 신설 추진"]) {
+    assert.equal(keywordMatch(title, source).some((rule) => rule.id === "K014"), false, title);
+  }
+});
+
+test("영상검사 급여·수가·심평원 관련 열한 조합을 정책 카테고리로 선별합니다", () => {
+  for (const [first, second] of [
+    ["CT", "급여"], ["MRI", "급여"], ["MRI", "수가"], ["CT", "수가"],
+    ["초음파", "급여"], ["초음파", "수가"], ["영상검사", "수가"],
+    ["심평원", "CT"], ["심평원", "MRI"], ["심평원", "초음파"],
+    ["영상검사", "급여기준"],
+  ]) {
+    for (const title of [`${first} ${second} 변경 안내`, `${second} 관련 ${first} 논의`]) {
+      const matched = keywordMatch(title, source).find((rule) => rule.id === "K015");
+      assert.ok(matched, title);
+      assert.equal(matched.category, "policy");
+      assert.equal(matched.matchLevel, "full");
+    }
+  }
+});
+
+test("새 조합은 두 단어가 모두 필요하며 기존 제외 조건을 지킵니다", () => {
+  for (const title of ["CT 기술 소개", "MRI 기술 소개", "초음파 기술 소개", "영상검사 안내", "급여 변경 안내", "수가 논의", "심평원 안내", "ACT 급여 안내"]) {
+    assert.equal(keywordMatch(title, source).some((rule) => rule.id === "K015"), false, title);
+  }
+  assert.deepEqual(keywordMatch("[칼럼] 의대 신설 논의", source), []);
+  assert.deepEqual(keywordMatch("[기고] CT 급여 변경", source), []);
+  assert.deepEqual(keywordMatch("CT 급여 개인 보험 광고", source), []);
+  assert.deepEqual(keywordMatch("의대 신설 추진", { ...source, categories: ["policy"] }), []);
+  assert.deepEqual(keywordMatch("CT 급여 변경", { ...source, categories: ["hospital"] }), []);
 });

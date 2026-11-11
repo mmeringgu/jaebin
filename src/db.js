@@ -38,5 +38,11 @@ export async function addMissingColumns(db) {
       // 이미 있는 칸이면 여기로 옵니다. 문제없습니다.
     }
   }
+  // 수동 분류 칸은 실제 저장 실패를 숨기지 않도록 중복 칸 오류만 무시합니다.
+  try {
+    await db.prepare("ALTER TABLE articles ADD COLUMN impact_override TEXT NOT NULL DEFAULT '' CHECK(impact_override IN ('', '기회', '위협'))").run();
+  } catch (error) {
+    if (!/duplicate column name/i.test(String(error.message))) throw error;
+  }
   columnsChecked = true;
 }

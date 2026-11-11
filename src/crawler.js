@@ -219,7 +219,10 @@ export async function parseCandidates(page, source) {
   let foundEtnewsArea = false;
 
   // 전자신문은 왼쪽 기사 목록(.col_left) 안의 링크만 씁니다.
-  const linkSelector = source.kind === "etnews" ? ".col_left a[href]" : "a[href]";
+  // 후생신보는 같은 URL의 요약 링크에 키워드가 더 많아도 제목을 대신할 수 없습니다.
+  // 본문 앞의 매체 표기 유무에 의존하지 않고, 실제 제목 영역만 읽습니다.
+  const linkSelector = source.kind === "whosaeng" ? "dd.title a[href]"
+    : source.kind === "etnews" ? ".col_left a[href]" : "a[href]";
   const rewriter = new HTMLRewriter();
 
   if (source.kind === "etnews") {
@@ -246,15 +249,6 @@ export async function parseCandidates(page, source) {
       });
     },
   });
-  // 후생신보 목록은 기사 하나에 링크가 두 개입니다. (제목 링크 + 기사 앞부분 요약 링크)
-  // 요약 링크(dd.body 안)는 표시해 두었다가 아래에서 버립니다. 그래야 제목만 남습니다.
-  if (source.kind === "whosaeng") {
-    rewriter.on("dd.body a[href]", {
-      element() {
-        if (current) current.isSummary = true;
-      },
-    });
-  }
   // 링크 안의 첫 번째 제목 태그 글자를 따로 모읍니다. (사진 설명 대신 진짜 제목을 쓰기 위해)
   for (const tag of ["h1", "h2", "h3", "h4", "h5", "h6", "strong"]) {
     rewriter.on(linkSelector + " " + tag, {
@@ -283,7 +277,6 @@ export async function parseCandidates(page, source) {
   // 같은 주소가 여러 번 나오면, 키워드가 더 잘 맞는 제목 하나만 남깁니다.
   const unique = new Map();
   for (const link of links) {
-    if (link.isSummary) continue; // 후생신보의 기사 앞부분 요약 링크는 제목이 아니므로 건너뜁니다.
     let href = link.href;
     // 서울대병원은 링크가 javascript:viewPage('123') 모양이라 실제 주소로 바꿔 줍니다.
     if (source.kind === "snuh" && /^javascript:viewPage/i.test(href)) {

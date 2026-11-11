@@ -30,37 +30,7 @@ function highlight(value){
  }
  return result+esc(text.slice(start));
 }
-// ── 기회·위협 자동 판단 (AI 인사이트가 없을 때 제목만 보고 정합니다) ──
-// 카테고리마다 [영향, 찾을 단어들]을 위에서부터 차례로 확인해서, 처음 맞는 것을 씁니다.
-// 예) 경쟁사 기사에 "출시"가 있으면 위협, 병원 기사에 "증설"이 있으면 기회
-// 단어를 더하거나 빼고 싶으면 여기만 고치세요.
-const AUTO_IMPACT={
- competitor:[['기회',['회수','리콜','판매중지','철수','소송','적발']],
-             ['위협',['출시','공개','선보','론칭','수주','공급','계약','도입','설치','협약','MOU','점유','1위','인수','확대','허가']]],
- company:[['위협',['회수','리콜','판매중지','소송','적발']],
-          ['기회',['출시','공개','선보','론칭','수주','공급','계약','도입','설치','협약','MOU','확대','허가','수상']]],
- policy:[['위협',['인하','삭감','축소','감축','규제','제한','환수','폐지']],
-         ['기회',['인상','확대','지원','급여화','허용','완화','신설']]],
- hospital:[['기회',['개원','신설','증설','증축','신축','착공','준공','확충','도입','구축','투자','개소']]]
-};
-function guessImpact(a){
- const list=AUTO_IMPACT[a.category]||[];
- const found=list.find(function(pair){return pair[1].some(function(w){return a.title.includes(w);});});
- return found?found[0]:'';
-}
-// 기사의 영향(기회/위협/참고)을 돌려줍니다.
-// AI 인사이트가 있으면 그 첫 줄 "영향: …"을 쓰고, 없으면 제목으로 자동 판단합니다. (둘 다 없으면 빈 글자)
-function impactOf(a){
- const text=a.ai_summary||'';
- if(text.indexOf('영향:')===-1)return guessImpact(a);
- // "영향:"이 있는 그 한 줄만 봅니다. (다음 줄에 나오는 "기회" 같은 단어에 헷갈리지 않게)
- const line=text.slice(text.indexOf('영향:')).split('\n')[0];
- if(line.indexOf('위협')!==-1)return '위협';
- if(line.indexOf('기회')!==-1)return '기회';
- return '참고';
-}
-// AI 인사이트에서 "한 줄"만 꺼냅니다.
-// 새 형식은 "인사이트: …" 줄, 예전 형식(여러 줄)은 첫 번째 "- …" 줄을 씁니다.
+// 기존 AI 인사이트에서는 설명 한 줄만 보여 줍니다. 영향 판단은 impact.js가 담당합니다.
 function insightLine(a){
  const lines=String(a.ai_summary||'').split('\n').map(function(l){return l.trim();});
  const newLine=lines.find(function(l){return l.indexOf('인사이트:')===0;});
@@ -99,11 +69,9 @@ function card(a,others){
  let track='';
  if(a.track){track='<details class="policy"><summary>정책 추적 예시 · '+esc(a.track.name)+'</summary><dl><dt>이전 기록</dt><dd>'+esc(a.track.before)+'</dd><dt>이번 기사에서 확인할 내용</dt><dd>'+esc(a.track.change)+'</dd><dt>다음 확인 사항</dt><dd>'+esc(a.track.next)+'</dd></dl><p class="policy-note">공식 자료 검증 및 자동 이력 비교 전의 화면 예시입니다.</p></details>';}
 
- // AI 인사이트가 있으면 인사이트 한 줄 상자를, 없으면 "AI 인사이트 만들기" 버튼을 보여줍니다.
- // 예전에 만든 요약을 새 인사이트로 바꾸고 싶을 때는 상자 안의 "다시 만들기"를 누릅니다.
- let aiBox='<button type="button" class="small-button" data-summary="'+a.id+'">✨ AI 인사이트 만들기</button>';
+ // 기존 인사이트의 설명만 유지합니다. 생성·다시 만들기 버튼은 보류합니다.
  const insight=insightLine(a);
- if(insight){aiBox='<div class="ai-summary"><strong>AI 인사이트</strong><p>'+highlight(insight)+'</p><button type="button" class="text-button" data-summary="'+a.id+'">↻ 다시 만들기</button></div>';}
+ const aiBox=insight?'<div class="ai-summary"><strong>AI 인사이트</strong><p>'+highlight(insight)+'</p></div>':'';
 
  const star='<button type="button" class="star'+(a.starred?' on':'')+'" data-star="'+a.id+'" aria-label="중요 기사 표시">'+(a.starred?'★':'☆')+'</button>';
  const hideButton='<button type="button" class="text-button" data-hide="'+a.id+'">'+(a.hidden?'다시 보이기':'이 기사 숨기기')+'</button>';
@@ -115,11 +83,7 @@ function card(a,others){
   sameNews='<div class="same-news"><strong>같은 소식을 다룬 기사</strong><ul>'+others.map(function(o){return '<li><a href="'+esc(o.url)+'" target="_blank" rel="noopener noreferrer">'+esc(o.title)+'</a> <span class="muted">'+esc(o.source)+' · '+esc(o.date)+'</span></li>';}).join('')+'</ul></div>';
  }
  // 영향 배지: 기회는 초록, 위협은 빨강. 기사 제목 바로 옆에 붙입니다. (버튼을 누르지 않아도 자동으로 붙음)
- const impact=impactOf(a);
- let impactChip='';
- if(impact==='기회')impactChip=' <span class="chip impact-good">🟢 기회</span>';
- if(impact==='위협')impactChip=' <span class="chip impact-bad">🔴 위협</span>';
- // AI 인사이트가 있으면 아래 줄에 파란 "AI 인사이트" 배지
+ const impactChip=impactControls(a);
  const aiChip=a.ai_summary?'<span class="chip ai-chip">AI 인사이트</span>':'';
 
  // 미리보기: 부제목이 있으면 부제목, 없으면 기사 앞부분 90자 정도
@@ -171,46 +135,17 @@ function matchesPeriod(a,period){
 // - 최신순: 날짜가 최근인 기사 먼저
 function sortRows(rows,sort){
  return rows.sort(function(a,b){
-  const newer=b.date.localeCompare(a.date);
+  const newer=compareNewest(a,b);
   if(sort==='new')return newer;
   return (b.starred?1:0)-(a.starred?1:0)||(b.tags||[]).length-(a.tags||[]).length||newer;
  });
 }
-// 같은 소식 묶기: 제목을 두 글자씩 잘라(예: "캐논메디칼" → 캐논, 논메, 메디 …) 겹치는 비율을 봅니다.
-function titlePieces(title){
- const text=title.replace(/[^가-힣A-Za-z0-9]/g,'').toLowerCase();
- const pieces=new Set();
- for(let i=0;i<text.length-1;i++)pieces.add(text.slice(i,i+2));
- return pieces;
-}
-function similarity(a,b){
- let same=0;a.forEach(function(p){if(b.has(p))same++;});
- return same/(a.size+b.size-same||1);
-}
-function daysBetween(d1,d2){return Math.abs(new Date(d1)-new Date(d2))/86400000;}
-const SAME_NEWS_LEVEL=0.45;  // 이 값보다 많이 겹치면 같은 소식으로 봅니다. (0~1, 높을수록 엄격)
-const SAME_DAY_LEVEL=0.25;   // 같은 날짜 기사끼리는 조금만 겹쳐도 같은 소식으로 봅니다. (같은 기사를 최대한 줄이기 위해)
-// 두 기사가 같은 소식인지 봅니다. 같은 날이면 기준을 낮추고, 3일 넘게 떨어져 있으면 다른 소식입니다.
-function isSameNews(m,a,pieces){
- const days=daysBetween(m.date,a.date);
- if(days>3)return false;
- const level=days===0?SAME_DAY_LEVEL:SAME_NEWS_LEVEL;
- return similarity(m.pieces,pieces)>=level;
-}
-// 묶음 안의 기사 "하나라도" 제목이 비슷하면 같은 묶음에 넣습니다.
-// (예전에는 묶음의 첫 기사하고만 비교해서, 제목이 조금 다른 매체 기사가 따로 나오곤 했습니다)
-function groupSameNews(rows){
- const groups=[];
- rows.forEach(function(a){
-  const pieces=titlePieces(a.title);
-  const found=groups.find(function(g){
-   return g.members.some(function(m){return isSameNews(m,a,pieces);});
-  });
-  if(found){found.others.push(a);found.members.push({date:a.date,pieces:pieces});}
-  else groups.push({main:a,others:[],members:[{date:a.date,pieces:pieces}]});
- });
- return groups;
-}
+// 발행일이 같으면 최근 수집 시각, 그것도 같으면 저장 번호가 큰 기사부터 고릅니다.
+// 현재 원문의 발행 시각은 저장하지 않으므로 수집 시각(saved_at)을 사용합니다.
+function compareNewest(a,b){return NewsRules.compareNewest(a,b);}
+function titlePieces(title){return NewsRules.titlePieces(title);}
+function similarity(a,b){return NewsRules.similarity(a,b);}
+function groupSameNews(rows){return NewsRules.groupSameNews(rows);}
 function render(){
  const q=document.getElementById('search').value.trim().toLocaleLowerCase();
  const topic=document.getElementById('topic').value;
@@ -228,10 +163,15 @@ function render(){
  });
  // 통계 탭은 필터와 상관없이 전체 기사로 다시 계산합니다. (stats.js)
  if(typeof renderStats==='function')renderStats();
- renderBriefing(matches);
+ // 카테고리가 다르게 분류된 중복 기사도 한 번만 표시합니다.
+ const allGroups=groupSameNews(matches);
+ renderBriefing(allGroups.map(function(g){return g.main;}));
  document.getElementById('sections').innerHTML=categories.map(function(c){
-  const rows=sortRows(matches.filter(function(a){return a.category===c.id;}),sort);
-  const groups=groupSameNews(rows);
+  const groups=allGroups.filter(function(g){return g.main.category===c.id;});
+  const ordered=sortRows(groups.map(function(g){return g.main;}),sort);
+  const positions=new Map(ordered.map(function(a,i){return [a,i];}));
+  groups.sort(function(a,b){return positions.get(a.main)-positions.get(b.main);});
+  const originalCount=groups.reduce(function(n,g){return n+1+g.others.length;},0);
   // 전체 페이지 수를 구하고, 지금 페이지가 범위를 넘으면(기사를 숨겨서 줄어든 경우 등) 마지막 페이지로 맞춥니다.
   const pageCount=Math.min(MAX_PAGES,Math.max(1,Math.ceil(groups.length/PAGE_SIZE)));
   let page=currentPages[c.id]||1;
@@ -239,7 +179,7 @@ function render(){
   currentPages[c.id]=page;
   const shown=groups.slice((page-1)*PAGE_SIZE,page*PAGE_SIZE);
   const more=pageCount>1?pageButtons(c,page,pageCount):'';
-  const sameNote=rows.length>groups.length?'같은 소식 묶음 포함 기사 '+rows.length+'건':'';
+  const sameNote=originalCount>groups.length?'중복 기사 포함 '+originalCount+'건':'';
   const list=shown.length?shown.map(function(g){return card(g.main,g.others);}).join(''):'<p class="empty">조건에 맞는 기사가 없습니다.</p>';
   return '<section class="news-section cat-'+c.id+'" id="'+c.id+'">'+
    '<div class="news-head"><h2><span class="dot"></span>'+c.name+'<span class="head-count">'+groups.length+'</span></h2><span class="count">'+sameNote+'</span></div>'+
@@ -289,17 +229,12 @@ async function saveHidden(id,hidden){
  try{await postJson('/api/article-hide',{id:id,hidden:hidden});articles.forEach(function(a){if(a.id===id)a.hidden=hidden;});render();}
  catch(e){alert(e.message);}
 }
-// AI 인사이트 만들기: 서버가 GPT에 다시 요청하고, 성공하면 카드에 인사이트를 넣습니다.
-async function remakeSummary(button,id){
- button.disabled=true;button.textContent='AI 인사이트 만드는 중…';
- try{const d=await postJson('/api/article-summary',{id:id});articles.forEach(function(a){if(a.id===id)a.ai_summary=d.ai_summary;});render();}
- catch(e){alert(e.message);button.disabled=false;button.textContent='AI 인사이트 만들기';}
-}
+// 기사별 별표·영향 직접 분류·숨김·페이지 이동을 처리합니다.
 document.getElementById('sections').addEventListener('click',function(event){
  const starButton=event.target.closest('button[data-star]');
  if(starButton){const id=Number(starButton.getAttribute('data-star'));const now=articles.find(function(a){return a.id===id;});saveStar(id,!(now&&now.starred));return;}
- const summaryButton=event.target.closest('button[data-summary]');
- if(summaryButton){remakeSummary(summaryButton,Number(summaryButton.getAttribute('data-summary')));return;}
+ const impactButton=event.target.closest('button[data-impact]');
+ if(impactButton){saveImpact(impactButton);return;}
  const hideBtn=event.target.closest('button[data-hide]');
  if(hideBtn){const id=Number(hideBtn.getAttribute('data-hide'));const now=articles.find(function(a){return a.id===id;});saveHidden(id,!(now&&now.hidden));return;}
  // 페이지 버튼: 누른 카테고리의 페이지 번호를 바꾸고, 그 카테고리 맨 위로 화면을 옮깁니다.
