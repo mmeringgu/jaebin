@@ -34,10 +34,11 @@
  --antique-brass:#bf8a6b;
  --picasso:#fff49f;
 
- /* 카테고리 색: 우리회사(캐논 레드) · 정책(Blue Bayoux) · 학회&병원(Feijoa를 진하게) · 경쟁사(Antique Brass를 진하게) */
+ /* 카테고리 색: 우리회사(캐논 레드) · 정책(Blue Bayoux) · 병원(Feijoa를 진하게) · 학회(보라) · 경쟁사(Antique Brass를 진하게) */
  --c-company:#cc0000;
  --c-policy:#486273;
  --c-hospital:#4f8a42;
+ --c-conference:#6b5b95;
  --c-competitor:#9c6a4c;
 }
 *{box-sizing:border-box}
@@ -104,9 +105,10 @@ a.summary-chip:hover{border-color:var(--cat,var(--ink-2))}
 .cat-company{--cat:var(--c-company)}
 .cat-policy{--cat:var(--c-policy)}
 .cat-hospital{--cat:var(--c-hospital)}
+.cat-conference{--cat:var(--c-conference)}
 .cat-competitor{--cat:var(--c-competitor)}
-.cat-company .dot,.cat-policy .dot,.cat-hospital .dot,.cat-competitor .dot,
-.summary-chip.cat-company .dot,.summary-chip.cat-policy .dot,.summary-chip.cat-hospital .dot,.summary-chip.cat-competitor .dot{background:var(--cat)}
+.cat-company .dot,.cat-policy .dot,.cat-hospital .dot,.cat-conference .dot,.cat-competitor .dot,
+.summary-chip.cat-company .dot,.summary-chip.cat-policy .dot,.summary-chip.cat-hospital .dot,.summary-chip.cat-conference .dot,.summary-chip.cat-competitor .dot{background:var(--cat)}
 
 /* ===== 버튼 ===== */
 .button,.reset{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--gray-1);background:white;border-radius:var(--radius);padding:8px 16px;cursor:pointer;text-decoration:none;white-space:nowrap;font-size:14px;transition:border-color .15s,color .15s,background .15s}

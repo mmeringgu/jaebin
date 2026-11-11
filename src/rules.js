@@ -39,8 +39,11 @@ export function keywordMatch(title, source) {
     if (main.length === 0) continue;
     if (rule.excluded.some((word) => hasWord(title, word))) continue;
     const auxiliary = rule.auxiliary.filter((word) => hasWord(title, word));
+    // 회사 정식 이름(예: "GE헬스케어")이 제목에 있으면 보조 키워드(AI·CT 등)가 없어도 "full"로 봅니다.
+    // ("GE", "지멘스"처럼 짧은 이름은 다른 뜻일 수 있어서 보조 키워드가 있어야 합니다. 목록은 config.json의 exact_names)
+    const exactName = (rule.exact_names || []).some((word) => hasWord(title, word));
     // 보조 키워드까지 맞으면 "full", 메인 키워드만 맞으면 "main"
-    const matchLevel = auxiliary.length > 0 || rule.auxiliary.length === 0 ? "full" : "main";
+    const matchLevel = exactName || auxiliary.length > 0 || rule.auxiliary.length === 0 ? "full" : "main";
     matches.push({ ...rule, mainMatches: main, auxiliaryMatches: auxiliary, matchLevel });
   }
   if (matches.length === 0) return [];

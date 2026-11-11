@@ -1,5 +1,19 @@
 
-const categories=[{id:'company',name:'우리회사 뉴스'},{id:'policy',name:'정책'},{id:'hospital',name:'학회&병원'},{id:'competitor',name:'경쟁사'}];
+const categories=[{id:'company',name:'우리회사 뉴스'},{id:'policy',name:'정책'},{id:'hospital',name:'병원'},{id:'conference',name:'학회'},{id:'competitor',name:'경쟁사'}];
+// 학회·병원 나누기: 서버(DB)에는 둘 다 "hospital"로 저장돼 있어서, 화면에서 제목을 보고 나눕니다.
+// 제목에 아래 단어가 있으면 "학회", 없으면 "병원"으로 보여줍니다.
+const CONFERENCE_WORDS=['학회','학술대회','학술회의','심포지엄','symposium','congress','conference'];
+function splitConference(a){
+ const title=a.title.toLowerCase();
+ if(a.category==='hospital'&&CONFERENCE_WORDS.some(function(w){return title.includes(w);}))a.category='conference';
+ return a;
+}
+// 교수 수상 소식(학술상·논문상·저술상 등)은 장비 영업과 관계가 적어 화면에서 뺍니다.
+// (새로 수집하는 기사는 src/config.json의 excluded_title_words로도 걸러집니다)
+const AWARD_WORDS=['학술상','논문상','저술상'];
+function isAwardNews(a){
+ return AWARD_WORDS.some(function(w){return a.title.includes(w);})||(a.title.includes('교수')&&a.title.includes('수상'));
+}
 let articles = [];
 function esc(value){return String(value).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 // 검색어 강조: 지금 검색창에 쓴 단어입니다. 카드 글에서 이 단어를 찾아 <mark>로 감싸 노란색으로 보여줍니다.
@@ -16,10 +30,29 @@ function highlight(value){
  }
  return result+esc(text.slice(start));
 }
-// AI 인사이트 첫 줄 "영향: 기회/위협/참고"를 읽어 영향 종류를 돌려줍니다. 없으면 빈 글자입니다.
+// ── 기회·위협 자동 판단 (AI 인사이트가 없을 때 제목만 보고 정합니다) ──
+// 카테고리마다 [영향, 찾을 단어들]을 위에서부터 차례로 확인해서, 처음 맞는 것을 씁니다.
+// 예) 경쟁사 기사에 "출시"가 있으면 위협, 병원 기사에 "증설"이 있으면 기회
+// 단어를 더하거나 빼고 싶으면 여기만 고치세요.
+const AUTO_IMPACT={
+ competitor:[['기회',['회수','리콜','판매중지','철수','소송','적발']],
+             ['위협',['출시','공개','선보','론칭','수주','공급','계약','도입','설치','협약','MOU','점유','1위','인수','확대','허가']]],
+ company:[['위협',['회수','리콜','판매중지','소송','적발']],
+          ['기회',['출시','공개','선보','론칭','수주','공급','계약','도입','설치','협약','MOU','확대','허가','수상']]],
+ policy:[['위협',['인하','삭감','축소','감축','규제','제한','환수','폐지']],
+         ['기회',['인상','확대','지원','급여화','허용','완화','신설']]],
+ hospital:[['기회',['개원','신설','증설','증축','신축','착공','준공','확충','도입','구축','투자','개소']]]
+};
+function guessImpact(a){
+ const list=AUTO_IMPACT[a.category]||[];
+ const found=list.find(function(pair){return pair[1].some(function(w){return a.title.includes(w);});});
+ return found?found[0]:'';
+}
+// 기사의 영향(기회/위협/참고)을 돌려줍니다.
+// AI 인사이트가 있으면 그 첫 줄 "영향: …"을 쓰고, 없으면 제목으로 자동 판단합니다. (둘 다 없으면 빈 글자)
 function impactOf(a){
  const text=a.ai_summary||'';
- if(text.indexOf('영향:')===-1)return '';
+ if(text.indexOf('영향:')===-1)return guessImpact(a);
  // "영향:"이 있는 그 한 줄만 봅니다. (다음 줄에 나오는 "기회" 같은 단어에 헷갈리지 않게)
  const line=text.slice(text.indexOf('영향:')).split('\n')[0];
  if(line.indexOf('위협')!==-1)return '위협';
@@ -81,11 +114,13 @@ function card(a,others){
   sameChip='<span class="chip">외 '+others.length+'개 매체</span>';
   sameNews='<div class="same-news"><strong>같은 소식을 다룬 기사</strong><ul>'+others.map(function(o){return '<li><a href="'+esc(o.url)+'" target="_blank" rel="noopener noreferrer">'+esc(o.title)+'</a> <span class="muted">'+esc(o.source)+' · '+esc(o.date)+'</span></li>';}).join('')+'</ul></div>';
  }
- // 한 줄 목록의 배지: 기회는 초록, 위협은 빨강, 그 밖에 인사이트가 있으면 파란 "AI 인사이트"
+ // 영향 배지: 기회는 초록, 위협은 빨강. 기사 제목 바로 옆에 붙입니다. (버튼을 누르지 않아도 자동으로 붙음)
  const impact=impactOf(a);
- let aiChip=a.ai_summary?'<span class="chip ai-chip">AI 인사이트</span>':'';
- if(impact==='기회')aiChip='<span class="chip impact-good">🟢 기회</span>';
- if(impact==='위협')aiChip='<span class="chip impact-bad">🔴 위협</span>';
+ let impactChip='';
+ if(impact==='기회')impactChip=' <span class="chip impact-good">🟢 기회</span>';
+ if(impact==='위협')impactChip=' <span class="chip impact-bad">🔴 위협</span>';
+ // AI 인사이트가 있으면 아래 줄에 파란 "AI 인사이트" 배지
+ const aiChip=a.ai_summary?'<span class="chip ai-chip">AI 인사이트</span>':'';
 
  // 미리보기: 부제목이 있으면 부제목, 없으면 기사 앞부분 90자 정도
  const text=splitText(a);
@@ -93,7 +128,7 @@ function card(a,others){
 
  return '<article class="item'+(a.hidden?' hidden-item':'')+'">'+
   '<div class="item-body">'+
-   '<div class="item-title"><a href="'+esc(a.url)+'" target="_blank" rel="noopener noreferrer">'+highlight(a.title)+'</a></div>'+
+   '<div class="item-title"><a href="'+esc(a.url)+'" target="_blank" rel="noopener noreferrer">'+highlight(a.title)+'</a>'+impactChip+'</div>'+
    '<div class="item-meta"><span class="entity">'+highlight(a.entity)+'</span><span>'+esc(a.source)+'</span><span>'+esc(a.date.slice(5).replace('-','/'))+'</span>'+aiChip+sameChip+'</div>'+
    (text.preview?'<p class="item-preview">'+highlight(text.preview)+'</p>':'')+
    '<details class="item-more"><summary>자세히</summary><div class="item-detail">'+
@@ -108,6 +143,7 @@ function card(a,others){
 }
 // 페이지 나누기: 카테고리마다 한 페이지에 기사(같은 소식 묶음은 1개로 셈)를 최대 6개까지 보여줍니다.
 const PAGE_SIZE=6;
+const MAX_PAGES=20; // 페이지는 최대 20쪽까지만 보여줍니다. (그보다 오래된 기사는 목록에서 빠짐)
 const currentPages={}; // 카테고리별로 지금 보고 있는 페이지 번호 (1부터 시작)
 function resetPages(){categories.forEach(function(c){currentPages[c.id]=1;});}
 function matchesTopic(a,topic){
@@ -115,9 +151,11 @@ function matchesTopic(a,topic){
  const text=[a.title].concat(a.tags||[]).join(' ');
  if(topic==='AI')return /(?:\bAI\b|인공지능)/i.test(text);
  if(topic==='CT')return /(?:\bCT\b|CT(?=[가-힣])|컴퓨터단층|전산화단층)/i.test(text);
- if(topic==='MR')return /(?:\bMRI?\b|MRI?(?=[가-힣])|자기공명)/i.test(text);
- if(topic==='초음파')return /초음파|ultrasound/i.test(text);
- if(topic==='학회')return /학회|학술대회|학술회의|심포지엄|symposium|congress|conference/i.test(text);
+ if(topic==='MRI')return /(?:\bMRI?\b|MRI?(?=[가-힣])|자기공명)/i.test(text);
+ // UL: 초음파(Ultrasound) 장비
+ if(topic==='UL')return /초음파|ultrasound/i.test(text);
+ // VL/XR: 혈관조영(Angiography) 장비, 엑스레이 장비
+ if(topic==='VL/XR')return /혈관조영|angio|엑스레이|엑스선|x-?ray|\bXR\b|\bVL\b/i.test(text);
  return false;
 }
 // 한국 시간 기준으로 오늘에서 days일 전 날짜(YYYY-MM-DD)를 만듭니다.
@@ -151,6 +189,14 @@ function similarity(a,b){
 }
 function daysBetween(d1,d2){return Math.abs(new Date(d1)-new Date(d2))/86400000;}
 const SAME_NEWS_LEVEL=0.45;  // 이 값보다 많이 겹치면 같은 소식으로 봅니다. (0~1, 높을수록 엄격)
+const SAME_DAY_LEVEL=0.25;   // 같은 날짜 기사끼리는 조금만 겹쳐도 같은 소식으로 봅니다. (같은 기사를 최대한 줄이기 위해)
+// 두 기사가 같은 소식인지 봅니다. 같은 날이면 기준을 낮추고, 3일 넘게 떨어져 있으면 다른 소식입니다.
+function isSameNews(m,a,pieces){
+ const days=daysBetween(m.date,a.date);
+ if(days>3)return false;
+ const level=days===0?SAME_DAY_LEVEL:SAME_NEWS_LEVEL;
+ return similarity(m.pieces,pieces)>=level;
+}
 // 묶음 안의 기사 "하나라도" 제목이 비슷하면 같은 묶음에 넣습니다.
 // (예전에는 묶음의 첫 기사하고만 비교해서, 제목이 조금 다른 매체 기사가 따로 나오곤 했습니다)
 function groupSameNews(rows){
@@ -158,7 +204,7 @@ function groupSameNews(rows){
  rows.forEach(function(a){
   const pieces=titlePieces(a.title);
   const found=groups.find(function(g){
-   return g.members.some(function(m){return daysBetween(m.date,a.date)<=3&&similarity(m.pieces,pieces)>=SAME_NEWS_LEVEL;});
+   return g.members.some(function(m){return isSameNews(m,a,pieces);});
   });
   if(found){found.others.push(a);found.members.push({date:a.date,pieces:pieces});}
   else groups.push({main:a,others:[],members:[{date:a.date,pieces:pieces}]});
@@ -168,7 +214,7 @@ function groupSameNews(rows){
 function render(){
  const q=document.getElementById('search').value.trim().toLocaleLowerCase();
  const topic=document.getElementById('topic').value;
- // "전체 키워드 기사" 스위치를 켜면 키워드가 모두 맞은 기사만 보여줍니다. (끄면 대표 키워드만 맞은 기사도 함께)
+ // "키워드 일치 기사만" 스위치를 켜면 키워드가 모두 맞은 기사만 보여줍니다. (끄면 대표 키워드만 맞은 기사도 함께)
  const onlyFull=document.getElementById('only-full').checked;
  const period=document.getElementById('period').value;
  const impact=document.getElementById('impact').value;
@@ -187,7 +233,7 @@ function render(){
   const rows=sortRows(matches.filter(function(a){return a.category===c.id;}),sort);
   const groups=groupSameNews(rows);
   // 전체 페이지 수를 구하고, 지금 페이지가 범위를 넘으면(기사를 숨겨서 줄어든 경우 등) 마지막 페이지로 맞춥니다.
-  const pageCount=Math.max(1,Math.ceil(groups.length/PAGE_SIZE));
+  const pageCount=Math.min(MAX_PAGES,Math.max(1,Math.ceil(groups.length/PAGE_SIZE)));
   let page=currentPages[c.id]||1;
   if(page>pageCount)page=pageCount;
   currentPages[c.id]=page;
@@ -289,5 +335,5 @@ document.querySelectorAll('.tab').forEach(function(button){
 let lastTab='news';
 try{lastTab=localStorage.getItem('lastTab')||'news';}catch(e){}
 showTab(lastTab);
-async function refreshArticles(){const r=await fetch('/api/articles');if(!r.ok)throw new Error('Article loading failed');articles=(await r.json()).articles;changeFilters();}
+async function refreshArticles(){const r=await fetch('/api/articles');if(!r.ok)throw new Error('Article loading failed');articles=(await r.json()).articles.filter(function(a){return !isAwardNews(a);}).map(splitConference);changeFilters();}
 refreshArticles().catch(function(e){document.getElementById('sections').textContent=e.message;});

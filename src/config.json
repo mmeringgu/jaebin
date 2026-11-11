@@ -24,7 +24,10 @@
     "[사설]",
     "[시론]",
     "[오피니언]",
-    "[기자수첩]"
+    "[기자수첩]",
+    "학술상",
+    "논문상",
+    "저술상"
   ],
   "sources": [
     {
@@ -134,42 +137,6 @@
       "url": "https://www.nhis.or.kr/",
       "listingUrl": "https://www.nhis.or.kr/nhis/together/wbhaea01600m01.do",
       "kind": "nhis"
-    },
-    {
-      "id": "S025",
-      "name": "세브란스병원 보도자료",
-      "label": "세브란스병원 보도자료",
-      "status": "사용",
-      "categories": [
-        "hospital"
-      ],
-      "url": "https://sev.severance.healthcare/",
-      "listingUrl": "https://sev.severance.healthcare/sev/news/press/report.do",
-      "kind": "sev"
-    },
-    {
-      "id": "S024",
-      "name": "서울대학교병원 보도자료",
-      "label": "서울대학교병원 보도자료",
-      "status": "사용",
-      "categories": [
-        "hospital"
-      ],
-      "url": "https://www.snuh.org/",
-      "listingUrl": "https://www.snuh.org/about/news/press/list.do",
-      "kind": "snuh"
-    },
-    {
-      "id": "S023",
-      "name": "서울아산병원 보도자료",
-      "label": "서울아산병원 보도자료",
-      "status": "사용",
-      "categories": [
-        "hospital"
-      ],
-      "url": "https://news.amc.seoul.kr/",
-      "listingUrl": "https://news.amc.seoul.kr/news/con/list.do?pressChk=Y",
-      "kind": "amc"
     },
     {
       "id": "S027",
@@ -380,18 +347,6 @@
       "url": "https://www.kha.or.kr/",
       "listingUrl": "https://www.kha.or.kr/kha_home/press-release.do",
       "kind": "kha"
-    },
-    {
-      "id": "S026",
-      "name": "서울성모병원 보도자료",
-      "label": "서울성모병원 보도자료",
-      "status": "중지",
-      "categories": [
-        "hospital"
-      ],
-      "url": "https://www.cmcseoul.or.kr/",
-      "listingUrl": "https://www.cmcseoul.or.kr/page/board/news",
-      "kind": "cmc"
     },
     {
       "id": "B001",
@@ -728,7 +683,8 @@
       "main": [
         "지멘스 헬시니어스",
         "Siemens Healthineers",
-        "지멘스"
+        "지멘스",
+        "지멘스헬시니어스"
       ],
       "auxiliary": [
         "의료영상",
@@ -750,6 +706,11 @@
       ],
       "excluded": [
         "산업자동화"
+      ],
+      "exact_names": [
+        "지멘스 헬시니어스",
+        "지멘스헬시니어스",
+        "Siemens Healthineers"
       ]
     },
     {
@@ -760,7 +721,8 @@
         "GE 헬스케어",
         "GE헬스케어",
         "GE Healthcare",
-        "GE"
+        "GE",
+        "지이헬스케어"
       ],
       "auxiliary": [
         "의료영상",
@@ -785,6 +747,12 @@
         "발전",
         "GE버노바",
         "항공엔진"
+      ],
+      "exact_names": [
+        "GE 헬스케어",
+        "GE헬스케어",
+        "GE Healthcare",
+        "지이헬스케어"
       ]
     },
     {
@@ -795,7 +763,8 @@
         "필립스",
         "Philips",
         "필립스 헬스케어",
-        "Philips Healthcare"
+        "Philips Healthcare",
+        "필립스헬스케어"
       ],
       "auxiliary": [
         "의료영상",
@@ -820,6 +789,11 @@
         "전동칫솔",
         "면도기",
         "코노코필립스"
+      ],
+      "exact_names": [
+        "필립스 헬스케어",
+        "필립스헬스케어",
+        "Philips Healthcare"
       ]
     },
     {
@@ -850,6 +824,10 @@
       ],
       "excluded": [
         "스마트폰"
+      ],
+      "exact_names": [
+        "삼성메디슨",
+        "Samsung Medison"
       ]
     },
     {
@@ -860,7 +838,8 @@
         "후지필름 헬스케어",
         "후지필름헬스케어",
         "후지필름",
-        "Fujifilm"
+        "Fujifilm",
+        "Fujifilm Healthcare"
       ],
       "auxiliary": [
         "의료영상",
@@ -887,6 +866,11 @@
         "디지털카메라",
         "자기테이프",
         "데이터센터"
+      ],
+      "exact_names": [
+        "후지필름 헬스케어",
+        "후지필름헬스케어",
+        "Fujifilm Healthcare"
       ]
     },
     {
@@ -916,7 +900,12 @@
         "연구",
         "업무협약"
       ],
-      "excluded": []
+      "excluded": [],
+      "exact_names": [
+        "유나이티드 이미징",
+        "유나이티드이미징",
+        "United Imaging"
+      ]
     }
   ],
   "auto_order": [
@@ -928,9 +917,6 @@
     "S007",
     "S011",
     "S021",
-    "S025",
-    "S024",
-    "S023",
     "S027",
     "S001",
     "S005",
