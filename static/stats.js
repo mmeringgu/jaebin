@@ -15,9 +15,14 @@ const COMPANIES=[
 // 회수·판매중지 소식을 찾을 단어
 const RECALL_WORDS=['회수','리콜','recall','판매중지','판매 중지','사용중지','사용 중지','수입중지','제조중지','안전성 서한'];
 // 신설·증설 병원을 찾을 단어 (제목에서만 찾습니다)
-const OPEN_WORDS=['개원','신설','증설','개소','개설','준공','착공','신축','문 열','문을 열','확장 이전','병상 확충'];
-// 위 단어가 있어도 병원 개원이 아닌 경우 (예: "개원가" = 동네 의원들, "수가 신설")
-const OPEN_EXCLUDE=['개원가','개원의','수가 신설','신설 요구','신설해야'];
+// 실제 병원이 짓거나 넓히는 소식만 남기려고, 뜻이 넓은 단어(개설·문 열다 등)는 뺐습니다.
+const OPEN_WORDS=['개원','신설','증설','증축','신축','착공','준공','개소','병상 확충','확장 이전','확장 개소'];
+// 위 단어가 있어도 병원을 새로 짓거나 넓히는 소식이 아닌 경우는 뺍니다.
+// 예) "개원 32주년"(기념일), "개원가"(동네 의원들), "수가 신설"(제도), "의대 신설 요구"(주장)
+const OPEN_EXCLUDE=['개원가','개원의','주년','기념','수가','요구','촉구','해야','반대','논란','학회','심포지엄','교수',
+ '의대','학과','정원','위원회','협의체','제도','법안','개정','토론','세미나','강좌','교육','캠페인','협회','의사회','약국','팀','원격','해외'];
+// 병원 이름이 아니라 "병원 종류"인 경우 (예: "지방 대학병원 신설 필요") 특정 병원 소식이 아니므로 뺍니다.
+const GENERIC_HOSPITALS=['병원','대학병원','종합병원','상급종합병원','요양병원','공공병원','지방의료원','의료원','전문병원','국립대병원'];
 
 // ── 설정: 추적할 정책 (3~5개) ──
 // words 중 하나가 기사 제목·부제목에 있으면 그 정책 기사로 봅니다. 바꾸고 싶으면 여기만 고치세요.
@@ -41,11 +46,13 @@ const STAGE_ORDER=['발의','논의','확정','시행'];
 let statsPeriod='week'; // 회사별 언급 수 추이: 'week'(주간) 또는 'month'(월간)
 
 // ── 작은 도우미 ──
-// 통계에 쓸 기사: 숨기지 않은 기사 중, 고른 분야(AI·CT·MR·초음파·학회)에 맞는 기사
+// 통계에 쓸 기사: 숨기지 않은 기사 중, 고른 분야(AI·CT·MRI·UL·VL/XR)에 맞는 기사
 // 분야는 뉴스 탭의 "분야" 칸 값을 그대로 씁니다. (matchesTopic은 articles.js에 있음)
+// 맨 위 "키워드 일치 기사만" 스위치가 켜져 있으면 통계에서도 키워드가 모두 맞은 기사만 셉니다.
 function statsArticles(){
  const topic=document.getElementById('topic').value;
- return articles.filter(function(a){return !a.hidden&&matchesTopic(a,topic);});
+ const onlyFull=document.getElementById('only-full').checked;
+ return articles.filter(function(a){return !a.hidden&&matchesTopic(a,topic)&&(!onlyFull||a.match_level!=='main');});
 }
 function textOf(a){return [a.title,a.subtitle,a.summary].join(' ').toLowerCase();}
 function linkOf(a){return '<a href="'+esc(a.url)+'" target="_blank" rel="noopener noreferrer">'+esc(a.title)+'</a>';}
@@ -101,9 +108,8 @@ function companyTrend(list){
  const toggle='<div class="seg" role="group" aria-label="기간 단위">'+
   '<button type="button" class="seg-button'+(statsPeriod==='week'?' on':'')+'" data-stats-period="week">주간</button>'+
   '<button type="button" class="seg-button'+(statsPeriod==='month'?' on':'')+'" data-stats-period="month">월간</button></div>';
- return '<div class="stat-box wide"><div class="box-head"><h3>회사별 언급 수 추이 <span class="muted">어느 회사 노출이 늘었는지</span></h3>'+toggle+'</div>'+
-  '<table class="trend-table">'+head+body+'</table>'+
-  '<p class="muted trend-note">기사 제목·앞부분에 회사 이름이 나온 기사 수입니다. 변화는 '+(statsPeriod==='week'?'이번 주와 지난주':'이번 달과 지난달')+' 비교이며, 이번 '+(statsPeriod==='week'?'주':'달')+'는 아직 진행 중입니다.</p></div>';
+ return '<div class="stat-box wide"><div class="box-head"><h3>회사별 언급 수 추이</h3>'+toggle+'</div>'+
+  '<table class="trend-table">'+head+body+'</table></div>';
 }
 // 증감 표시: 늘면 ▲(빨강), 줄면 ▼(회색), 같으면 –
 function changeMark(now,before){
@@ -142,17 +148,37 @@ function recallList(list){
  return '<div class="stat-box"><h3>회수·판매중지 현황 <span class="muted">경쟁사 품질 이슈</span></h3>'+body+'</div>';
 }
 
-// ───── 2. 학회&병원 ─────
-// 신설·증설 병원: 제목에 개원·신설·증설 같은 단어가 있는 기사
+// ───── 2. 병원 ─────
+// 기사 제목에서 병원 이름을 꺼냅니다. 예) "OO대학교병원, 암센터 신축" → "OO대학교병원"
+// "병원"·"의료원"으로 끝나는 첫 단어를 씁니다. 못 찾으면 "–"
+function hospitalNameOf(a){
+ const m=a.title.match(/[가-힣A-Za-z0-9]+(?:병원|의료원)/);
+ return m?m[0]:'–';
+}
+// 기사에서 예상 시기(개원·준공 예정 시기)를 찾습니다. 못 찾으면 "–"
+// 예) "2027년 3월 개원 예정" → "2027년 3월", "내년 상반기 준공" → "내년 상반기"
+function openTimeOf(a){
+ const text=[a.title,a.subtitle||'',a.summary||''].join(' ');
+ const m=text.match(/(?:\d{4}년|내년|올해|연내)\s*(?:\d{1,2}월|상반기|하반기|초|말)?/);
+ return m?m[0].trim():'–';
+}
+// 신설·증설 병원인지 확인합니다. 아래 3가지를 모두 만족해야 표에 넣습니다. (보수적으로 고름)
+// 1) 병원 카테고리 기사  2) 제목에 개원·신설·증설 같은 단어가 있고, 예외 단어는 없음  3) 제목에 구체적인 병원 이름이 있음
+function isNewHospitalNews(a){
+ if(a.category!=='hospital')return false;
+ if(!OPEN_WORDS.some(function(w){return a.title.includes(w);}))return false;
+ if(OPEN_EXCLUDE.some(function(w){return a.title.includes(w);}))return false;
+ const name=hospitalNameOf(a);
+ return name!=='–'&&!GENERIC_HOSPITALS.includes(name);
+}
+// 신설·증설 병원: 위 조건에 맞는 기사만 표(병원명·예상 시기·출처)로 보여줍니다.
 function newHospitals(list){
- // 학회&병원 기사 중, 제목에 개원·신설 같은 단어가 있고 "개원가" 같은 예외 단어는 없는 기사
- const rows=list.filter(function(a){
-  return a.category==='hospital'&&OPEN_WORDS.some(function(w){return a.title.includes(w);})&&!OPEN_EXCLUDE.some(function(w){return a.title.includes(w);});
- });
- const body=rows.length?'<ul class="stat-list">'+rows.slice(0,15).map(function(a){
-  return '<li><span class="list-date">'+shortDate(a.date)+'</span>'+linkOf(a)+' <span class="muted">'+esc(a.source)+'</span></li>';
- }).join('')+'</ul>':'<p class="muted">최근 90일 동안 개원·센터 신설 기사가 없습니다.</p>';
- return '<div class="stat-box wide"><h3>신설·증설 병원 <span class="muted">개원·센터 신설 · 잠재 수요처 참고</span></h3>'+body+'</div>';
+ const rows=list.filter(isNewHospitalNews);
+ const body=rows.length?'<table class="trend-table"><tr><th>병원명</th><th>예상 시기</th><th>출처 기사</th></tr>'+rows.slice(0,15).map(function(a){
+  const source='<a href="'+esc(a.url)+'" target="_blank" rel="noopener noreferrer">'+esc(a.source)+' · '+shortDate(a.date)+'</a>';
+  return '<tr><td class="trend-name">'+esc(hospitalNameOf(a))+'</td><td>'+esc(openTimeOf(a))+'</td><td class="trend-latest">'+source+'</td></tr>';
+ }).join('')+'</table>':'<p class="muted">최근 90일 동안 개원·센터 신설 기사가 없습니다.</p>';
+ return '<div class="stat-box wide"><h3>신설·증설 병원</h3>'+body+'</div>';
 }
 
 // ───── 3. 정책 ─────
@@ -262,7 +288,7 @@ function renderStats(){
  // 통계 탭의 분야 칸도 뉴스 탭과 같은 값으로 맞추고, 지금 몇 건으로 계산했는지 알려줍니다.
  const topic=document.getElementById('topic').value;
  document.getElementById('stats-topic').value=topic;
- document.getElementById('stats-topic-note').textContent=(topic?topic+' 분야 ':'전체 ')+'기사 '+list.length+'건 기준 · 뉴스 탭의 분야 필터와 같이 바뀝니다';
+ document.getElementById('stats-topic-note').textContent=(topic?topic+' 분야 ':'전체 ')+(document.getElementById('only-full').checked?'키워드 일치 ':'')+'기사 '+list.length+'건 기준 · 뉴스 탭의 분야 필터와 같이 바뀝니다';
  document.getElementById('stats-company').innerHTML='<div class="stat-grid">'+companyTrend(list)+companyShare(list)+recallList(list)+'</div>';
  document.getElementById('stats-hospital').innerHTML='<div class="stat-grid">'+newHospitals(list)+'</div>';
  const statuses=policyStatus(list);
@@ -282,26 +308,4 @@ document.getElementById('stats-company').addEventListener('click',function(event
 });
 // 기사를 이미 불러왔다면 바로 그립니다.
 if(articles.length)renderStats();
-
-// ───── 4. 트렌드: AI 인사이트 (이번 주 핵심 이슈 3가지) ─────
-(function(){
- const button=document.getElementById('trend-button');
- const statusBox=document.getElementById('trend-status');
- const output=document.getElementById('trend-output');
- button.addEventListener('click',async function(){
-  button.disabled=true;output.innerHTML='';
-  statusBox.textContent='GPT가 이번 주 기사를 읽고 있습니다… (1~2분 걸릴 수 있어요)';
-  try{
-   const r=await fetch('/api/trend-insight',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
-   const d=await r.json();
-   if(!r.ok)throw new Error(d.error||'AI 인사이트를 만들지 못했습니다.');
-   statusBox.textContent=d.since+' ~ '+d.until+' · 기사 '+d.article_count+'건으로 작성';
-   const issues=d.issues.map(function(issue,i){
-    const links=issue.articles.length?'<ul>'+issue.articles.map(function(a){return '<li>'+linkOf(a)+' <span class="muted">'+esc(a.source)+' · '+shortDate(a.date)+'</span></li>';}).join('')+'</ul>':'';
-    return '<li><b>'+esc(issue.name)+'</b>'+links+'</li>';
-   }).join('');
-   output.innerHTML='<p class="trend-summary">'+esc(d.summary)+'</p><h4 class="trend-sub">근거 기사</h4><ol class="issue-list">'+issues+'</ol>';
-  }catch(e){statusBox.textContent=e.message;}
-  finally{button.disabled=false;}
- });
-})();
+// (예전 "트렌드: AI 인사이트" 부분은 리포트 탭과 내용이 겹쳐서 지웠습니다. 2026-11-10)

@@ -57,3 +57,14 @@ test("[칼럼]·[기고] 같은 의견 글은 고르지 않습니다", () => {
   assert.deepEqual(keywordMatch("[칼럼] 지멘스 MRI 시장을 보며", source), []);
   assert.equal(keywordMatch("지멘스 MRI 신제품 공개", source).length > 0, true);
 });
+
+test("경쟁사 정식 이름(GE헬스케어·삼성메디슨 등)만 있어도 full 등급입니다", () => {
+  assert.equal(keywordMatch("GE헬스케어, 신임 대표 선임", source)[0].matchLevel, "full");
+  assert.equal(keywordMatch("삼성메디슨 3분기 실적 발표", source)[0].matchLevel, "full");
+  // 짧은 이름("지멘스")만 있으면 보조 키워드가 있어야 full
+  assert.equal(keywordMatch("지멘스 신임 대표 선임", source)[0].matchLevel, "main");
+});
+
+test("병원 보도자료 정보원은 목록에서 빠졌습니다", () => {
+  for (const id of ["S023", "S024", "S025", "S026"]) assert.equal(SOURCE_BY_ID[id], undefined);
+});

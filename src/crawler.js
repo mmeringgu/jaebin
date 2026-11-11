@@ -302,6 +302,9 @@ export async function parseCandidates(page, source) {
     if (source.kind === "dailypharm") title = title.replace(/^\d+\s+/, "");
     title = title.replace(/^새글\s*/, "").replace(/\s+New\s+\d{4}-\d{2}-\d{2}.*$/i, "").trim();
     if (title.length < 8 || title.length > 220) continue;
+    // 후생신보: "【후생신보】…"로 시작하는 글은 제목이 아니라 기사 앞부분 요약입니다. 건너뜁니다.
+    // (같은 기사의 진짜 제목 링크가 따로 있어서 기사는 빠지지 않습니다)
+    if (source.kind === "whosaeng" && title.startsWith("【")) continue;
 
     const groups = keywordMatch(title, source);
     const level = selectionLevel(groups);
