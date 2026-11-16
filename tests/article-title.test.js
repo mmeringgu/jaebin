@@ -1,6 +1,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { cleanArticleTitle, originalArticleTitle } from "../src/article-title.js";
+
+test("사용자가 제시한 175102 기사 원문에서 실제 제목을 추출합니다", () => {
+  const page = readFileSync(new URL("whosaeng-175102-head.html", import.meta.url), "utf8");
+  assert.equal(originalArticleTitle(page, { kind: "whosaeng" }), "동국대일산병원, 결핵·COPD 1등급");
+});
 
 test("후생신보 매체 표기만 제거하고 다른 대괄호 제목은 보존합니다", () => {
   const source = { kind: "whosaeng" };

@@ -110,7 +110,7 @@ export function articleUrl(href, source, allowAlternate = false) {
     valid = p === "/news/index.html" && only("mode", "view") && has("nid");
     keys = ["mode", "cat", "cat2", "nid"];
   } else if (k === "whosaeng") {
-    valid = /^\/\d+$/.test(p) || (p.endsWith("/read.php") && has("uid"));
+    valid = /^\/\d+$/.test(p) || (["/read.php", "/sub_read.html"].includes(p) && /^\d+$/.test(value("uid")));
     keys = ["uid"];
   } else if (k === "medipana") {
     if (p === "/news/articleView.html" && has("idxno")) {

@@ -270,5 +270,6 @@ document.querySelectorAll('.tab').forEach(function(button){
 let lastTab='news';
 try{lastTab=localStorage.getItem('lastTab')||'news';}catch(e){}
 showTab(lastTab);
-async function refreshArticles(){const r=await fetch('/api/articles');const data=await r.json().catch(function(){return null;});if(!r.ok)throw new Error(data?.error||'기사 목록을 불러오지 못했습니다. (HTTP '+r.status+')');if(!Array.isArray(data?.articles))throw new Error('기사 목록 응답 형식이 올바르지 않습니다.');articles=data.articles.filter(function(a){return !isAwardNews(a);}).map(splitConference);changeFilters();}
+let titleRefreshTimer=null,titleRefreshAttempts=0;
+async function refreshArticles(){clearTimeout(titleRefreshTimer);const r=await fetch('/api/articles');const data=await r.json().catch(function(){return null;});if(!r.ok)throw new Error(data?.error||'기사 목록을 불러오지 못했습니다. (HTTP '+r.status+')');if(!Array.isArray(data?.articles))throw new Error('기사 목록 응답 형식이 올바르지 않습니다.');articles=data.articles.filter(function(a){return !isAwardNews(a);}).map(splitConference);changeFilters();if(data.title_refresh_pending&&titleRefreshAttempts<15){titleRefreshAttempts++;titleRefreshTimer=setTimeout(function(){refreshArticles().catch(function(e){console.warn('제목 재조회 실패:',e.message);});},2000);}else if(!data.title_refresh_pending){titleRefreshAttempts=0;}}
 refreshArticles().catch(function(e){document.getElementById('sections').textContent=e.message;});

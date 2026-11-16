@@ -93,7 +93,8 @@ async function exportCsv(env) {
 
 async function handleApi(request, env, path, ctx) {
   const method = request.method;
-  const titleOptions = { background: true, waitUntil: ctx?.waitUntil?.bind(ctx) };
+  let titleState = { pending: 0, failed: 0 };
+  const titleOptions = { background: true, waitUntil: ctx?.waitUntil?.bind(ctx), onState(state) { titleState = state; } };
 
   if (method === "GET" && path === "/api/health") {
     await first(env.DB, "SELECT 1");
@@ -101,7 +102,8 @@ async function handleApi(request, env, path, ctx) {
   }
   if (method === "GET" && path === "/api/articles") {
     const rows = await service.articles(env, titleOptions);
-    return json({ storage: "D1", count: rows.length, limit: 500, articles: rows });
+    return json({ storage: "D1", count: rows.length, limit: 500, articles: rows,
+      title_refresh_pending: titleState.pending > 0, title_refresh_failed: titleState.failed });
   }
   if (method === "GET" && path === "/api/export.csv") {
     return exportCsv(env);

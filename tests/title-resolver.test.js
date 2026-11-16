@@ -28,12 +28,45 @@ test("기사 API는 원문 응답을 기다리지 않고 200을 반환하고 응
   ]);
   clearTimeout(timeout);
   assert.equal(response.status, 200);
-  assert.match((await response.json()).articles[0].title, /장비를 병원에서/);
+  const first = await response.json();
+  assert.equal(first.title_refresh_pending, true);
+  assert.match(first.articles[0].title, /장비를 병원에서/);
   release();
   await Promise.all(tasks);
   const next = await worker.fetch(new Request("https://example.com/api/articles"), env, ctx);
-  assert.equal((await next.json()).articles[0].title, "캐논메디칼 MRI 실제 제목 복원");
+  const updated = await next.json();
+  assert.equal(updated.articles[0].title, "캐논메디칼 MRI 실제 제목 복원");
+  assert.equal(updated.title_refresh_pending, false);
   await Promise.all(tasks);
+});
+
+test("옛 기사 주소도 같은 원문 제목으로 복원하고 중복 조회하지 않습니다", async (t) => {
+  const calls = [];
+  t.mock.method(globalThis, "fetch", async (url) => {
+    calls.push(url);
+    return new Response('<meta property="og:title" content="≪후생신보≫ 동국대일산병원, 결핵·COPD 1등급">', { headers: { "Content-Type": "text/html" } });
+  });
+  const urls = ["https://www.whosaeng.com/sub_read.html?uid=175102", "http://whosaeng.com/read.php?uid=175102", "https://www.whosaeng.com/175102"];
+  const rows = urls.map((url) => ({ url, title: "【후생신보】 동국대일산병원은 최근 결핵 관련 평가 결과를 발표했다." }));
+  const resolved = await resolveArticleTitles(rows);
+  assert.ok(resolved.every((row) => row.title === "동국대일산병원, 결핵·COPD 1등급"));
+  assert.deepEqual(calls, ["https://www.whosaeng.com/175102"]);
+});
+
+test("처음 묶음 뒤에 있는 기존 기사도 다음 조회에서 이어 복원합니다", async (t) => {
+  let fetched = 0;
+  t.mock.method(globalThis, "fetch", async () => {
+    fetched++;
+    return new Response('<meta property="og:title" content="≪후생신보≫ 캐논메디칼 MRI 실제 기사 제목">', { headers: { "Content-Type": "text/html" } });
+  });
+  const rows = Array.from({ length: 12 }, (_, i) => ({ title: "【후생신보】 본문으로 잘못 저장된 기사입니다.", url: "https://www.whosaeng.com/" + (991000 + i) }));
+  let state;
+  await resolveArticleTitles(rows, { onState(value) { state = value; } });
+  assert.deepEqual(state, { pending: 4, failed: 0 });
+  const resolved = await resolveArticleTitles(rows, { onState(value) { state = value; } });
+  assert.deepEqual(state, { pending: 0, failed: 0 });
+  assert.equal(fetched, 12);
+  assert.ok(resolved.every((row) => row.title === "캐논메디칼 MRI 실제 기사 제목"));
 });
 
 test("기존 본문형 제목을 원문으로 복원하고 캐시하며 D1에는 SELECT만 실행합니다", async (t) => {
