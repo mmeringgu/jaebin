@@ -91,15 +91,16 @@ async function exportCsv(env) {
 
 // ───────────────────────── 주소별 처리 ─────────────────────────
 
-async function handleApi(request, env, path) {
+async function handleApi(request, env, path, ctx) {
   const method = request.method;
+  const titleOptions = { background: true, waitUntil: ctx?.waitUntil?.bind(ctx) };
 
   if (method === "GET" && path === "/api/health") {
     await first(env.DB, "SELECT 1");
     return json({ status: "ok", storage: "D1" });
   }
   if (method === "GET" && path === "/api/articles") {
-    const rows = await service.articles(env);
+    const rows = await service.articles(env, titleOptions);
     return json({ storage: "D1", count: rows.length, limit: 500, articles: rows });
   }
   if (method === "GET" && path === "/api/export.csv") {
@@ -111,7 +112,7 @@ async function handleApi(request, env, path) {
   if (method === "GET" && path === "/api/candidates") {
     const sourceId = new URL(request.url).searchParams.get("source_id");
     if (sourceId && !SOURCE_BY_ID[sourceId]) throw httpError(400, "등록되지 않은 정보원");
-    return json({ candidates: await service.candidates(env, sourceId) });
+    return json({ candidates: await service.candidates(env, sourceId, titleOptions) });
   }
   if (method === "GET" && path === "/api/automation-status") {
     return json(await service.automationStatus(env));
@@ -185,11 +186,11 @@ async function handleApi(request, env, path) {
 
 export default {
   // 화면에서 요청이 올 때마다 불립니다.
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const path = new URL(request.url).pathname;
     try {
       await addMissingColumns(env.DB);
-      return await handleApi(request, env, path);
+      return await handleApi(request, env, path, ctx);
     } catch (error) {
       if (error.status) return json({ error: error.message }, error.status);
       console.error("처리 중 오류:", error);

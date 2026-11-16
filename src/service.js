@@ -185,7 +185,7 @@ export async function readBody(env, source, articleId = null) {
 // ───────────────────────── 화면에 보여줄 목록 ─────────────────────────
 
 // 수집 화면용: 최근 기사 후보 50건
-export async function candidates(env, sourceId = null) {
+export async function candidates(env, sourceId = null, titleOptions = {}) {
   const source = SOURCE_BY_ID[sourceId];
   let sql = "SELECT *,LENGTH(body_text) AS body_length FROM news_candidates WHERE expires_at>CURRENT_TIMESTAMP";
   let args = [];
@@ -193,7 +193,7 @@ export async function candidates(env, sourceId = null) {
     sql += " AND source_id=? AND source_name=?";
     args = [sourceId, source.name];
   }
-  const rows = await resolveArticleTitles(await all(env.DB, sql + " ORDER BY first_collected_at DESC,id DESC LIMIT 50", args));
+  const rows = await resolveArticleTitles(await all(env.DB, sql + " ORDER BY first_collected_at DESC,id DESC LIMIT 50", args), titleOptions);
   const result = [];
   for (const row of rows) {
     const current = SOURCE_BY_ID[row.source_id];
@@ -209,8 +209,8 @@ export async function candidates(env, sourceId = null) {
 
 // 뉴스 화면용: 게시된 기사 최대 500건 (숨긴 기사도 함께 보내고, 화면에서 보일지 정합니다)
 // 통계 탭이 최근 90일을 다 보려면 넉넉해야 해서 200건 → 500건으로 늘렸습니다.
-export async function articles(env) {
-  const rows = await resolveArticleTitles(await all(env.DB, "SELECT * FROM articles WHERE review_status='published' AND archived=0 AND is_sample=0 ORDER BY published_date DESC,id DESC"));
+export async function articles(env, titleOptions = {}) {
+  const rows = await resolveArticleTitles(await all(env.DB, "SELECT * FROM articles WHERE review_status='published' AND archived=0 AND is_sample=0 ORDER BY published_date DESC,id DESC"), titleOptions);
   const result = [];
   for (const row of rows) {
     row.title = cleanArticleTitle(row.title, row);

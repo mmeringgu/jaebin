@@ -4,7 +4,7 @@ import { cleanArticleTitle, originalArticleTitle } from "../src/article-title.js
 
 test("후생신보 매체 표기만 제거하고 다른 대괄호 제목은 보존합니다", () => {
   const source = { kind: "whosaeng" };
-  for (const label of ["[후생신보]", "【후생신보】", "［후생신보］", "[ 후생신보 ]"]) {
+  for (const label of ["[후생신보]", "【후생신보】", "［후생신보］", "[ 후생신보 ]", "≪후생신보≫", "《후생신보》"]) {
     assert.equal(cleanArticleTitle(label + " 캐논메디칼 MRI 신제품 공개", source), "캐논메디칼 MRI 신제품 공개");
   }
   assert.equal(cleanArticleTitle("[기획] MRI 도입 확대", source), "[기획] MRI 도입 확대");
