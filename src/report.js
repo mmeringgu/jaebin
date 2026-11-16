@@ -30,7 +30,7 @@ export function selectReportArticles(rows, maxCount) {
 }
 
 // 모델이 임의의 URL을 출력하지 않도록 기사 번호를 검증해 실제 원문 링크로 바꿉니다.
-export function normalizeReport(raw, articles, period) {
+export function normalizeReport(raw, articles) {
   let value;
   try { value = JSON.parse(raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim()); }
   catch { return null; }
@@ -47,7 +47,7 @@ export function normalizeReport(raw, articles, period) {
   const trends = items(value.trends, 3);
   if (!trends.length) return null;
   const sections = [
-    { title: (period === "month" ? "이번 달" : "이번 주") + " 핵심 동향", items: trends },
+    { title: "이번 달 핵심 동향", items: trends },
     { title: "비즈니스 기회", items: items(value.opportunities, 3, (a) => a.impact === "기회") },
     { title: "위협·리스크", items: items(value.risks, 3, (a) => a.impact === "위협") },
   ];

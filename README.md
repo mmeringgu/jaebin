@@ -1,6 +1,6 @@
 # SMD News Monitor — Cloudflare Worker 버전
 
-의료 업계 뉴스를 정보원 사이트에서 모아 키워드로 분류하고, GPT 요약·주간 리포트·아침 브리핑까지 만들어 주는 사내 뉴스 클리핑 사이트입니다.
+의료 업계 뉴스를 정보원 사이트에서 모아 키워드로 분류하고, GPT 요약·월간 리포트·아침 브리핑까지 만들어 주는 사내 뉴스 클리핑 사이트입니다.
 Cloudflare Worker(자바스크립트)로 돌아가서 PC를 켜 두지 않아도 됩니다.
 
 자세한 설명은 [docs/Cloudflare배포.md](docs/Cloudflare배포.md)와 [docs/기능모음집.md](docs/기능모음집.md)를 보세요.
@@ -36,7 +36,7 @@ npm test          # 자동 테스트
 | `src/service.js` | 수집·게시·조회·예약 작업 흐름, 동시 실행 막기 |
 | `src/crawler.js` | 정보원 페이지 가져오기, 기사 주소 확인, 본문·날짜 꺼내기 |
 | `src/rules.js` | 제목 키워드 분류 |
-| `src/ai_summary.js` | GPT 요약·주간 리포트 |
+| `src/ai_summary.js` | GPT 요약·월간 리포트 |
 | `src/briefing.js` | 아침 브리핑 |
 | `src/db.js`, `schema.sql` | D1 데이터베이스 |
 | `src/settings.js`, `src/config.json` | 설정, 정보원·키워드 목록 |

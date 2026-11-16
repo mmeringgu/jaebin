@@ -46,7 +46,7 @@ const STAGE_ORDER=['발의','논의','확정','시행'];
 let statsPeriod='week'; // 회사별 언급 수 추이: 'week'(주간) 또는 'month'(월간)
 
 // ── 작은 도우미 ──
-// 통계에 쓸 기사: 숨기지 않은 기사 중, 고른 분야(AI·CT·MRI·UL·VL/XR)에 맞는 기사
+// 통계에 쓸 기사: 숨기지 않은 기사 중, 고른 분야(AI·CT·MRI·UL·VL/XR·Vet)에 맞는 기사
 // 분야는 뉴스 탭의 "분야" 칸 값을 그대로 씁니다. (matchesTopic은 articles.js에 있음)
 // 맨 위 "키워드 일치 기사만" 스위치가 켜져 있으면 통계에서도 키워드가 모두 맞은 기사만 셉니다.
 function statsArticles(){

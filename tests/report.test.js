@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 import { selectReportArticles, normalizeReport } from "../src/report.js";
-import { periodReport } from "../src/ai_summary.js";
+import { monthlyReport } from "../src/ai_summary.js";
 
 const article = (id, title, changes = {}) => ({ id, title, category: "policy", date: "2026-11-11",
   source: "매체" + id, url: "https://example.com/" + id, summary: "본문", ...changes });
@@ -54,20 +54,20 @@ test("기회·위협과 경쟁사 출처를 검증하고 실제 원문 링크만
     opportunities: [{ text: "기회", sources: [1] }, { text: "잘못된 분류", sources: [2] }, { text: "미분류 제외", sources: [3] }],
     risks: [{ text: "위협", sources: [2] }, { text: "없는 기사", sources: [99] }],
     competitors: [{ name: "지멘스 헬시니어스", text: "변화", sources: [2] }, { name: "필립스", text: "가공 기사", sources: [1] }],
-  }), rows, "week");
+  }), rows);
   assert.equal(report.sections[0].items.length, 3);
   assert.equal(report.sections[1].items.length, 1);
   assert.equal(report.sections[2].items.length, 1);
   assert.equal(report.sections[3].items.length, 1);
   assert.equal(report.sections[1].items[0].sources[0].url, rows[0].url);
   assert.equal(report.sections[3].items[0].text, "지멘스 헬시니어스: 변화");
-  assert.equal(normalizeReport("invalid", rows, "week"), null);
+  assert.equal(normalizeReport("invalid", rows), null);
 });
 
 test("새 경쟁사 기사가 없으면 경쟁사 움직임 항목을 만들지 않습니다", () => {
   const rows = [{ ...article(1, "병원 기사"), impact: "", competitors: [] }];
   const report = normalizeReport(JSON.stringify({ trends: [{ text: "병원 동향", sources: [1] }],
-    competitors: [{ name: "필립스", text: "특이사항 없음", sources: [1] }] }), rows, "month");
+    competitors: [{ name: "필립스", text: "특이사항 없음", sources: [1] }] }), rows);
   assert.equal(report.sections.length, 3);
   assert.equal(report.sections[0].title, "이번 달 핵심 동향");
 });
@@ -87,7 +87,7 @@ test("리포트 생성 요청에 별표·중복 수·분류를 전달하고 출�
     }) } }] });
   };
   try {
-    const report = await periodReport({ OPENAI_API_KEY: "test" }, rows, "week");
+    const report = await monthlyReport({ OPENAI_API_KEY: "test" }, rows);
     assert.equal(report.sections[2].items[0].sources[0].url, rows[0].url);
   } finally { globalThis.fetch = originalFetch; }
 });

@@ -13,8 +13,8 @@
  </div>
  <nav class="tabs" role="tablist" aria-label="화면 선택">
   <button type="button" class="tab" role="tab" data-tab="news">📰 뉴스</button>
-  <button type="button" class="tab" role="tab" data-tab="stats">📊 통계</button>
   <button type="button" class="tab" role="tab" data-tab="report">📝 리포트</button>
+  <button type="button" class="tab" role="tab" data-tab="stats">📊 통계</button>
   <button type="button" class="tab" role="tab" data-tab="admin">⚙️ 수집 관리</button>
  </nav>
 </header>
@@ -37,7 +37,7 @@
    <input id="search" type="search" aria-label="뉴스 검색" placeholder="기사  제목, 회사/ 장비, 키워드 검색">
   </div>
   <div class="toolbar-row">
-   <select id="topic" aria-label="분야 필터"><option value="">All</option><option>AI</option><option>CT</option><option>MRI</option><option>UL</option><option>VL/XR</option></select>
+   <select id="topic" aria-label="분야 필터"><option value="">All</option><option>AI</option><option>CT</option><option>MRI</option><option>UL</option><option>VL/XR</option><option>Vet</option></select>
    <select id="period" aria-label="기간 필터"><option value="">전체 기간</option><option value="today">오늘</option><option value="7">최근 7일</option></select>
    <select id="impact" aria-label="기회·위협 필터"><option value="">모든 영향</option><option value="both">기회·위협만</option><option value="기회">🟢 기회만</option><option value="위협">🔴 위협만</option></select>
    <select id="sort" aria-label="정렬"><option value="relevance">관련도순</option><option value="new">최신순</option></select>
@@ -49,22 +49,21 @@
  <div id="sections"></div>
  </div>
 
- <!-- 탭 2: 통계 (뉴스 탭의 필터와 상관없이, 숨기지 않은 전체 기사로 계산합니다. 내용은 stats.js가 채웁니다) -->
+ <!-- 탭 2: 월간 리포트 -->
+ <div data-panel="report" hidden>
+ <section class="section" id="report"><div class="section-head"><h2>월간 리포트</h2></div><div class="controls"><button class="button primary" id="report-month-button">월간 리포트 만들기</button></div><p id="report-status" class="status" role="status" aria-live="polite"></p><div id="report-output" class="report-output"></div></section>
+ </div>
+
+ <!-- 탭 3: 통계 (내용은 stats.js가 채웁니다) -->
  <div data-panel="stats" hidden>
  <!-- 통계용 분야 선택: 뉴스 탭의 "분야" 칸과 같은 값입니다. 한쪽을 바꾸면 다른 쪽도 같이 바뀝니다 -->
  <div class="toolbar stats-filter"><div class="toolbar-row">
-  <select id="stats-topic" aria-label="통계 분야 필터"><option value="">All</option><option>AI</option><option>CT</option><option>MRI</option><option>UL</option><option>VL/XR</option></select>
+  <select id="stats-topic" aria-label="통계 분야 필터"><option value="">All</option><option>AI</option><option>CT</option><option>MRI</option><option>UL</option><option>VL/XR</option><option>Vet</option></select>
   <span id="stats-topic-note" class="muted"></span>
  </div></div>
  <section class="section"><div class="section-head"><h2>경쟁사·우리회사</h2><span class="basis">언론 노출 기준</span></div><div id="stats-company"></div></section>
  <section class="section"><div class="section-head"><h2>병원</h2></div><div id="stats-hospital"></div></section>
  <section class="section"><div class="section-head"><h2>정책</h2></div><div id="stats-policy"></div></section>
- </div>
-
- <!-- 탭 3: 주간·월간 리포트 -->
- <div data-panel="report" hidden>
- <section class="section" id="report"><div class="section-head"><h2>주간·월간 리포트</h2></div><div class="controls"><button class="button primary" id="report-button" data-period="week">주간 리포트 만들기</button><button class="button primary" id="report-month-button" data-period="month">월간 리포트 만들기</button></div><p id="report-status" class="status" role="status" aria-live="polite"></p><div id="report-output" class="report-output"></div></section>
-
  </div>
 
  <!-- 탭 4: 수집 관리 -->

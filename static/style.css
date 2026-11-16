@@ -288,7 +288,7 @@ select:hover{border-color:var(--ink-2)}
 .trend-down{color:var(--muted);font-weight:600}
 .trend-note{margin:10px 0 0}
 
-/* ===== 주간·월간 리포트 ===== */
+/* ===== 월간 리포트 ===== */
 .report-output{background:white;border:1px solid var(--line);border-top:3px solid var(--red);border-radius:var(--radius);font-size:14px;margin-top:12px;line-height:1.7}
 .report-output:not(:empty){padding:24px 28px}
 .report-output:empty{display:none}

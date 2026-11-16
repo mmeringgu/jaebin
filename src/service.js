@@ -1,5 +1,5 @@
 // 기사 수집·저장·예약 수집의 전체 흐름입니다. (예전 app/service.py)
-import { summarize, periodReport, trendInsight, withoutImpact } from "./ai_summary.js";
+import { summarize, monthlyReport, trendInsight, withoutImpact } from "./ai_summary.js";
 import { buildBriefing, sendBriefing } from "./briefing.js";
 import { loadCandidates, readArticle } from "./crawler.js";
 import { cleanArticleTitle } from "./article-title.js";
@@ -244,7 +244,7 @@ export async function articles(env, titleOptions = {}) {
   return result;
 }
 
-// 숨기지 않은 기사만 돌려줍니다. (CSV·브리핑·주간/월간 리포트용)
+// 숨기지 않은 기사만 돌려줍니다. (CSV·브리핑·월간 리포트용)
 export async function visibleArticles(env) {
   return (await articles(env)).filter((a) => !a.hidden);
 }
@@ -294,22 +294,20 @@ export async function archiveOldArticles(env) {
     AND published_date<? AND starred=0 AND memo=''`, [cutoff]);
 }
 
-// ───────────────────────── 주간·월간 리포트 · 브리핑 ─────────────────────────
+// ───────────────────────── 월간 리포트 · 브리핑 ─────────────────────────
 
 // 별표 기사를 우선하고 중복 보도가 많은 다른 소식도 활용해 리포트를 만듭니다.
-// period가 "month"이면 최근 30일(월간), 그 밖에는 최근 7일(주간)입니다.
-export async function makeReport(env, day, period) {
-  const isMonth = period === "month";
-  const days = isMonth ? 30 : 7;
-  // 비용을 줄이기 위해 주간은 최대 30건, 월간은 최대 60건만 보냅니다.
-  const maxCount = isMonth ? 60 : 30;
+// 최근 30일 기사를 최대 60건 활용합니다.
+export async function makeReport(env, day) {
+  const days = 30;
+  const maxCount = 60;
 
   const since = addDays(day, -(days - 1));
   const inRange = (await visibleArticles(env)).filter((a) => a.date >= since && a.date <= day && (a.starred || a.match_level !== "main"));
   const chosen = selectReportArticles(inRange, maxCount);
   if (chosen.length === 0) return { error: "최근 " + days + "일 동안 리포트에 쓸 기사가 없습니다." };
 
-  const report = await periodReport(env, chosen, period);
+  const report = await monthlyReport(env, chosen);
   if (!report) return { error: "리포트를 만들지 못했습니다. OPENAI_API_KEY 설정과 인터넷 연결을 확인해 주세요." };
   return { report, article_count: chosen.length, since, until: day };
 }

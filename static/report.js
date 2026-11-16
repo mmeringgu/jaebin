@@ -22,27 +22,24 @@ function renderReport(report,output){
  });
 }
 (function(){
- // 주간·월간 리포트: 버튼을 누르면 서버가 GPT로 최근 7일(주간) 또는 30일(월간) 리포트를 만들어 돌려줍니다.
- const weekButton=document.getElementById('report-button');
+ // 월간 리포트: 최근 30일 기사를 바탕으로 생성합니다.
  const monthButton=document.getElementById('report-month-button');
  const statusBox=document.getElementById('report-status');
  const output=document.getElementById('report-output');
 
- // period는 "week"(주간) 또는 "month"(월간)입니다.
- async function makeReport(period){
-  weekButton.disabled=true;monthButton.disabled=true;
+ async function makeReport(){
+  monthButton.disabled=true;
   output.replaceChildren();
-  statusBox.textContent=(period==='month'?'월간':'주간')+' 리포트를 만드는 중입니다… (최대 2분 정도 걸릴 수 있어요)';
+  statusBox.textContent='월간 리포트를 만드는 중입니다… (최대 2분 정도 걸릴 수 있어요)';
   try{
-   const r=await fetch('/api/weekly-report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({period:period})});
+   const r=await fetch('/api/monthly-report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})});
    const d=await r.json();
    if(!r.ok)throw new Error(d.error||'리포트를 만들지 못했습니다.');
    renderReport(d.report,output);
    statusBox.textContent=d.since+' ~ '+d.until+' · 기사 '+d.article_count+'건으로 작성';
   }catch(e){statusBox.textContent=e.message;}
-  finally{weekButton.disabled=false;monthButton.disabled=false;}
+  finally{monthButton.disabled=false;}
  }
- weekButton.addEventListener('click',function(){makeReport('week');});
- monthButton.addEventListener('click',function(){makeReport('month');});
+ monthButton.addEventListener('click',makeReport);
 
 })();

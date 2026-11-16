@@ -149,11 +149,9 @@ async function handleApi(request, env, path, ctx) {
     await service.setImpact(env, payload.id, payload.impact);
     return json({ ok: true });
   }
-  if (method === "POST" && path === "/api/weekly-report") {
-    // 화면에서 보낸 period가 "month"이면 월간, 아니면 주간 리포트를 만듭니다.
-    const payload = await readJson(request, env);
-    const period = payload.period === "month" ? "month" : "week";
-    const result = await service.makeReport(env, koreaNow().day, period);
+  if (method === "POST" && path === "/api/monthly-report") {
+    await readJson(request, env);
+    const result = await service.makeReport(env, koreaNow().day);
     if (result.error) throw httpError(503, result.error);
     return json(result);
   }

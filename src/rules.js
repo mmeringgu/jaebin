@@ -1,5 +1,6 @@
 // 기사 제목에 키워드가 있는지 보고 카테고리를 정합니다. (예전 app/rules.py)
 import { CONFIG, PRIORITY } from "./settings.js";
+import "../static/news-rules.js";
 
 // 제목(text)에 단어(word)가 들어 있는지 확인합니다.
 // 영어·숫자 단어("CT", "GE")는 다른 단어 속에 섞여 있으면 안 되므로 앞뒤 글자를 따로 확인합니다.
@@ -35,6 +36,8 @@ export function keywordMatch(title, source) {
   const matches = [];
   for (const rule of CONFIG.rules) {
     if (rule.status !== "사용" || !source.categories.includes(rule.category)) continue;
+    // 화면의 Vet 필터와 같은 판정으로 수의 영상 기사만 새 규칙에 포함합니다.
+    if (rule.topic === "Vet" && !globalThis.NewsRules.isVeterinaryImaging(title)) continue;
     // 각 필수 그룹에서 하나 이상 맞아야 합니다. 의료 맥락·대상·제도를 함께 요구할 때 씁니다.
     if (rule.required_groups && !rule.required_groups.every((words) => words.some((word) => hasWord(title, word)))) continue;
     // 조합 규칙은 한 조합의 모든 단어가 제목에 함께 있어야 선별합니다.
@@ -70,6 +73,7 @@ export function selectionLevel(groups) {
 export function articleTags(groups) {
   const tags = [];
   for (const r of groups) {
+    if (r.topic === "Vet" && !tags.includes("Vet")) tags.push("Vet");
     for (const word of [...r.mainMatches, ...r.auxiliaryMatches]) {
       if (!tags.includes(word)) tags.push(word);
     }

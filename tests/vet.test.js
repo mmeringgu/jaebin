@@ -1,0 +1,75 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { runInNewContext } from "node:vm";
+import { keywordMatch, articleTags } from "../src/rules.js";
+import { parseBingRss } from "../src/crawler.js";
+import { CONFIG, SOURCE_BY_ID } from "../src/settings.js";
+
+const source = SOURCE_BY_ID.S012;
+const shared = readFileSync(new URL("../static/news-rules.js", import.meta.url), "utf8");
+const screen = readFileSync(new URL("../static/articles.js", import.meta.url), "utf8");
+const { matchesTopic } = runInNewContext(shared + "\n" + screen.slice(0, screen.indexOf("function render(){")) + "\n({ matchesTopic });");
+
+test("수의 맥락과 영상 장비·진단 맥락을 함께 가진 기사를 수집하고 Vet로 필터링합니다", () => {
+  for (const context of ["수의", "동물병원", "반려동물", "반려견", "반려묘", "강아지", "고양이", "veterinary", "veterinarian", "vet", "animal", "canine", "feline"]) {
+    for (const image of ["CT", "MRI", "MR", "초음파", "영상진단", "영상 판독", "영상의학", "엑스레이", "X-ray", "방사선 촬영", "자기공명", "ultrasound", "radiology"]) {
+      const title = `${context} ${image} 진단 기술 도입`;
+      const groups = keywordMatch(title, source);
+      const vet = groups.find((rule) => rule.id === "K018");
+      assert.ok(vet, title);
+      assert.equal(vet.matchLevel, "full", title);
+      assert.equal(vet.category, "hospital");
+      assert.ok(articleTags(groups).includes("Vet"));
+      assert.equal(matchesTopic({ title, tags: articleTags(groups) }, "Vet"), true, title);
+    }
+  }
+});
+
+test("동물 일반·수의계약·사람용 영상 기사와 영어 단어 일부를 Vet로 잘못 분류하지 않습니다", () => {
+  for (const title of [
+    "반려동물 사료 신제품 공개", "동물병원 진료비 안내", "반려견 홍보 영상 공개",
+    "반려동물 AI 상담 서비스 도입", "수의계약으로 MRI 공급", "CT 장비 수의 계약 체결",
+    "서울대병원 MRI 도입", "PET-CT 검사 도입", "private MRI investment 확대", "동물병원 ACT 프로그램 도입",
+  ]) {
+    assert.equal(keywordMatch(title, source).some((rule) => rule.id === "K018"), false, title);
+    assert.equal(matchesTopic({ title, tags: [] }, "Vet"), false, title);
+  }
+  assert.deepEqual(keywordMatch("[칼럼] 수의 CT 진단의 미래", source), []);
+  assert.equal(keywordMatch("동물병원 MRI 전문의 채용", source).some((rule) => rule.id === "K018"), false);
+  assert.equal(keywordMatch("동물병원 MRI 도입", { ...source, categories: ["policy"] }).some((rule) => rule.id === "K018"), false);
+});
+
+test("수의 영상 경쟁사 기사는 기존 경쟁사 분류를 유지하면서 Vet와 MRI에도 표시합니다", () => {
+  const title = "GE헬스케어, 동물병원 MRI 장비 공급";
+  const groups = keywordMatch(title, source);
+  assert.equal(groups[0].category, "competitor");
+  assert.equal(matchesTopic({ title, tags: articleTags(groups) }, "Vet"), true);
+  assert.equal(matchesTopic({ title, tags: articleTags(groups) }, "MRI"), true);
+});
+
+test("Vet 검색원이 예약 순서에 포함되고 RSS 결과가 수집 후보가 됩니다", () => {
+  for (const id of ["B011", "B012"]) {
+    const vetSource = SOURCE_BY_ID[id];
+    assert.equal(vetSource.kind, "bing");
+    assert.ok(CONFIG.auto_order.slice(0, 40).includes(id));
+    assert.ok(new URL(vetSource.listingUrl).searchParams.get("q").includes("동물병원"));
+    const rss = `<rss><channel><item><title>반려동물 초음파 영상진단 기술 공개</title>
+      <link>https://www.bing.com/news/apiclick.aspx?url=https%3A%2F%2Fexample.com%2Fvet-news</link>
+      <pubDate>${new Date().toUTCString()}</pubDate><description>동물병원 영상진단에 관한 기사 첫 문단입니다.</description>
+      <News:Source>수의 뉴스</News:Source></item></channel></rss>`;
+    const rows = parseBingRss(rss, vetSource);
+    assert.equal(rows.length, 1);
+    assert.ok(rows[0].groups.includes("K018"));
+    assert.equal(rows[0].matchLevel, "full");
+  }
+  assert.equal(new Set(CONFIG.sources.map((s) => s.id)).size, CONFIG.sources.length);
+});
+
+test("뉴스와 통계 드롭다운에 모두 Vet가 있습니다", () => {
+  const html = readFileSync(new URL("../static/index.html", import.meta.url), "utf8");
+  for (const id of ["topic", "stats-topic"]) {
+    const select = html.match(new RegExp('<select id="' + id + '"[^>]*>([\\s\\S]*?)</select>'))?.[1];
+    assert.match(select, /<option>Vet<\/option>/);
+  }
+});

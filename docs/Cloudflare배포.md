@@ -45,7 +45,7 @@
 | `app/service.py` | `src/service.js` | 수집·저장·예약 수집 흐름 |
 | `app/crawler.py` | `src/crawler.js` | 정보원 사이트에서 기사 가져오기 |
 | `app/rules.py` | `src/rules.js` | 키워드로 카테고리 나누기 |
-| `app/ai_summary.py` | `src/ai_summary.js` | GPT 요약·주간 리포트 |
+| `app/ai_summary.py` | `src/ai_summary.js` | GPT 요약·월간 리포트 |
 | `app/briefing.py` | `src/briefing.js` | 아침 브리핑 |
 | `app/db.py` | `src/db.js` + `schema.sql` | 데이터베이스 |
 | `app/settings.py` + `.env` | `src/settings.js` + `wrangler.toml` | 설정 |

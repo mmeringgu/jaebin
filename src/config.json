@@ -1,5 +1,5 @@
 {
-  "version": "2026-11-16-r1",
+  "version": "2026-11-16-r2-vet",
   "categories": [
     {
       "id": "company",
@@ -500,6 +500,26 @@
       "url": "https://www.bing.com/",
       "listingUrl": "https://www.bing.com/news/search?q=GE+%EC%9D%98%EB%A3%8C%EA%B8%B0%EA%B8%B0&format=rss&setlang=ko&cc=KR&qft=sortbydate%3D%221%22",
       "kind": "bing"
+    },
+    {
+      "id": "B011",
+      "name": "빙 뉴스 검색: 수의 영상진단",
+      "label": "빙 검색 · Vet 영상진단",
+      "status": "사용",
+      "categories": ["company", "policy", "hospital", "competitor"],
+      "url": "https://www.bing.com/",
+      "listingUrl": "https://www.bing.com/news/search?q=(수의+OR+동물병원+OR+반려동물)+(영상진단+OR+영상판독+OR+영상의학+OR+엑스레이)&format=rss&setlang=ko&cc=KR&qft=sortbydate%3D%221%22",
+      "kind": "bing"
+    },
+    {
+      "id": "B012",
+      "name": "빙 뉴스 검색: 수의 CT·MRI·초음파",
+      "label": "빙 검색 · Vet CT·MRI·초음파",
+      "status": "사용",
+      "categories": ["company", "policy", "hospital", "competitor"],
+      "url": "https://www.bing.com/",
+      "listingUrl": "https://www.bing.com/news/search?q=(수의+OR+동물병원+OR+반려동물)+(CT+OR+MRI+OR+초음파)&format=rss&setlang=ko&cc=KR&qft=sortbydate%3D%221%22",
+      "kind": "bing"
     }
   ],
   "rules": [
@@ -678,6 +698,15 @@
         ["허가", "인증", "급여", "규제"]
       ],
       "excluded": ["개인 보험 광고"]
+    },
+    {
+      "id": "K018",
+      "status": "사용",
+      "category": "hospital",
+      "topic": "Vet",
+      "main": ["수의", "동물", "반려견", "반려묘", "강아지", "고양이", "veterinary", "veterinarian", "vet", "animal", "canine", "feline"],
+      "auxiliary": ["CT", "MRI", "MR", "CBCT", "PET", "XR", "초음파", "영상진단", "영상 진단", "영상판독", "영상 판독", "영상분석", "영상 분석", "영상검사", "영상 검사", "영상의학", "영상 의학", "영상장비", "영상 장비", "진단영상", "진단 영상", "수의영상", "수의 영상", "엑스레이", "엑스선", "X-ray", "X ray", "Xray", "X선", "X-선", "방사선 촬영", "방사선 검사", "방사선 진단", "방사선촬영", "방사선검사", "방사선진단", "자기공명", "컴퓨터단층", "전산화단층", "ultrasound", "radiology", "radiography"],
+      "excluded": ["채용"]
     },
     {
       "id": "K004",
@@ -998,6 +1027,8 @@
     "S019",
     "S020",
     "S022",
+    "B011",
+    "B012",
     "B001",
     "B002",
     "B003",

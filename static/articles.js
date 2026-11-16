@@ -105,13 +105,14 @@ function card(a,others){
   '</div>'+star+
  '</article>';
 }
-// 페이지 나누기: 카테고리마다 한 페이지에 기사(같은 소식 묶음은 1개로 셈)를 최대 6개까지 보여줍니다.
-const PAGE_SIZE=6;
+// 페이지 나누기: 카테고리마다 한 페이지에 기사(같은 소식 묶음은 1개로 셈)를 최대 4개까지 보여줍니다.
+const PAGE_SIZE=4;
 const MAX_PAGES=20; // 페이지는 최대 20쪽까지만 보여줍니다. (그보다 오래된 기사는 목록에서 빠짐)
 const currentPages={}; // 카테고리별로 지금 보고 있는 페이지 번호 (1부터 시작)
 function resetPages(){categories.forEach(function(c){currentPages[c.id]=1;});}
 function matchesTopic(a,topic){
  if(!topic)return true;
+ if(topic==='Vet')return NewsRules.isVeterinaryImaging(a.title);
  const text=[a.title].concat(a.tags||[]).join(' ');
  if(topic==='AI')return /(?:\bAI\b|인공지능)/i.test(text);
  if(topic==='CT')return /(?:\bCT\b|CT(?=[가-힣])|컴퓨터단층|전산화단층)/i.test(text);
