@@ -54,3 +54,5 @@ CREATE TABLE IF NOT EXISTS monitor_jobs (
  finished_at TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_jobs_day ON monitor_jobs(run_day, source_id);
+-- "멈춘 작업 정리"가 1분마다 작업 기록 전체를 읽지 않도록 상태(status)로 바로 찾게 해 줍니다.
+CREATE INDEX IF NOT EXISTS idx_jobs_status ON monitor_jobs(status);

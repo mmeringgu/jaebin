@@ -23,7 +23,8 @@ const PENDING_CONDITION = `expires_at>CURRENT_TIMESTAMP AND processing_status='p
   AND (fetch_status='pending' OR (fetch_status='success' AND snippet NOT LIKE ?))
   AND (body_fetched_at IS NULL OR body_fetched_at<=datetime('now','-1 minute'))`;
 // 키워드가 모두 맞은(full) 기사 → 먼저 모은 기사 순서로 처리합니다.
-const PENDING_ORDER = `ORDER BY CASE WHEN snippet LIKE '%"match_level":"full"%' THEN 0 ELSE 1 END,first_collected_at,id LIMIT 1`;
+const PENDING_SORT = `ORDER BY CASE WHEN snippet LIKE '%"match_level":"full"%' THEN 0 ELSE 1 END,first_collected_at,id`;
+const PENDING_ORDER = PENDING_SORT + " LIMIT 1";
 const CURRENT_VERSION = '%"config_version":"' + CONFIG.version + '"%';
 
 // ───────────────────────── 동시 실행 막기 ─────────────────────────
@@ -419,13 +420,17 @@ export async function scheduledStep(env, manual = false, time = Date.now()) {
         return { status: "limit", message: "오늘 기사 처리 상한에 도달했습니다." };
       }
       kind = "body";
+      // 본문을 읽을 후보를 DB에서 "한 번만" 가져옵니다. (같은 날 이미 시도한 후보는 제외)
+      // 예전에는 정보원마다 따로 DB를 조회해서 1분에 수십 번씩 읽었고,
+      // 그 때문에 D1 무료 요금제의 하루 읽기 한도(500만 행)를 넘었습니다.
+      const pendingRows = await all(db, `SELECT id, source_id, source_name FROM news_candidates WHERE ${PENDING_CONDITION}
+        AND NOT EXISTS(SELECT 1 FROM monitor_jobs j WHERE j.run_day=? AND j.kind='body' AND j.article_id=news_candidates.id)
+        ${PENDING_SORT}`, [CURRENT_VERSION, day]);
+      // 가져온 후보 중에서 정보원 순서대로 첫 번째 후보를 고릅니다.
       for (const s of sources) {
         // 오늘 3번 이상 실패한 정보원은 건너뜁니다.
         if (daily.filter((j) => j.source_id === s.id && isFailed(j)).length >= 3) continue;
-        // 같은 날 이미 시도한 후보는 제외하고 다음 후보를 찾습니다.
-        const row = await first(db, `SELECT id FROM news_candidates WHERE source_id=? AND source_name=? AND ${PENDING_CONDITION}
-          AND NOT EXISTS(SELECT 1 FROM monitor_jobs j WHERE j.run_day=? AND j.kind='body' AND j.article_id=news_candidates.id)
-          ${PENDING_ORDER}`, [s.id, s.name, CURRENT_VERSION, day]);
+        const row = pendingRows.find((r) => r.source_id === s.id && r.source_name === s.name);
         if (row) {
           source = s;
           candidate = row;
