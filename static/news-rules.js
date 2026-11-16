@@ -39,7 +39,7 @@ function compareNewest(a,b){
 }
 // 같은 소식 묶기: 제목을 두 글자씩 잘라(예: "캐논메디칼" → 캐논, 논메, 메디 …) 겹치는 비율을 봅니다.
 function titlePieces(title){
- const text=title.replace(/[^가-힣A-Za-z0-9]/g,'').toLowerCase();
+ const text=title.normalize('NFKC').replace(/[^\p{L}\p{N}]/gu,'').toLowerCase();
  const pieces=new Set();
  for(let i=0;i<text.length-1;i++)pieces.add(text.slice(i,i+2));
  return pieces;

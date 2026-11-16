@@ -1,5 +1,5 @@
 
-const categories=[{id:'company',name:'우리회사 뉴스'},{id:'policy',name:'정책'},{id:'hospital',name:'병원'},{id:'conference',name:'학회'},{id:'competitor',name:'경쟁사'}];
+const categories=[{id:'company',name:'캐논 뉴스'},{id:'policy',name:'정책'},{id:'hospital',name:'병원'},{id:'conference',name:'학회'},{id:'competitor',name:'경쟁사'}];
 // 학회·병원 나누기: 서버(DB)에는 둘 다 "hospital"로 저장돼 있어서, 화면에서 제목을 보고 나눕니다.
 // 제목에 아래 단어가 있으면 "학회", 없으면 "병원"으로 보여줍니다.
 const CONFERENCE_WORDS=['학회','학술대회','학술회의','심포지엄','symposium','congress','conference'];
@@ -72,6 +72,7 @@ function card(a,others){
  // 기존 인사이트의 설명만 유지합니다. 생성·다시 만들기 버튼은 보류합니다.
  const insight=insightLine(a);
  const aiBox=insight?'<div class="ai-summary"><strong>AI 인사이트</strong><p>'+highlight(insight)+'</p></div>':'';
+ const originalTitle=a.original_title?'<p class="original-title"><strong>원제</strong> '+esc(a.original_title)+'</p>':'';
 
  const star='<button type="button" class="star'+(a.starred?' on':'')+'" data-star="'+a.id+'" aria-label="중요 기사 표시">'+(a.starred?'★':'☆')+'</button>';
  const hideButton='<button type="button" class="text-button" data-hide="'+a.id+'">'+(a.hidden?'다시 보이기':'이 기사 숨기기')+'</button>';
@@ -96,7 +97,7 @@ function card(a,others){
    '<div class="item-meta"><span class="entity">'+highlight(a.entity)+'</span><span>'+esc(a.source)+'</span><span>'+esc(a.date.slice(5).replace('-','/'))+'</span>'+aiChip+sameChip+'</div>'+
    (text.preview?'<p class="item-preview">'+highlight(text.preview)+'</p>':'')+
    '<details class="item-more"><summary>자세히</summary><div class="item-detail">'+
-    aiBox+
+    originalTitle+aiBox+
     (text.rest?'<p class="detail-text">'+highlight(text.rest)+'</p>':'')+
     tags+track+sameNews+
     // 원문 링크는 "원문 보기" 대신 주소(URL) 자체를 보여줍니다. 길면 CSS가 끝을 "…"로 자릅니다.
@@ -114,13 +115,13 @@ function matchesTopic(a,topic){
  if(!topic)return true;
  if(topic==='Vet')return NewsRules.isVeterinaryImaging(a.title);
  const text=[a.title].concat(a.tags||[]).join(' ');
- if(topic==='AI')return /(?:\bAI\b|인공지능)/i.test(text);
- if(topic==='CT')return /(?:\bCT\b|CT(?=[가-힣])|컴퓨터단층|전산화단층)/i.test(text);
- if(topic==='MRI')return /(?:\bMRI?\b|MRI?(?=[가-힣])|자기공명)/i.test(text);
+ if(topic==='AI')return /(?:\bAI\b|인공지능|人工知能)/i.test(text);
+ if(topic==='CT')return /(?:\bCT\b|CT(?=[가-힣])|컴퓨터단층|전산화단층|コンピュータ断層)/i.test(text);
+ if(topic==='MRI')return /(?:\bMRI?\b|MRI?(?=[가-힣])|자기공명|磁気共鳴)/i.test(text);
  // UL: 초음파(Ultrasound) 장비
- if(topic==='UL')return /초음파|ultrasound/i.test(text);
+ if(topic==='UL')return /초음파|超音波|ultrasound/i.test(text);
  // VL/XR: 혈관조영(Angiography) 장비, 엑스레이 장비
- if(topic==='VL/XR')return /혈관조영|angio|엑스레이|엑스선|x-?ray|\bXR\b|\bVL\b/i.test(text);
+ if(topic==='VL/XR')return /혈관조영|angio|엑스레이|엑스선|X線|血管撮影|x-?ray|\bXR\b|\bVL\b/i.test(text);
  return false;
 }
 // 한국 시간 기준으로 오늘에서 days일 전 날짜(YYYY-MM-DD)를 만듭니다.
@@ -159,7 +160,7 @@ function render(){
  const showHidden=document.getElementById('show-hidden').checked;
  searchWord=q;
  const matches=articles.filter(function(a){
-  const text=[a.title,a.entity,a.source,a.summary,a.ai_summary].concat(a.tags).join(' ').toLocaleLowerCase();
+  const text=[a.title,a.original_title,a.entity,a.source,a.summary,a.ai_summary].concat(a.tags).join(' ').toLocaleLowerCase();
   return (!onlyFull||a.match_level!=='main')&&(!q||text.includes(q))&&matchesTopic(a,topic)&&matchesPeriod(a,period)&&matchesImpact(a,impact)&&(!onlyStar||a.starred)&&(!a.hidden||showHidden);
  });
  // 통계 탭은 필터와 상관없이 전체 기사로 다시 계산합니다. (stats.js)
@@ -272,5 +273,5 @@ let lastTab='news';
 try{lastTab=localStorage.getItem('lastTab')||'news';}catch(e){}
 showTab(lastTab);
 let titleRefreshTimer=null,titleRefreshAttempts=0;
-async function refreshArticles(){clearTimeout(titleRefreshTimer);const r=await fetch('/api/articles');const data=await r.json().catch(function(){return null;});if(!r.ok)throw new Error(data?.error||'기사 목록을 불러오지 못했습니다. (HTTP '+r.status+')');if(!Array.isArray(data?.articles))throw new Error('기사 목록 응답 형식이 올바르지 않습니다.');articles=data.articles.filter(function(a){return !isAwardNews(a);}).map(splitConference);changeFilters();if(data.title_refresh_pending&&titleRefreshAttempts<15){titleRefreshAttempts++;titleRefreshTimer=setTimeout(function(){refreshArticles().catch(function(e){console.warn('제목 재조회 실패:',e.message);});},2000);}else if(!data.title_refresh_pending){titleRefreshAttempts=0;}}
+async function refreshArticles(){clearTimeout(titleRefreshTimer);const r=await fetch('/api/articles');const data=await r.json().catch(function(){return null;});if(!r.ok)throw new Error(data?.error||'기사 목록을 불러오지 못했습니다. (HTTP '+r.status+')');if(!Array.isArray(data?.articles))throw new Error('기사 목록 응답 형식이 올바르지 않습니다.');articles=data.articles.filter(function(a){return !isAwardNews(a);}).map(splitConference);changeFilters();if(data.title_refresh_pending&&titleRefreshAttempts<60){titleRefreshAttempts++;titleRefreshTimer=setTimeout(function(){refreshArticles().catch(function(e){console.warn('제목 재조회 실패:',e.message);});},2000);}else if(!data.title_refresh_pending){titleRefreshAttempts=0;}}
 refreshArticles().catch(function(e){document.getElementById('sections').textContent=e.message;});

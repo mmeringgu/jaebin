@@ -3,6 +3,32 @@ import assert from "node:assert/strict";
 import { resolveArticleTitles } from "../src/title-resolver.js";
 import { articles, candidates, visibleArticles } from "../src/service.js";
 import worker from "../src/index.js";
+import { readFileSync } from "node:fs";
+
+test("라포르시안에 이미 저장된 순위 2는 원문 제목으로 복원하고 D1은 변경하지 않습니다", async (t) => {
+  const correct = "내년부터 지역·필수의료 수가 2.7조 투입…검체·CT·MRI 검사비 2.6조 줄인다";
+  const html = readFileSync(new URL("rapportian-241753-head.html", import.meta.url), "utf8");
+  t.mock.method(globalThis, "fetch", async (url) => {
+    assert.equal(url, "https://www.rapportian.com/news/articleView.html?idxno=241753");
+    return new Response(html, { headers: { "Content-Type": "text/html" } });
+  });
+  const row = { id: 77, title: "2 " + correct, source: "라포르시안", published_date: "2026-10-28",
+    url: "https://www.rapportian.com/news/articleView.html?idxno=241753",
+    summary: JSON.stringify({ format: "excerpt", source_id: "S005", first_paragraph: "기사의 첫 문단입니다." }) };
+  const env = { DB: { prepare(sql) {
+    assert.match(sql, /^SELECT /);
+    return { bind() { return this; }, async all() { return { results: [{ ...row }] }; } };
+  } } };
+  assert.equal((await articles(env))[0].title, correct);
+  assert.equal(row.title, "2 " + correct);
+});
+
+test("라포르시안의 숫자로 시작하는 실제 제목은 원문 확인 후에도 보존합니다", async (t) => {
+  const title = "2 CT 장비 신규 도입하는 병원";
+  t.mock.method(globalThis, "fetch", async () => new Response(`<meta property="og:title" content="${title}">`, { headers: { "Content-Type": "text/html" } }));
+  const rows = [{ title, url: "https://www.rapportian.com/news/articleView.html?idxno=990103" }];
+  assert.equal((await resolveArticleTitles(rows))[0].title, title);
+});
 
 test("기사 API는 원문 응답을 기다리지 않고 200을 반환하고 응답 뒤에 캐시를 갱신합니다", async (t) => {
   let release;

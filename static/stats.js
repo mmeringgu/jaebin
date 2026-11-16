@@ -1,4 +1,4 @@
-// ───── 통계 탭 ─────
+// ───── 통계 탭 및 수집 관리의 회사 통계 ─────
 // articles.js가 불러온 기사 목록(articles)으로 화면에서 바로 계산합니다. 서버에 따로 저장하지 않습니다.
 // 뉴스 탭의 검색·필터와 상관없이, 숨기지 않은 전체 기사(최근 90일)로 셉니다.
 
@@ -59,6 +59,7 @@ function linkOf(a){return '<a href="'+esc(a.url)+'" target="_blank" rel="noopene
 function shortDate(day){return day.slice(5).replace('-','/');}
 // 이 기사가 회사를 언급하는지 확인합니다. (제목·부제목·기사 앞부분, 또는 키워드 태그)
 function mentions(a,company){
+ if(company.mine&&a.category==='company')return true;
  const text=textOf(a);
  if(company.words.some(function(w){return text.includes(w);}))return true;
  const tagWords=company.words.concat(company.tagWords||[]);
@@ -280,7 +281,7 @@ function policySchedule(list,statuses){
  return '<div class="stat-box"><h3>시행 예정 일정</h3>'+body+'</div>';
 }
 
-// ───── 통계 탭 전체 그리기 ─────
+// ───── 통계 탭 및 수집 관리의 회사 통계 그리기 ─────
 // articles.js의 render()가 기사 목록이 바뀔 때마다 부릅니다.
 function renderStats(){
  const list=statsArticles();

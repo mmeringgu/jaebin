@@ -1,9 +1,9 @@
 {
-  "version": "2026-11-16-r2-vet",
+  "version": "2026-11-16-r6-title-ko",
   "categories": [
     {
       "id": "company",
-      "name": "우리회사 뉴스"
+      "name": "캐논 뉴스"
     },
     {
       "id": "policy",
@@ -508,7 +508,7 @@
       "status": "사용",
       "categories": ["company", "policy", "hospital", "competitor"],
       "url": "https://www.bing.com/",
-      "listingUrl": "https://www.bing.com/news/search?q=(수의+OR+동물병원+OR+반려동물)+(영상진단+OR+영상판독+OR+영상의학+OR+엑스레이)&format=rss&setlang=ko&cc=KR&qft=sortbydate%3D%221%22",
+      "listingUrl": "https://www.bing.com/news/search?q=(수의+OR+동물의료센터+OR+%22동물+의료센터%22+OR+동물병원+OR+%22동물+병원%22+OR+수의대+OR+수의과대학+OR+반려동물)+(영상진단+OR+영상판독+OR+영상의학+OR+엑스레이)&format=rss&setlang=ko&cc=KR&qft=sortbydate%3D%221%22",
       "kind": "bing"
     },
     {
@@ -518,7 +518,44 @@
       "status": "사용",
       "categories": ["company", "policy", "hospital", "competitor"],
       "url": "https://www.bing.com/",
-      "listingUrl": "https://www.bing.com/news/search?q=(수의+OR+동물병원+OR+반려동물)+(CT+OR+MRI+OR+초음파)&format=rss&setlang=ko&cc=KR&qft=sortbydate%3D%221%22",
+      "listingUrl": "https://www.bing.com/news/search?q=(수의+OR+동물의료센터+OR+%22동물+의료센터%22+OR+동물병원+OR+%22동물+병원%22+OR+수의대+OR+수의과대학+OR+반려동물)+(CT+OR+MRI+OR+초음파)&format=rss&setlang=ko&cc=KR&qft=sortbydate%3D%221%22",
+      "kind": "bing"
+    },
+    {
+      "id": "S028", "name": "캐논 메디컬 일본 공식", "label": "캐논 일본 공식 · 일본어",
+      "status": "사용", "categories": ["company"], "language": "ja",
+      "excluded_title_words": ["PHP"],
+      "url": "https://jp.medical.canon/", "listingUrl": "https://jp.medical.canon/",
+      "kind": "canon_official", "canon_variant": "jp", "company_context": "Canon Medical"
+    },
+    {
+      "id": "S029", "name": "캐논 메디컬 글로벌 공식", "label": "캐논 글로벌 공식 · 영어",
+      "status": "사용", "categories": ["company"], "language": "en",
+      "url": "https://global.medical.canon/", "listingUrl": "https://global.medical.canon/news/pressrelease/",
+      "kind": "canon_official", "canon_variant": "global", "company_context": "Canon Medical"
+    },
+    {
+      "id": "S030", "name": "캐논 본사 일본 공식", "label": "캐논 본사 의료사업 · 일본어",
+      "status": "사용", "categories": ["company"], "language": "ja",
+      "url": "https://global.canon/", "listingUrl": "https://global.canon/ja/news/",
+      "kind": "canon_official", "canon_variant": "hq", "company_context": "Canon"
+    },
+    {
+      "id": "B013", "name": "빙 뉴스 검색: 캐논 의료 일본어", "label": "빙 검색 · 캐논 의료 일본 뉴스",
+      "status": "사용", "categories": ["company"], "language": "ja", "lookback_days": 30, "url": "https://www.bing.com/",
+      "listingUrl": "https://www.bing.com/news/search?q=%22キヤノンメディカル%22+OR+%22キャノンメディカル%22+OR+((キヤノン+OR+キャノン)+(医療+OR+CT+OR+MRI+OR+超音波))&format=rss&setlang=ja&cc=JP&qft=sortbydate%3D%221%22",
+      "kind": "bing"
+    },
+    {
+      "id": "B014", "name": "빙 뉴스 검색: Canon Medical 영어", "label": "빙 검색 · Canon Medical 해외 뉴스",
+      "status": "사용", "categories": ["company"], "language": "en", "lookback_days": 30, "url": "https://www.bing.com/",
+      "listingUrl": "https://www.bing.com/news/search?q=%22Canon+Medical%22&format=rss&setlang=en&cc=US&qft=sortbydate%3D%221%22",
+      "kind": "bing"
+    },
+    {
+      "id": "B015", "name": "빙 뉴스 검색: Canon 본사 의료 영어", "label": "빙 검색 · Canon 본사 해외 의료사업",
+      "status": "사용", "categories": ["company"], "language": "en", "lookback_days": 30, "url": "https://www.bing.com/",
+      "listingUrl": "https://www.bing.com/news/search?q=Canon+(medical+OR+healthcare+OR+CT+OR+MRI+OR+ultrasound)&format=rss&setlang=en&cc=GB&qft=sortbydate%3D%221%22",
       "kind": "bing"
     }
   ],
@@ -531,7 +568,13 @@
         "캐논메디칼",
         "캐논 메디칼",
         "Canon Medical",
-        "캐논메디칼시스템즈"
+        "캐논메디칼시스템즈",
+        "캐논메디컬",
+        "캐논 메디컬",
+        "キヤノンメディカル",
+        "キヤノン メディカル",
+        "キャノンメディカル",
+        "キャノン メディカル"
       ],
       "auxiliary": [
         "의료영상",
@@ -549,13 +592,35 @@
         "공개",
         "가동",
         "연구",
-        "업무협약"
+        "업무협약",
+        "출시", "공급", "사업", "인수", "합병",
+        "医療", "医用", "メディカル", "ヘルスケア", "画像診断", "診断装置", "超音波", "病院", "発売", "販売", "承認", "供給", "開発", "導入", "共同研究", "メディカル事業",
+        "medical", "healthcare", "health care", "ultrasound", "medical imaging", "diagnostic imaging", "X-ray", "computed tomography", "magnetic resonance", "angiography", "hospital", "launch", "launches", "approval", "supply", "partnership", "research", "acquisition", "medical business", "medical division"
       ],
       "excluded": [
         "카메라",
         "프린터",
         "복합기",
-        "렌즈"
+        "렌즈",
+        "camera", "printer", "lens", "カメラ", "プリンタ", "レンズ"
+      ]
+    },
+    {
+      "id": "K019",
+      "status": "사용",
+      "category": "company",
+      "main": ["캐논", "Canon", "キヤノン", "キャノン"],
+      "auxiliary": [
+        "의료", "메디칼", "메디컬", "헬스케어", "병원", "영상진단", "의료영상", "초음파", "혈관조영", "자기공명", "컴퓨터단층", "전산화단층", "엑스레이", "엑스선",
+        "医療", "メディカル", "医用", "病院", "超音波", "画像診断", "診断装置", "放射線", "ヘルスケア", "X線", "コンピュータ断層", "磁気共鳴",
+        "medical", "healthcare", "health care", "hospital", "radiology", "radiography", "ultrasound", "CT", "MRI", "computed tomography", "magnetic resonance", "angiography", "X-ray", "X ray", "diagnostic imaging", "clinical"
+      ],
+      "require_auxiliary": true,
+      "excluded": [
+        "캐논메디칼", "캐논 메디칼", "Canon Medical", "캐논메디컬", "캐논 메디컬", "キヤノンメディカル", "キヤノン メディカル", "キャノンメディカル", "キャノン メディカル",
+        "카메라", "프린터", "복합기", "렌즈", "반도체", "산업용", "비파괴",
+        "camera", "printer", "lens", "semiconductor", "industrial", "non-destructive", "nondestructive", "NDT",
+        "カメラ", "プリンタ", "レンズ", "半導体", "産業用", "工業用", "非破壊"
       ]
     },
     {
@@ -704,7 +769,7 @@
       "status": "사용",
       "category": "hospital",
       "topic": "Vet",
-      "main": ["수의", "동물", "반려견", "반려묘", "강아지", "고양이", "veterinary", "veterinarian", "vet", "animal", "canine", "feline"],
+      "main": ["동물의료센터", "동물 의료센터", "동물의료 센터", "동물 의료 센터", "동물병원", "동물 병원", "수의대", "수의과대학", "수의과 대학", "수의 대학", "수의", "동물", "반려견", "반려묘", "강아지", "고양이", "veterinary", "veterinarian", "vet", "animal", "canine", "feline"],
       "auxiliary": ["CT", "MRI", "MR", "CBCT", "PET", "XR", "초음파", "영상진단", "영상 진단", "영상판독", "영상 판독", "영상분석", "영상 분석", "영상검사", "영상 검사", "영상의학", "영상 의학", "영상장비", "영상 장비", "진단영상", "진단 영상", "수의영상", "수의 영상", "엑스레이", "엑스선", "X-ray", "X ray", "Xray", "X선", "X-선", "방사선 촬영", "방사선 검사", "방사선 진단", "방사선촬영", "방사선검사", "방사선진단", "자기공명", "컴퓨터단층", "전산화단층", "ultrasound", "radiology", "radiography"],
       "excluded": ["채용"]
     },
@@ -1009,6 +1074,12 @@
     "S012",
     "S018",
     "S002",
+    "S028",
+    "S030",
+    "S029",
+    "B013",
+    "B014",
+    "B015",
     "S015",
     "S004",
     "S007",

@@ -1,16 +1,21 @@
-// 기존 D1 데이터는 변경하지 않고, 조회 결과의 후생신보 제목만 원문으로 복원합니다.
+// D1을 변경하지 않고 후생신보 제목과 라포르시안의 순위 혼입 제목을 원문으로 복원합니다.
 import { cleanArticleTitle, originalArticleTitle } from "./article-title.js";
 import { articleUrl, fetchPage } from "./crawler.js";
 import { SOURCE_BY_ID } from "./settings.js";
 
 const source = SOURCE_BY_ID.S018;
+const rankedSource = SOURCE_BY_ID.S005;
 const memory = new Map();
 const CACHE_KEY = "https://www.whosaeng.com/__smd_title_cache/v2";
 const DAY = 86400000;
 // 요청 사이에는 URL과 만료 시간만 공유합니다. 다른 요청의 I/O Promise는 공유하지 않습니다.
 const inFlight = new Map();
 
-function titleUrl(value) {
+function titleUrl(value, title = "") {
+  // 이미 저장된 순위 혼입 제목도 원문 메타데이터로 확인합니다. 실제 숫자 제목은 임의로 자르지 않습니다.
+  if (/^https?:\/\/(?:www\.)?rapportian\.com\//i.test(value || "") && /^\d{1,2}\s+\S/.test(String(title).trim())) {
+    return articleUrl(value, rankedSource);
+  }
   if (!/^https?:\/\/(?:www\.)?whosaeng\.com\//i.test(value || "")) return null;
   const url = articleUrl(value, source);
   if (!url) return null;
@@ -28,8 +33,8 @@ function remember(url, entry) {
 export async function resolveArticleTitles(rows, options = {}) {
   const targets = new Map();
   for (const row of rows) {
-    // 후생신보 기사 주소만 원문 제목 조회 대상으로 삼습니다.
-    const url = titleUrl(row.url);
+    // 원문 제목 교정이 필요한 매체와 기사만 조회 대상으로 삼습니다.
+    const url = titleUrl(row.url, row.title);
     if (url) targets.set(url, null);
   }
   if (!targets.size) { options.onState?.({ pending: 0, failed: 0 }); return rows; }
@@ -59,7 +64,7 @@ export async function resolveArticleTitles(rows, options = {}) {
   };
 
   const resolvedRows = () => rows.map((row) => {
-    const url = titleUrl(row.url);
+    const url = titleUrl(row.url, row.title);
     const hit = url && memory.get(url);
     return { ...row, title: (hit?.expires > Date.now() && hit.title) || cleanArticleTitle(row.title, row) };
   });
@@ -73,17 +78,18 @@ export async function resolveArticleTitles(rows, options = {}) {
       let changed = false;
       await Promise.all(queue.slice(start, start + 4).map(async (url) => {
         try {
-          const page = await fetchPage(url, source, 750000, false, {
+          const titleSource = new URL(url).hostname.replace(/^www\./, "") === "rapportian.com" ? rankedSource : source;
+          const page = await fetchPage(url, titleSource, 750000, false, {
             timeoutMs: 4000,
             beforeFetch() { if (budget-- <= 0) throw new Error("제목 조회 요청 한도"); },
           });
-          const title = originalArticleTitle(page, source);
+          const title = originalArticleTitle(page, titleSource);
           if (!title) throw new Error("원문 제목 없음");
           remember(url, { title, expires: Date.now() + DAY });
           changed = true;
         } catch (error) {
           remember(url, { title: "", expires: Date.now() + 60000 });
-          console.warn("후생신보 제목 복원 실패:", url, error.message);
+          console.warn("기사 제목 복원 실패:", url, error.message);
         } finally {
           inFlight.delete(url);
         }

@@ -6,9 +6,10 @@ import "../static/news-rules.js";
 // 영어·숫자 단어("CT", "GE")는 다른 단어 속에 섞여 있으면 안 되므로 앞뒤 글자를 따로 확인합니다.
 export function hasWord(text, word) {
   if (!word.trim()) return false;
-  const lowerText = text.toLowerCase();
-  const lowerWord = word.toLowerCase();
-  const isEnglish = /^[a-z0-9 ]+$/i.test(word);
+  // 일본어 제목의 전각 영문(ＣＡＮＯＮ·ＣＴ·ＭＲＩ)도 같은 단어로 판정합니다.
+  const lowerText = text.normalize("NFKC").toLowerCase();
+  const lowerWord = word.normalize("NFKC").toLowerCase();
+  const isEnglish = /^[a-z0-9 ]+$/i.test(lowerWord);
   if (!isEnglish) return lowerText.includes(lowerWord);
 
   // 영어 단어는 찾은 위치마다 앞뒤가 영어·숫자가 아닌지 봅니다. ("CT"는 맞고 "CTO"는 안 맞음)
@@ -33,22 +34,28 @@ export function keywordMatch(title, source) {
   if (source.status !== "사용") return [];
   // [칼럼]·[기고]처럼 의견 글은 뉴스가 아니므로 고르지 않습니다. (목록은 config.json의 excluded_title_words)
   if (isOpinionTitle(title)) return [];
+  if ((source.excluded_title_words || []).some((word) => hasWord(title, word))) return [];
   const matches = [];
   for (const rule of CONFIG.rules) {
     if (rule.status !== "사용" || !source.categories.includes(rule.category)) continue;
+    // 회사명이 생략된 공식 발표 제목은 검증된 공식 출처의 회사 맥락으로 판정합니다.
+    const ruleTitle = source.kind === "canon_official" && source.company_context && rule.category === "company"
+      ? source.company_context + " " + title : title;
     // 화면의 Vet 필터와 같은 판정으로 수의 영상 기사만 새 규칙에 포함합니다.
     if (rule.topic === "Vet" && !globalThis.NewsRules.isVeterinaryImaging(title)) continue;
     // 각 필수 그룹에서 하나 이상 맞아야 합니다. 의료 맥락·대상·제도를 함께 요구할 때 씁니다.
-    if (rule.required_groups && !rule.required_groups.every((words) => words.some((word) => hasWord(title, word)))) continue;
+    if (rule.required_groups && !rule.required_groups.every((words) => words.some((word) => hasWord(ruleTitle, word)))) continue;
     // 조합 규칙은 한 조합의 모든 단어가 제목에 함께 있어야 선별합니다.
-    if (rule.combinations && !rule.combinations.some((words) => words.every((word) => hasWord(title, word)))) continue;
-    const main = rule.main.filter((word) => hasWord(title, word));
+    if (rule.combinations && !rule.combinations.some((words) => words.every((word) => hasWord(ruleTitle, word)))) continue;
+    const main = rule.main.filter((word) => hasWord(ruleTitle, word));
     if (main.length === 0) continue;
-    if (rule.excluded.some((word) => hasWord(title, word))) continue;
-    const auxiliary = rule.auxiliary.filter((word) => hasWord(title, word));
+    if (rule.excluded.some((word) => hasWord(ruleTitle, word))) continue;
+    const auxiliary = rule.auxiliary.filter((word) => hasWord(ruleTitle, word));
+    // 캐논 본사처럼 사업 분야가 넓은 이름은 의료 보조 키워드도 반드시 있어야 합니다.
+    if (rule.require_auxiliary && auxiliary.length === 0) continue;
     // 회사 정식 이름(예: "GE헬스케어")이 제목에 있으면 보조 키워드(AI·CT 등)가 없어도 "full"로 봅니다.
     // ("GE", "지멘스"처럼 짧은 이름은 다른 뜻일 수 있어서 보조 키워드가 있어야 합니다. 목록은 config.json의 exact_names)
-    const exactName = (rule.exact_names || []).some((word) => hasWord(title, word));
+    const exactName = (rule.exact_names || []).some((word) => hasWord(ruleTitle, word));
     // 보조 키워드까지 맞으면 "full", 메인 키워드만 맞으면 "main"
     const matchLevel = exactName || auxiliary.length > 0 || rule.auxiliary.length === 0 ? "full" : "main";
     matches.push({ ...rule, mainMatches: main, auxiliaryMatches: auxiliary, matchLevel });

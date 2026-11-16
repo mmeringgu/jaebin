@@ -94,7 +94,7 @@ async function exportCsv(env) {
 async function handleApi(request, env, path, ctx) {
   const method = request.method;
   let titleState = { pending: 0, failed: 0 };
-  const titleOptions = { background: true, waitUntil: ctx?.waitUntil?.bind(ctx), onState(state) { titleState = state; } };
+  const titleOptions = { background: true, waitUntil: ctx?.waitUntil?.bind(ctx), onState(state) { titleState.pending += state.pending; titleState.failed += state.failed; } };
 
   if (method === "GET" && path === "/api/health") {
     await first(env.DB, "SELECT 1");

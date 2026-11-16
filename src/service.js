@@ -4,6 +4,7 @@ import { buildBriefing, sendBriefing } from "./briefing.js";
 import { loadCandidates, readArticle } from "./crawler.js";
 import { cleanArticleTitle } from "./article-title.js";
 import { resolveArticleTitles } from "./title-resolver.js";
+import { translatedTitle, translateExcerptTitle, warmArticleTranslations } from "./title-translation.js";
 import { selectReportArticles } from "./report.js";
 import { all, first, run } from "./db.js";
 import { articleTags, hostOf, keywordMatch, selection, selectionLevel } from "./rules.js";
@@ -84,14 +85,14 @@ export async function collectSource(env, source, scheduled = false) {
       // 빙 뉴스 검색 기사는 날짜·앞부분 문장을 이미 알고 있으므로 미리 넣어 둡니다.
       // 그러면 "본문 읽기" 때 원문 페이지를 가져오지 않고 이 내용을 그대로 씁니다.
       if (a.description) {
-        snippet = JSON.stringify({ format: "excerpt", subtitle: "", first_paragraph: a.description, media: a.media, match_level: a.matchLevel, config_version: "" });
+        snippet = JSON.stringify({ format: "excerpt", subtitle: "", first_paragraph: a.description, media: a.media, language: source.language || "ko", match_level: a.matchLevel, config_version: "" });
       }
       statements.push(db.prepare(`INSERT INTO news_candidates(source_id,source_name,title,url,suggested_category,matched_keyword_groups_json,snippet,published_date,body_text)
         VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(url) DO UPDATE SET
         source_id=excluded.source_id,source_name=excluded.source_name,title=excluded.title,
         suggested_category=excluded.suggested_category,matched_keyword_groups_json=excluded.matched_keyword_groups_json,
         snippet=CASE WHEN news_candidates.fetch_status='success' THEN news_candidates.snippet ELSE excluded.snippet END,
-        processing_status='pending',fetch_status=CASE WHEN news_candidates.fetch_status='error' THEN 'pending' ELSE news_candidates.fetch_status END,
+        processing_status='pending',fetch_status=CASE WHEN news_candidates.fetch_status='error' OR news_candidates.title<>excluded.title THEN 'pending' ELSE news_candidates.fetch_status END,
         last_collected_at=CURRENT_TIMESTAMP,expires_at=datetime('now','+7 days')`)
         .bind(source.id, source.name, a.title, a.url, a.category, JSON.stringify(a.groups), snippet, a.date || null, a.description || ""));
     }
@@ -145,11 +146,13 @@ export async function readBody(env, source, articleId = null) {
     if (cached.first_paragraph && candidate.published_date) {
       detail = { date: candidate.published_date, body: candidate.body_text, excerpt: cached };
     } else {
-      detail = await readArticle(candidate.url, source, candidate.title);
+      detail = await readArticle(candidate.url, source, candidate.title, candidate.published_date);
     }
     if (!detail.date || !detail.excerpt.first_paragraph) throw new Error("발행일 또는 첫 문단을 확인하지 못했습니다.");
 
-    const excerpt = { ...detail.excerpt, source_id: source.id, config_version: CONFIG.version, match_level: selectionLevel(groups) };
+    const excerpt = await translateExcerptTitle(env, candidate.title,
+      { ...detail.excerpt, source_id: source.id, config_version: CONFIG.version, match_level: selectionLevel(groups) },
+      detail.excerpt.language || source.language || "");
     // 빙 뉴스 검색 기사는 "빙 검색" 대신 실제 매체 이름(예: 조선일보)을 출처로 보여줍니다.
     const sourceName = excerpt.media ? excerpt.media + " (빙 검색)" : source.name;
     // 아직 AI 인사이트가 없는 기사만 GPT에 인사이트를 요청합니다.
@@ -197,12 +200,16 @@ export async function candidates(env, sourceId = null, titleOptions = {}) {
   const result = [];
   for (const row of rows) {
     const current = SOURCE_BY_ID[row.source_id];
-    if (!current || current.name !== row.source_name || hostOf(row.url) !== hostOf(current.url)) continue;
+    if (!current || current.name !== row.source_name) continue;
+    // 검색 RSS는 원문 매체의 주소를 저장하므로 검색 사이트 도메인과 같을 필요가 없습니다.
+    if (current.kind !== "bing" && hostOf(row.url) !== hostOf(current.url)) continue;
     row.title = cleanArticleTitle(row.title, current);
     const chosen = selection(row.title, current);
     if (!chosen.selected) continue;
     delete row.body_text; // 본문은 길어서 화면에 보내지 않습니다.
-    result.push({ ...row, selection: chosen, excerpt: parseExcerpt(row.snippet) });
+    const excerpt = parseExcerpt(row.snippet);
+    const ko = translatedTitle(excerpt, row.title);
+    result.push({ ...row, title: ko || row.title, original_title: ko ? row.title : "", selection: chosen, excerpt });
   }
   return result;
 }
@@ -212,6 +219,7 @@ export async function candidates(env, sourceId = null, titleOptions = {}) {
 export async function articles(env, titleOptions = {}) {
   const rows = await resolveArticleTitles(await all(env.DB, "SELECT * FROM articles WHERE review_status='published' AND archived=0 AND is_sample=0 ORDER BY published_date DESC,id DESC"), titleOptions);
   const result = [];
+  const translationRows = [];
   for (const row of rows) {
     row.title = cleanArticleTitle(row.title, row);
     const excerpt = parseExcerpt(row.summary);
@@ -228,11 +236,14 @@ export async function articles(env, titleOptions = {}) {
       if (groups.length > 0) break;
     }
     if (groups.length === 0) continue;
+    translationRows.push(row);
 
     result.push({
       id: row.id, category: groups[0].category, match_level: selectionLevel(groups),
       entity: groups[0].mainMatches[0], date: row.published_date, source: row.source,
-      title: row.title, url: row.url, subtitle: excerpt.subtitle || "",
+      title: translatedTitle(excerpt, row.title) || row.title,
+      original_title: translatedTitle(excerpt, row.title) ? row.title : "",
+      url: row.url, subtitle: excerpt.subtitle || "",
       summary: excerpt.first_paragraph, ai_summary: withoutImpact(excerpt.ai_summary || ""), tags: articleTags(groups), track: null,
       is_sample: 0, content_type: "excerpt",
       starred: row.starred, memo: row.memo,
@@ -241,6 +252,7 @@ export async function articles(env, titleOptions = {}) {
     });
     if (result.length === 500) break;
   }
+  await warmArticleTranslations(env, translationRows, titleOptions);
   return result;
 }
 

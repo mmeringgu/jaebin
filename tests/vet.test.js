@@ -12,7 +12,7 @@ const screen = readFileSync(new URL("../static/articles.js", import.meta.url), "
 const { matchesTopic } = runInNewContext(shared + "\n" + screen.slice(0, screen.indexOf("function render(){")) + "\n({ matchesTopic });");
 
 test("수의 맥락과 영상 장비·진단 맥락을 함께 가진 기사를 수집하고 Vet로 필터링합니다", () => {
-  for (const context of ["수의", "동물병원", "반려동물", "반려견", "반려묘", "강아지", "고양이", "veterinary", "veterinarian", "vet", "animal", "canine", "feline"]) {
+  for (const context of ["수의", "동물의료센터", "동물 의료센터", "동물의료 센터", "동물 의료 센터", "동물병원", "동물 병원", "수의대", "수의과대학", "수의과 대학", "수의 대학", "반려동물", "반려견", "반려묘", "강아지", "고양이", "veterinary", "veterinarian", "vet", "animal", "canine", "feline"]) {
     for (const image of ["CT", "MRI", "MR", "초음파", "영상진단", "영상 판독", "영상의학", "엑스레이", "X-ray", "방사선 촬영", "자기공명", "ultrasound", "radiology"]) {
       const title = `${context} ${image} 진단 기술 도입`;
       const groups = keywordMatch(title, source);
@@ -53,7 +53,8 @@ test("Vet 검색원이 예약 순서에 포함되고 RSS 결과가 수집 후보
     const vetSource = SOURCE_BY_ID[id];
     assert.equal(vetSource.kind, "bing");
     assert.ok(CONFIG.auto_order.slice(0, 40).includes(id));
-    assert.ok(new URL(vetSource.listingUrl).searchParams.get("q").includes("동물병원"));
+    const query = new URL(vetSource.listingUrl).searchParams.get("q");
+    for (const word of ["동물의료센터", "동물병원", "수의대", "수의과대학"]) assert.ok(query.includes(word), id + " " + word);
     const rss = `<rss><channel><item><title>반려동물 초음파 영상진단 기술 공개</title>
       <link>https://www.bing.com/news/apiclick.aspx?url=https%3A%2F%2Fexample.com%2Fvet-news</link>
       <pubDate>${new Date().toUTCString()}</pubDate><description>동물병원 영상진단에 관한 기사 첫 문단입니다.</description>
@@ -64,6 +65,23 @@ test("Vet 검색원이 예약 순서에 포함되고 RSS 결과가 수집 후보
     assert.equal(rows[0].matchLevel, "full");
   }
   assert.equal(new Set(CONFIG.sources.map((s) => s.id)).size, CONFIG.sources.length);
+});
+
+test("기관 이름과 CT·MRI·초음파의 순서에 관계없이 수집하고 Vet로 분류합니다", () => {
+  const vetSource = SOURCE_BY_ID.B012;
+  for (const institution of ["동물의료센터", "동물병원", "수의대", "수의과대학"]) {
+    for (const device of ["CT", "MRI", "초음파"]) {
+      for (const title of [`${institution}, ${device} 진단 장비 도입`, `${device} 도입한 ${institution}, 진료 확대`]) {
+        const rss = `<rss><channel><item><title>${title}</title><link>https://www.bing.com/news/apiclick.aspx?url=https%3A%2F%2Fexample.com%2Fvet</link>
+          <pubDate>${new Date().toUTCString()}</pubDate><description>수의 영상진단 기사 첫 문단입니다.</description></item></channel></rss>`;
+        const rows = parseBingRss(rss, vetSource);
+        assert.equal(rows.length, 1, title);
+        assert.ok(rows[0].groups.includes("K018"), title);
+        assert.equal(rows[0].matchLevel, "full");
+        assert.equal(matchesTopic({ title }, "Vet"), true, title);
+      }
+    }
+  }
 });
 
 test("뉴스와 통계 드롭다운에 모두 Vet가 있습니다", () => {

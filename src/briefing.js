@@ -2,7 +2,7 @@
 import { addDays } from "./settings.js";
 
 const CATEGORY_NAMES = [
-  ["company", "우리회사 뉴스"],
+  ["company", "캐논 뉴스"],
   ["policy", "정책"],
   ["hospital", "학회&병원"],
   ["competitor", "경쟁사"],

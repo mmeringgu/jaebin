@@ -5,6 +5,7 @@
 // 그래서 "이 태그가 시작됐다 → 글자가 나왔다 → 태그가 끝났다" 순서로 메모하는 방식으로 작성했습니다.
 import { hostOf, keywordMatch, selectionLevel } from "./rules.js";
 import { cleanArticleTitle } from "./article-title.js";
+import { parseCanonCandidates, readCanonArticle } from "./canon.js";
 
 // ───────────────────────── 글자 정리 ─────────────────────────
 
@@ -70,7 +71,11 @@ export function articleUrl(href, source, allowAlternate = false) {
   // 정보원 종류(kind)마다 기사 주소 모양과, 남겨 둘 주소 값(keys)이 다릅니다.
   let valid = false;
   let keys = [];
-  if (k === "bosa") {
+  if (k === "canon_official") {
+    if (source.canon_variant === "jp") valid = /^\/about\/(?:pressrelease\/20\d{2}\/20\d{2}-\d{2}-\d{2}(?:-\d+)?|[^/]*\d{8}[^/]*)\/?$/.test(p);
+    else if (source.canon_variant === "global") valid = /^\/news\/pressrelease\/20\d{2}\/20\d{2}-\d{2}-\d{2}(?:-\d+)?\/?$/.test(p);
+    else if (source.canon_variant === "hq") valid = /^\/ja\/news\/20\d{2}\/\d{8}(?:-\d+)?\.html$/.test(p);
+  } else if (k === "bosa") {
     valid = p === "/news/articleView.html" && /^\d+$/.test(value("idxno"));
     keys = ["idxno"];
   } else if (k === "gate") {
@@ -251,15 +256,26 @@ export async function parseCandidates(page, source) {
       });
     },
   });
-  // 링크 안의 첫 번째 제목 태그 글자를 따로 모읍니다. (사진 설명 대신 진짜 제목을 쓰기 위해)
-  for (const tag of ["h1", "h2", "h3", "h4", "h5", "h6", "strong"]) {
+  // 링크 안의 제목 태그 또는 NDsoft의 실제 제목 영역을 따로 읽습니다.
+  for (const tag of ["h1", "h2", "h3", "h4", "h5", "h6", "strong", ".auto-titles"]) {
     rewriter.on(linkSelector + " " + tag, {
       element(el) {
         if (!current || current.heading !== null) return;
+        if (source.kind === "bosa" && (el.getAttribute("class") || "").split(/\s+/).includes("number")) return;
         const link = current;
         link.heading = "";
         headingTag = tag;
         el.onEndTag(() => { if (current === link) headingTag = null; });
+      },
+    });
+  }
+  if (source.kind === "bosa") {
+    // 라포르시안 등 NDsoft 매체의 많이 본 기사 순위는 제목과 같은 링크 안에 있습니다.
+    // 숫자를 글자 규칙으로 지우지 않고, 순위 표시 영역만 수집에서 제외합니다.
+    rewriter.on(linkSelector + " .number", {
+      element(el) {
+        skipDepth++;
+        el.onEndTag(() => { skipDepth--; });
       },
     });
   }
@@ -340,7 +356,8 @@ function koreaDateOf(pubDate) {
 
 // 빙 RSS 글에서 키워드에 맞는 기사 후보를 만듭니다.
 export function parseBingRss(page, source) {
-  const oldest = koreaDateOf(Date.now() - BING_DAYS * 86400000);
+  const days = Number.isInteger(source.lookback_days) && source.lookback_days >= 1 && source.lookback_days <= 90 ? source.lookback_days : BING_DAYS;
+  const oldest = koreaDateOf(Date.now() - days * 86400000);
   const items = [];
   for (const item of page.split("<item>").slice(1)) {
     const title = tagText(item, "title");
@@ -374,6 +391,7 @@ export function parseBingRss(page, source) {
 
 // 정보원 목록 페이지를 가져와 기사 후보를 만듭니다.
 export async function loadCandidates(source) {
+  if (source.kind === "canon_official") return parseCanonCandidates(await fetchPage(source.listingUrl, source), source);
   // 빙 뉴스 검색은 HTML이 아니라 RSS라서 따로 읽습니다. 키워드에 맞는 기사가 없으면 빈 목록입니다.
   if (source.kind === "bing") return parseBingRss(await fetchPage(source.listingUrl, source), source);
 
@@ -698,7 +716,8 @@ function dateFromJson(jsonScripts) {
 }
 
 // 기사 하나를 가져와 내용을 꺼냅니다.
-export async function readArticle(url, source, title) {
+export async function readArticle(url, source, title, dateHint = null) {
   if (!articleUrl(url, source, true)) throw new Error("등록된 기사 주소가 아닙니다.");
+  if (source.kind === "canon_official") return readCanonArticle(url, source, dateHint);
   return articleDetails(await fetchPage(url, source), source, title);
 }
