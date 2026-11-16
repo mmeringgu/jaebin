@@ -4,6 +4,7 @@
 // HTMLRewriter(HTML을 앞에서부터 차례로 읽으면서 원하는 태그를 만나면 알려주는 도구)를 씁니다.
 // 그래서 "이 태그가 시작됐다 → 글자가 나왔다 → 태그가 끝났다" 순서로 메모하는 방식으로 작성했습니다.
 import { hostOf, keywordMatch, selectionLevel } from "./rules.js";
+import { cleanArticleTitle } from "./article-title.js";
 
 // ───────────────────────── 글자 정리 ─────────────────────────
 
@@ -136,9 +137,9 @@ export function articleUrl(href, source, allowAlternate = false) {
 // ───────────────────────── 페이지 가져오기 ─────────────────────────
 
 // 정보원 페이지를 가져옵니다. 안전을 위해 등록된 사이트만, 크기·시간·이동 횟수를 제한합니다.
-export async function fetchPage(url, source, maxSize = 750000, jsonResponse = false) {
+export async function fetchPage(url, source, maxSize = 750000, jsonResponse = false, options = {}) {
   const waitSeconds = source.kind === "mfds" ? 30 : 15;
-  const signal = AbortSignal.timeout(waitSeconds * 1000);
+  const signal = AbortSignal.timeout(options.timeoutMs || waitSeconds * 1000);
   const accept = jsonResponse ? "application/json" : "text/html";
   let target = new URL(url);
   try {
@@ -147,6 +148,7 @@ export async function fetchPage(url, source, maxSize = 750000, jsonResponse = fa
       const outside = !["http:", "https:"].includes(target.protocol) || hostOf(target.href) !== hostOf(source.url);
       if (outside || target.username || target.password || target.port) throw new Error("등록된 정보원 주소가 아닙니다.");
 
+      options.beforeFetch?.();
       const response = await fetch(target.href, {
         redirect: "manual",
         signal,
@@ -294,10 +296,9 @@ export async function parseCandidates(page, source) {
     // 데일리팜은 "많이 본 뉴스" 순위 숫자(1, 2, 3…)가 제목 앞에 붙어 있어서 떼어 냅니다.
     if (source.kind === "dailypharm") title = title.replace(/^\d+\s+/, "");
     title = title.replace(/^새글\s*/, "").replace(/\s+New\s+\d{4}-\d{2}-\d{2}.*$/i, "").trim();
+    // 후생신보는 위에서 실제 제목 영역만 선택하므로 매체 표기만 떼어 냅니다.
+    title = cleanArticleTitle(title, source);
     if (title.length < 8 || title.length > 220) continue;
-    // 후생신보: "【후생신보】…"로 시작하는 글은 제목이 아니라 기사 앞부분 요약입니다. 건너뜁니다.
-    // (같은 기사의 진짜 제목 링크가 따로 있어서 기사는 빠지지 않습니다)
-    if (source.kind === "whosaeng" && title.startsWith("【")) continue;
 
     const groups = keywordMatch(title, source);
     const level = selectionLevel(groups);
