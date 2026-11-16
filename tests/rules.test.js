@@ -81,10 +81,11 @@ test("병원 보도자료 정보원은 목록에서 빠졌습니다", () => {
   for (const id of ["S023", "S024", "S025", "S026"]) assert.equal(SOURCE_BY_ID[id], undefined);
 });
 
-test("의료 AI는 지정한 다섯 조합의 두 단어가 제목에 함께 있으면 선별합니다", () => {
+test("의료영상 AI는 여덟 조합의 두 단어가 제목에 함께 있으면 선별합니다", () => {
   for (const [main, auxiliary] of [
     ["인공지능", "영상판독"], ["AI", "영상판독"], ["인공지능", "영상진단"],
-    ["인공지능", "영상분석"], ["AI", "영상분석"],
+    ["인공지능", "영상분석"], ["AI", "영상분석"], ["AI", "영상진단"],
+    ["인공지능", "의료영상"], ["AI", "의료영상"],
   ]) {
     for (const title of [`${main} 기반 ${auxiliary} 기술 공개`, `${auxiliary} 정확도 높이는 ${main}`]) {
       const matched = keywordMatch(title, source).find((rule) => rule.id === "K013");
@@ -96,11 +97,59 @@ test("의료 AI는 지정한 다섯 조합의 두 단어가 제목에 함께 있
 
 test("의료 AI 일반 기사나 조합의 한 단어만 있는 기사는 선별하지 않습니다", () => {
   for (const title of [
-    "의료 AI 상담 서비스 도입", "의료영상 AI 투자 확대", "인공지능 신제품 공개",
+    "의료 AI 상담 서비스 도입", "인공지능 신제품 공개",
     "AI 신제품 공개", "영상판독 기술 공개", "영상진단 기술 공개", "영상분석 기술 공개",
-    "AI 영상진단 기술 공개", "RAIL 영상분석 기술 공개",
+    "RAIL 영상분석 기술 공개",
   ]) assert.deepEqual(keywordMatch(title, source), [], title);
   assert.equal(keywordMatch("ai 영상분석 기술 공개", source)[0].id, "K013");
+});
+
+test("비의료 기업의 경영·인증 기사는 다른 정책 규칙으로도 우회 수집하지 않습니다", () => {
+  for (const title of [
+    "지구홀딩스 편입된 AI 기업 노을…경영 정상화 가능할까",
+    "더존비즈온, AI 경영시스템 국제표준 'ISO/IEC 42001' 인증 획득",
+    "정부 AI 투자 발표", "국립대 AI 경영시스템 도입", "정부 급여 인상 발표",
+  ]) assert.deepEqual(keywordMatch(title, source), [], title);
+  assert.ok(keywordMatch("정부 의료정책 발표", source).length > 0);
+});
+
+test("병원 경영은 병원 맥락과 경영 지표를 함께 요구합니다", () => {
+  for (const hospital of ["대학병원", "의료기관", "지역의료원"]) {
+    for (const topic of ["경영", "적자", "흑자", "구조조정"]) {
+      const title = `${hospital} ${topic} 현황 공개`;
+      const match = keywordMatch(title, source).find(r => r.id === "K016");
+      assert.equal(match?.matchLevel, "full", title);
+      assert.equal(match.category, "hospital");
+    }
+  }
+  assert.deepEqual(keywordMatch("일반 기업 경영 정상화", source), []);
+  assert.equal(keywordMatch("지역 병원 개원", source).some(r => r.id === "K016"), false);
+});
+
+test("영상장비 정책은 장비와 정책 단어를 함께 요구합니다", () => {
+  for (const device of ["CT", "MRI", "초음파", "혈관조영", "Angio", "특수의료장비", "영상검사"]) {
+    for (const topic of ["급여", "비급여", "수가", "허가", "규제", "도입 기준", "도입기준", "심평원", "급여기준"]) {
+      const title = `${device} ${topic} 변경 안내`;
+      assert.equal(keywordMatch(title, source).find(r => r.id === "K015")?.matchLevel, "full", title);
+    }
+  }
+});
+
+test("의료 AI 제도는 AI·의료 대상·제도 세 그룹을 모두 요구합니다", () => {
+  for (const ai of ["AI", "인공지능"]) {
+    for (const target of ["의료기기", "의료영상", "영상판독"]) {
+      for (const topic of ["허가", "인증", "급여", "규제"]) {
+        const title = `${ai} ${target} ${topic} 확대`;
+        assert.equal(keywordMatch(title, source).find(r => r.id === "K017")?.matchLevel, "full", title);
+      }
+    }
+  }
+  for (const title of ["AI 인증 획득", "AI 의료기기 공개", "의료영상 인증 획득"]) {
+    assert.equal(keywordMatch(title, source).some(r => r.id === "K017"), false, title);
+  }
+  assert.deepEqual(keywordMatch("[칼럼] AI 의료기기 인증", source), []);
+  assert.equal(keywordMatch("AI 의료기기 인증 개인 보험 광고", source).some(r => r.id === "K017"), false);
+  assert.deepEqual(keywordMatch("AI 의료기기 인증", { ...source, categories: ["hospital"] }), []);
 });
 
 test("의료 AI 조합에도 정보원 카테고리와 의견 기사 제외 조건을 적용합니다", () => {
