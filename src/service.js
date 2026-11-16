@@ -2,6 +2,8 @@
 import { summarize, periodReport, trendInsight, withoutImpact } from "./ai_summary.js";
 import { buildBriefing, sendBriefing } from "./briefing.js";
 import { loadCandidates, readArticle } from "./crawler.js";
+import { cleanArticleTitle } from "./article-title.js";
+import { resolveArticleTitles } from "./title-resolver.js";
 import { selectReportArticles } from "./report.js";
 import { all, first, run } from "./db.js";
 import { articleTags, hostOf, keywordMatch, selection, selectionLevel } from "./rules.js";
@@ -124,6 +126,7 @@ export async function readBody(env, source, articleId = null) {
   const db = env.DB;
   const candidate = await findPending(env, source, articleId);
   if (!candidate) return { message: "처리할 기사 없음" };
+  candidate.title = cleanArticleTitle(candidate.title, source);
 
   // 키워드 설정이 바뀌어 더 이상 맞지 않는 기사는 제외합니다.
   const groups = keywordMatch(candidate.title, source);
@@ -189,11 +192,12 @@ export async function candidates(env, sourceId = null) {
     sql += " AND source_id=? AND source_name=?";
     args = [sourceId, source.name];
   }
-  const rows = await all(env.DB, sql + " ORDER BY first_collected_at DESC,id DESC LIMIT 50", args);
+  const rows = await resolveArticleTitles(await all(env.DB, sql + " ORDER BY first_collected_at DESC,id DESC LIMIT 50", args));
   const result = [];
   for (const row of rows) {
     const current = SOURCE_BY_ID[row.source_id];
     if (!current || current.name !== row.source_name || hostOf(row.url) !== hostOf(current.url)) continue;
+    row.title = cleanArticleTitle(row.title, current);
     const chosen = selection(row.title, current);
     if (!chosen.selected) continue;
     delete row.body_text; // 본문은 길어서 화면에 보내지 않습니다.
@@ -205,9 +209,10 @@ export async function candidates(env, sourceId = null) {
 // 뉴스 화면용: 게시된 기사 최대 500건 (숨긴 기사도 함께 보내고, 화면에서 보일지 정합니다)
 // 통계 탭이 최근 90일을 다 보려면 넉넉해야 해서 200건 → 500건으로 늘렸습니다.
 export async function articles(env) {
-  const rows = await all(env.DB, "SELECT * FROM articles WHERE review_status='published' AND archived=0 AND is_sample=0 ORDER BY published_date DESC,id DESC");
+  const rows = await resolveArticleTitles(await all(env.DB, "SELECT * FROM articles WHERE review_status='published' AND archived=0 AND is_sample=0 ORDER BY published_date DESC,id DESC"));
   const result = [];
   for (const row of rows) {
+    row.title = cleanArticleTitle(row.title, row);
     const excerpt = parseExcerpt(row.summary);
     if (!excerpt.first_paragraph) continue;
 
