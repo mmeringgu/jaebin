@@ -7,7 +7,8 @@ function impactControls(a){
  const choices='<span class="impact-choices" role="group" aria-label="기사 영향 직접 분류">'+['기회','위협'].map(function(value){
   return '<button type="button" class="impact-choice" data-impact="'+a.id+'" data-impact-value="'+value+'" aria-pressed="'+(a.impact_override===value)+'">'+(value==='기회'?'🟢':'🔴')+' '+value+'</button>';
  }).join('')+(a.impact_override?'<button type="button" class="text-button" data-impact="'+a.id+'" data-impact-value="">선택 해제</button>':'')+'</span>';
- if(!impact)return '<span class="impact-controls"><span class="muted impact-prompt">직접 분류</span>'+choices+'</span>';
+ // 아직 분류되지 않은 기사도 '분류' 접힘 메뉴 안에 버튼을 넣어 제목 줄을 깔끔하게 둡니다.
+ if(!impact)return '<span class="impact-controls"><details class="impact-edit"><summary aria-label="기사 영향 직접 분류">분류</summary>'+choices+'</details></span>';
  const origin=a.impact_override?'직접 분류':'제목 기준 추정';
  return '<span class="impact-controls"><span class="chip '+(impact==='기회'?'impact-good':'impact-bad')+'" title="'+origin+'">'+(impact==='기회'?'🟢':'🔴')+' '+impact+'</span><details class="impact-edit"><summary aria-label="기사 영향 분류 변경">변경</summary>'+choices+'</details></span>';
 }
@@ -23,7 +24,7 @@ async function saveImpact(button){
   if(article)article.impact_override=impact;
   render();
  }catch(e){
-  alert(e.message);
+  showNotice(e.message);
  }finally{
   container.querySelectorAll('button').forEach(function(b){b.disabled=false;});
  }

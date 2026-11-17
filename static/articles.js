@@ -74,7 +74,7 @@ function card(a,others){
  const aiBox=insight?'<div class="ai-summary"><strong>AI 인사이트</strong><p>'+highlight(insight)+'</p></div>':'';
  const originalTitle=a.original_title?'<p class="original-title"><strong>원제</strong> '+esc(a.original_title)+'</p>':'';
 
- const star='<button type="button" class="star'+(a.starred?' on':'')+'" data-star="'+a.id+'" aria-label="중요 기사 표시">'+(a.starred?'★':'☆')+'</button>';
+ const star='<button type="button" class="star'+(a.starred?' on':'')+'" data-star="'+a.id+'" aria-label="중요 기사 표시" aria-pressed="'+(a.starred?'true':'false')+'">'+(a.starred?'★':'☆')+'</button>';
  const hideButton='<button type="button" class="text-button" data-hide="'+a.id+'">'+(a.hidden?'다시 보이기':'이 기사 숨기기')+'</button>';
 
  // 같은 소식을 다룬 다른 매체 기사 목록입니다.
@@ -161,7 +161,7 @@ function render(){
   const text=[a.title,a.original_title,a.entity,a.source,a.summary,a.ai_summary].concat(a.tags).join(' ').toLocaleLowerCase();
   return (!q||text.includes(q))&&matchesTopic(a,topic)&&matchesPeriod(a,period)&&matchesImpact(a,impact)&&(!onlyStar||a.starred)&&(!a.hidden||showHidden);
  });
- // 통계 탭은 필터와 상관없이 전체 기사로 다시 계산합니다. (stats.js)
+ // 업계 동향 탭은 필터와 상관없이 전체 기사로 다시 계산합니다. (stats.js)
  if(typeof renderStats==='function')renderStats();
  // 카테고리가 다르게 분류된 중복 기사도 한 번만 표시합니다.
  const allGroups=groupSameNews(matches);
@@ -214,24 +214,47 @@ function changeFilters(){resetPages();render();}
 document.getElementById('search').addEventListener('input',changeFilters);
 document.getElementById('topic').addEventListener('change',changeFilters);
 ['period','impact','sort','only-star','show-hidden'].forEach(function(id){document.getElementById(id).addEventListener('change',changeFilters);});
-// 서버에 저장 요청을 보냅니다. 실패하면 한국어 메시지를 띄웁니다.
+// 화면 아래에 알림을 잠깐 띄웁니다. (팝업 대신 사용)
+// undo를 넘기면 "되돌리기" 버튼이 함께 나옵니다.
+let noticeTimer=null;
+function showNotice(text,undo){
+ const box=document.getElementById('notice');
+ box.replaceChildren();
+ const message=document.createElement('span');message.textContent=text;box.append(message);
+ if(undo){
+  const button=document.createElement('button');button.type='button';button.textContent='되돌리기';
+  button.onclick=function(){box.hidden=true;undo();};
+  box.append(button);
+ }
+ box.hidden=false;
+ clearTimeout(noticeTimer);
+ noticeTimer=setTimeout(function(){box.hidden=true;},5000);
+}
+// 서버에 저장 요청을 보냅니다. 실패하면 한국어 메시지로 바꿔 알려 줍니다.
 async function postJson(path,data){
  const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
  if(!r.ok){let m='저장하지 못했습니다.';try{m=(await r.json()).error||m;}catch(e){}throw new Error(m);}
- return r.json();
+ try{return await r.json();}catch(e){throw new Error('저장 결과를 확인하지 못했습니다. 새로고침해 주세요.');}
 }
-async function saveStar(id,starred){
+// 별표 저장: 저장하는 동안 버튼을 잠가서 여러 번 눌리지 않게 합니다.
+async function saveStar(id,starred,button){
+ if(button)button.disabled=true;
  try{await postJson('/api/article-star',{id:id,starred:starred});articles.forEach(function(a){if(a.id===id)a.starred=starred?1:0;});render();}
- catch(e){alert(e.message);}
+ catch(e){showNotice(e.message);if(button)button.disabled=false;}
 }
+// 숨기기 저장: 숨긴 뒤에는 "되돌리기"가 있는 알림을 보여줍니다.
 async function saveHidden(id,hidden){
- try{await postJson('/api/article-hide',{id:id,hidden:hidden});articles.forEach(function(a){if(a.id===id)a.hidden=hidden;});render();}
- catch(e){alert(e.message);}
+ try{
+  await postJson('/api/article-hide',{id:id,hidden:hidden});articles.forEach(function(a){if(a.id===id)a.hidden=hidden;});render();
+  if(hidden)showNotice('기사를 숨겼습니다. (숨긴 기사 보기에서 다시 볼 수 있어요)',function(){saveHidden(id,false);});
+  else showNotice('기사를 다시 보이게 했습니다.');
+ }
+ catch(e){showNotice(e.message);}
 }
 // 기사별 별표·영향 직접 분류·숨김·페이지 이동을 처리합니다.
 document.getElementById('sections').addEventListener('click',function(event){
  const starButton=event.target.closest('button[data-star]');
- if(starButton){const id=Number(starButton.getAttribute('data-star'));const now=articles.find(function(a){return a.id===id;});saveStar(id,!(now&&now.starred));return;}
+ if(starButton){const id=Number(starButton.getAttribute('data-star'));const now=articles.find(function(a){return a.id===id;});saveStar(id,!(now&&now.starred),starButton);return;}
  const impactButton=event.target.closest('button[data-impact]');
  if(impactButton){saveImpact(impactButton);return;}
  const hideBtn=event.target.closest('button[data-hide]');
@@ -271,4 +294,4 @@ try{lastTab=localStorage.getItem('lastTab')||'news';}catch(e){}
 showTab(lastTab);
 let titleRefreshTimer=null,titleRefreshAttempts=0;
 async function refreshArticles(){clearTimeout(titleRefreshTimer);const r=await fetch('/api/articles');const data=await r.json().catch(function(){return null;});if(!r.ok)throw new Error(data?.error||'기사 목록을 불러오지 못했습니다. (HTTP '+r.status+')');if(!Array.isArray(data?.articles))throw new Error('기사 목록 응답 형식이 올바르지 않습니다.');articles=data.articles.filter(function(a){return !isAwardNews(a);}).map(splitConference);changeFilters();if((data.title_refresh_pending||data.title_refresh_failed>0)&&titleRefreshAttempts<60){titleRefreshAttempts++;titleRefreshTimer=setTimeout(function(){refreshArticles().catch(function(e){console.warn('제목 재조회 실패:',e.message);});},data.title_refresh_pending?2000:65000);}else if(!data.title_refresh_pending&&!data.title_refresh_failed){titleRefreshAttempts=0;}}
-refreshArticles().catch(function(e){document.getElementById('sections').textContent=e.message;});
+refreshArticles().catch(function(e){const box=document.getElementById('sections');box.replaceChildren();const p=document.createElement('p');p.className='empty';p.textContent=e.message;box.append(p);});

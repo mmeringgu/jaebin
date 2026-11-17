@@ -1,4 +1,4 @@
-// ───── 통계 탭 및 수집 관리의 회사 통계 ─────
+// ───── 업계 동향 탭 및 관리 → 노출 관리의 회사 통계 ─────
 // articles.js가 불러온 기사 목록(articles)으로 화면에서 바로 계산합니다. 서버에 따로 저장하지 않습니다.
 // 뉴스 탭의 검색·필터와 상관없이, 숨기지 않은 전체 기사(최근 90일)로 셉니다.
 
@@ -109,7 +109,7 @@ function companyTrend(list){
  return '<div class="stat-box company-trend"><div class="box-head"><h3>회사별 언급 수 추이</h3>'+toggle+'</div>'+
   '<div class="company-trend-scroll"><table class="trend-table">'+head+body+'</table></div></div>';
 }
-// 증감 표시: 늘면 ▲(빨강), 줄면 ▼(회색), 같으면 –
+// 증감 표시: 늘면 ▲(진한 글자), 줄면 ▼(회색), 같으면 – (좋고 나쁨이 아니라 변화만 보여줌)
 function changeMark(now,before){
  if(now>before)return '<span class="trend-up">▲ '+(now-before)+'</span>';
  if(now<before)return '<span class="trend-down">▼ '+(before-now)+'</span>';
@@ -226,10 +226,10 @@ function isNewHospitalNews(a){
 // 신설·증설 병원: 위 조건에 맞는 기사만 표(병원명·예상 시기·출처)로 보여줍니다.
 function newHospitals(list){
  const rows=list.filter(isNewHospitalNews);
- const body=rows.length?'<table class="trend-table"><tr><th>병원명</th><th>예상 시기</th><th>출처 기사</th></tr>'+rows.slice(0,15).map(function(a){
+ const body=rows.length?'<div class="table-scroll"><table class="trend-table"><tr><th>병원명</th><th>예상 시기</th><th>출처 기사</th></tr>'+rows.slice(0,15).map(function(a){
   const source='<a href="'+esc(a.url)+'" target="_blank" rel="noopener noreferrer">'+esc(a.source)+' · '+shortDate(a.date)+'</a>';
   return '<tr><td class="trend-name">'+esc(hospitalNameOf(a))+'</td><td>'+esc(openTimeOf(a))+'</td><td class="trend-latest">'+source+'</td></tr>';
- }).join('')+'</table>':'<p class="muted">최근 90일 동안 개원·센터 신설 기사가 없습니다.</p>';
+ }).join('')+'</table></div>':'<p class="muted">최근 90일 동안 개원·센터 신설 기사가 없습니다.</p>';
  return '<div class="stat-box wide"><h3>신설·증설 병원</h3>'+body+'</div>';
 }
 
@@ -269,12 +269,12 @@ function stageSteps(now){
 function policyBoard(statuses){
  const rows=statuses.map(function(s){
   const latest=s.latest?linkOf(s.latest)+' <span class="muted">'+shortDate(s.latest.date)+'</span>':'<span class="muted">단계를 알 수 있는 기사가 아직 없습니다.</span>';
-  return '<tr'+(s.changed?' class="changed-row"':'')+'><td class="trend-name">'+esc(s.policy.name)+(s.changed?' <span class="chip impact-bad">이번 주 변화</span>':'')+'</td>'+
+  return '<tr'+(s.changed?' class="changed-row"':'')+'><td class="trend-name">'+esc(s.policy.name)+(s.changed?' <span class="chip chip-notice">이번 주 변화</span>':'')+'</td>'+
    '<td>'+(s.now?stageSteps(s.now):'<span class="muted">–</span>')+'</td>'+
    '<td class="trend-latest">'+latest+'</td></tr>';
  }).join('');
  return '<div class="stat-box wide"><h3>정책 현황판 <span class="muted">추적 중인 정책의 현재 단계</span></h3>'+
-  '<table class="trend-table policy-table"><tr><th>정책</th><th>현재 단계</th><th>근거 기사</th></tr>'+rows+'</table></div>';
+  '<div class="table-scroll"><table class="trend-table policy-table"><tr><th>정책</th><th>현재 단계</th><th>근거 기사</th></tr>'+rows+'</table></div></div>';
 }
 function policyChanges(statuses){
  const changed=statuses.filter(function(s){return s.changed;});
@@ -332,7 +332,7 @@ function policySchedule(list,statuses){
  return '<div class="stat-box"><h3>시행 예정 일정</h3>'+body+'</div>';
 }
 
-// ───── 통계 탭 및 수집 관리의 회사 통계 그리기 ─────
+// ───── 업계 동향 탭 및 관리 → 노출 관리의 회사 통계 그리기 ─────
 // articles.js의 render()가 기사 목록이 바뀔 때마다 부릅니다.
 function renderStats(){
  const list=statsArticles();
@@ -351,4 +351,4 @@ document.getElementById('stats-company').addEventListener('click',function(event
 });
 // 기사를 이미 불러왔다면 바로 그립니다.
 if(articles.length)renderStats();
-// (예전 "트렌드: AI 인사이트" 부분은 리포트 탭과 내용이 겹쳐서 지웠습니다. 2026-11-10)
+// (예전 "트렌드: AI 인사이트" 부분은 월간 요약 탭과 내용이 겹쳐서 지웠습니다. 2026-11-10)

@@ -1,4 +1,4 @@
-// 수집 관리 탭의 "정보원 상태" 표를 그립니다.
+// 관리 탭 → 수집 관리의 "정보원별 수집" 표를 그립니다.
 // 정보원마다 마지막으로 확인한 시각, 최근 7일 새 기사 수, 며칠째 새 기사가 없는지를 보여줍니다.
 (function(){
  const box=document.getElementById('source-status');
@@ -44,12 +44,12 @@
   box.textContent='불러오는 중…';
   try{
    const r=await fetch('/api/source-status');
-   const d=await r.json();
+   let d;try{d=await r.json();}catch(e){throw new Error('정보원 상태 응답을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.');}
    if(!r.ok)throw new Error(d.error||'정보원 상태를 불러오지 못했습니다.');
    // 문제 있는 정보원이 위로 오게 정렬합니다. (실패 → 새 기사 없음 → 기록 없음 → 정상)
    const order={bad:0,warn:1,none:2,good:3};
    const rows=d.sources.map(function(s){return {s:s,j:judge(s)};}).sort(function(a,b){return order[a.j.level]-order[b.j.level];});
-   box.innerHTML='<table class="source-table"><thead><tr><th>정보원</th><th>상태</th><th>마지막 확인</th><th>최근 7일 새 후보</th><th>자동 확인 주기</th><th>수집</th></tr></thead><tbody>'+
+   box.innerHTML='<table class="source-table"><thead><tr><th>정보원</th><th>상태</th><th>마지막 확인</th><th>최근 7일 새 기사</th><th>자동 확인 주기</th><th>수집</th></tr></thead><tbody>'+
     rows.map(function(x){
      const cadence=x.s.cadence||{days:1,twice:false};
      const schedule=cadence.days>1?cadence.days+'일마다':cadence.twice?'하루 2회':'하루 1회';
