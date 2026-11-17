@@ -8,20 +8,20 @@
  async function api(path,input){const r=await fetch(path,input?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)}:{});let d;const raw=await r.text();try{d=JSON.parse(raw);}catch(e){if(/1102|exceeded.*(CPU|resource)|CPU.*limit/i.test(raw))throw new Error('FastAPI 실행 자원 한도를 초과했습니다.');throw new Error('응답을 확인하지 못했습니다. 새로고침하고 로그인 상태를 확인해 주세요.');}if(!r.ok)throw new Error(d.error||'처리 실패');return d;}
  function render(){
   const box=document.getElementById('candidate-list');box.replaceChildren();
-  const selected=rows.filter(function(a){return a.selection.level==='full';});
-  const mainOnly=rows.filter(function(a){return a.selection.level==='main';});
+  const selected=rows.filter(function(a){return a.selection.selected;});
+  const excluded=rows.filter(function(a){return !a.selection.selected;});
   const unknown=rows.filter(function(a){return a.fetch_status==='success'&&!a.published_date;}).length;
-  document.getElementById('selection-count').textContent='우선 선별 '+selected.length+' · 메인 일치 '+mainOnly.length+' · 처리 중 '+rows.filter(function(a){return a.fetch_status==='pending';}).length+' · 실패 '+rows.filter(function(a){return a.fetch_status==='error';}).length+' · 날짜 미확인 '+unknown;
-  (toggle.checked?rows.filter(function(a){return a.selection.selected;}):selected).forEach(function(a){
+  document.getElementById('selection-count').textContent='선별 '+selected.length+' · 제외 '+excluded.length+' · 처리 중 '+rows.filter(function(a){return a.fetch_status==='pending';}).length+' · 실패 '+rows.filter(function(a){return a.fetch_status==='error';}).length+' · 날짜 미확인 '+unknown;
+  (toggle.checked?rows:selected).forEach(function(a){
    const item=document.createElement('div');item.className='candidate';
    const link=document.createElement('a');link.textContent=a.source_name+' · '+a.title;link.href=a.url;link.target='_blank';link.rel='noopener noreferrer';item.append(link);
-   const info=document.createElement('div');info.className='candidate-info';info.textContent='발행일 '+(a.published_date||'미확인')+' · '+(a.selection.level==='full'?'우선 선별':'메인 일치')+(a.fetch_status==='error'?' · 내용 확인 실패':a.fetch_status==='pending'?' · 처리 중':'');item.append(info);
+   const info=document.createElement('div');info.className='candidate-info';info.textContent='발행일 '+(a.published_date||'미확인')+' · '+(a.selection.selected?'선별':'제외')+(a.fetch_status==='error'?' · 내용 확인 실패':a.fetch_status==='pending'?' · 처리 중':'');item.append(info);
    const reason=document.createElement('div');reason.className='candidate-reason';reason.textContent=(a.selection.reasons.length?'기준: '+a.selection.reasons.join(' / '):'')+(a.fetch_error?' · '+a.fetch_error:'');item.append(reason);
    if(a.excerpt.subtitle){const sub=document.createElement('p');sub.textContent=a.excerpt.subtitle;sub.className='candidate-sub';item.append(sub);}
    if(a.excerpt.first_paragraph){const lead=document.createElement('p');lead.textContent=a.excerpt.first_paragraph;lead.className='candidate-lead';item.append(lead);}
    box.append(item);
   });
-  if(!selected.length&&!toggle.checked){const p=document.createElement('p');p.textContent='우선 선별 기사가 없습니다. 메인 일치 기사를 확인해 주세요.';box.append(p);}
+  if(!selected.length&&!toggle.checked){const p=document.createElement('p');p.textContent='선별된 기사가 없습니다. 제외 후보도 보기에서 이유를 확인해 주세요.';box.append(p);}
  }
  async function refresh(){const d=await api('/api/candidates?source_id='+encodeURIComponent(select.value));rows=d.candidates;render();}
  select.onchange=async function(){rows=[];render();try{await refresh();resultBox.textContent='저장된 기사입니다.';}catch(e){resultBox.textContent=e.message;}};

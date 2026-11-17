@@ -12,8 +12,8 @@ const PER_CATEGORY = 3; // 카테고리마다 보낼 기사 수
 // 어제~오늘 기사 중 카테고리별 상위 몇 건을 메시지 글로 만듭니다.
 export function buildBriefing(articles, day) {
   const since = addDays(day, -1);
-  // 메인 키워드만 맞은 기사(덜 중요한 기사)는 화면 기본값처럼 빼고 보냅니다.
-  const recent = articles.filter((a) => a.date >= since && a.match_level !== "main");
+  // 공통 선별을 통과한 기사 중 날짜가 맞는 기사를 보냅니다.
+  const recent = articles.filter((a) => a.date >= since);
   const lines = ["[SMD 뉴스 브리핑] " + day];
   for (const [categoryId, name] of CATEGORY_NAMES) {
     const rows = recent.filter((a) => a.category === categoryId).slice(0, PER_CATEGORY);

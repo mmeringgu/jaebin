@@ -40,8 +40,8 @@ async function addMissingColumns(db) {
   function isVeterinaryImaging(title) {
     const text2 = String(title || "");
     const veterinary = /(?<!필)수의(?!\s*계약)|동물|반려견|반려묘|강아지|고양이|(?:^|[^a-z0-9])(?:veterinary|veterinarian|vet|animal|canine|feline)(?=$|[^a-z0-9])/i.test(text2);
-    const imaging = /수의\s*영상|초음파|영상\s*(?:진단|판독|분석|검사|의학|장비)|진단\s*영상|엑스(?:레이|선)|방사선\s*(?:촬영|검사|진단)|자기공명|컴퓨터단층|전산화단층|(?:^|[^a-z0-9])(?:CT|MRI?|CBCT|PET|XR|x[- ]?ray|x[- ]?선|ultrasound|radiology|radiography)(?=$|[^a-z0-9])/i.test(text2);
-    return veterinary && imaging;
+    const imaging2 = /수의\s*영상|초음파|영상\s*(?:진단|판독|분석|검사|의학|장비)|진단\s*영상|엑스(?:레이|선)|방사선\s*(?:촬영|검사|진단)|자기공명|컴퓨터단층|전산화단층|(?:^|[^a-z0-9])(?:CT|MRI?|CBCT|PET|XR|x[- ]?ray|x[- ]?선|ultrasound|radiology|radiography)(?=$|[^a-z0-9])/i.test(text2);
+    return veterinary && imaging2;
   }
   function guessImpact(a) {
     const title = a.title || "";
@@ -123,7 +123,7 @@ async function addMissingColumns(db) {
 
 // src/config.json
 var config_default = {
-  version: "2026-11-16-r6-title-ko",
+  version: "2026-11-17-balanced-selection",
   categories: [
     {
       id: "company",
@@ -896,6 +896,41 @@ var config_default = {
       ]
     },
     {
+      id: "K020",
+      status: "사용",
+      category: "policy",
+      main: ["검사수가", "검사 수가", "수가체계", "수가 개편", "상대가치", "환산지수", "관리급여", "비급여 관리", "비급여 법", "비급여항목 관리", "조영술"],
+      auxiliary: ["인하", "인상", "개편", "개선", "조정", "신설", "적용", "급여", "법안", "규제", "추진", "수가", "제도"],
+      excluded: []
+    },
+    {
+      id: "K021",
+      status: "사용",
+      category: "hospital",
+      main: ["병원", "의료원", "영상센터", "영상 센터"],
+      auxiliary: ["개원", "개소", "증설", "증축", "신축", "착공", "준공", "확충", "도입", "구매", "설치", "부채", "적자", "흑자", "구조조정", "투자"],
+      required_groups: [["개원", "개소", "증설", "증축", "신축", "착공", "준공", "확충", "도입", "구매", "설치", "부채", "적자", "흑자", "구조조정", "투자"]],
+      excluded: ["채용"]
+    },
+    {
+      id: "K022",
+      status: "사용",
+      category: "policy",
+      main: ["상급종합병원", "종합병원"],
+      auxiliary: ["지정", "재지정", "구조전환", "구조 전환", "성과보상", "지원금"],
+      required_groups: [["지정", "재지정", "구조전환", "구조 전환", "성과보상", "지원금"]],
+      excluded: []
+    },
+    {
+      id: "K023",
+      status: "사용",
+      category: "hospital",
+      main: ["영상의학", "영상진단", "영상 진단", "영상판독", "영상 판독", "초음파", "CT", "MRI", "핵의학", "조영술", "영상분석", "영상 분석"],
+      auxiliary: ["학회", "학술", "지침", "인증", "임상", "도입", "개발", "연구", "심포지엄", "센터"],
+      required_groups: [["학회", "학술", "지침", "인증", "임상", "도입", "개발", "연구", "심포지엄", "센터"]],
+      excluded: ["채용"]
+    },
+    {
       id: "K003",
       status: "사용",
       category: "policy",
@@ -1432,6 +1467,9 @@ function hasWord(text2, word) {
   if (!word.trim()) return false;
   const lowerText = text2.normalize("NFKC").toLowerCase();
   const lowerWord = word.normalize("NFKC").toLowerCase();
+  if (lowerWord === "정부") return /(?<![가-힣])정부(?=$|[\s·,.'"“”‘’():…]|가|는|의|에|와|도|를)/u.test(lowerText);
+  if (lowerWord === "전문의") return /전문의(?!약품)/u.test(lowerText);
+  if (lowerWord === "수의") return /(?<!필)수의(?!\s*계약)/u.test(lowerText);
   const isEnglish = /^[a-z0-9 ]+$/i.test(lowerWord);
   if (!isEnglish) return lowerText.includes(lowerWord);
   let start = lowerText.indexOf(lowerWord);
@@ -1468,8 +1506,10 @@ function keywordMatch(title, source2) {
     matches.push({ ...rule, mainMatches: main, auxiliaryMatches: auxiliary, matchLevel });
   }
   if (matches.length === 0) return [];
+  const hospitalPolicy = matches.some((r) => ["K022", "K015", "K020", "K013", "K017", "K012"].includes(r.id) && r.matchLevel === "full");
   matches.sort((a, b) => {
-    const byCategory = PRIORITY[a.category] - PRIORITY[b.category];
+    const rank = (r) => hospitalPolicy && r.category === "policy" ? 1.5 : PRIORITY[r.category];
+    const byCategory = rank(a) - rank(b);
     if (byCategory !== 0) return byCategory;
     return (a.matchLevel === "full" ? 0 : 1) - (b.matchLevel === "full" ? 0 : 1);
   });
@@ -1488,17 +1528,6 @@ function articleTags(groups) {
     }
   }
   return tags.slice(0, 12);
-}
-function selection(title, source2) {
-  const groups = keywordMatch(title, source2);
-  const names = {};
-  for (const c of config_default.categories) names[c.id] = c.name;
-  const reasons = groups.map((r) => {
-    let reason = names[r.category] + " · " + r.mainMatches.slice(0, 3).join(", ");
-    if (r.auxiliaryMatches.length > 0) reason += " + " + r.auxiliaryMatches.slice(0, 3).join(", ");
-    return reason + " · " + r.id;
-  });
-  return { selected: groups.length > 0, level: selectionLevel(groups), reasons };
 }
 function hostOf(url) {
   try {
@@ -1724,7 +1753,7 @@ var CATEGORY_NAMES = [
 var PER_CATEGORY = 3;
 function buildBriefing(articles2, day) {
   const since = addDays(day, -1);
-  const recent = articles2.filter((a) => a.date >= since && a.match_level !== "main");
+  const recent = articles2.filter((a) => a.date >= since);
   const lines = ["[SMD 뉴스 브리핑] " + day];
   for (const [categoryId, name] of CATEGORY_NAMES) {
     const rows = recent.filter((a) => a.category === categoryId).slice(0, PER_CATEGORY);
@@ -2552,7 +2581,7 @@ var CACHE_KEY = "https://www.whosaeng.com/__smd_title_cache/v2";
 var DAY = 864e5;
 var inFlight = /* @__PURE__ */ new Map();
 function titleUrl(value, title = "") {
-  if (/^https?:\/\/(?:www\.)?rapportian\.com\//i.test(value || "") && /^\d{1,2}\s+\S/.test(String(title).trim())) {
+  if (/^https?:\/\/(?:www\.)?rapportian\.com\//i.test(value || "") && /^\d{1,2}(?=\s*[^\d\s])/.test(String(title).normalize("NFKC").trim())) {
     return articleUrl(value, rankedSource);
   }
   if (!/^https?:\/\/(?:www\.)?whosaeng\.com\//i.test(value || "")) return null;
@@ -2712,6 +2741,58 @@ async function warmArticleTranslations(env, rows, options = {}) {
   })));
 }
 
+// src/selection-policy.js
+var imaging = (text2) => /영상\s*(?:의학|진단|판독|분석|검사|장비|센터)|의료영상|초음파|핵의학|조영술|엑스(?:레이|선)|자기공명|컴퓨터단층|전산화단층|画像診断|超音波|磁気共鳴|(?:^|[^a-z0-9])(?:CT|MRI?|PET|CBCT|Angio|X[- ]?ray|ultrasound|radiology|angiography|diagnostic imaging)(?=$|[^a-z0-9])/i.test(text2);
+var medical = (text2) => imaging(text2) || /의료|메디칼|메디컬|헬스케어|헬시니어스|병원|의학|호흡기|인공호흡|환자감시|医療|メディカル|医用|病院|medical|health\s*care|healthineers|clinical/i.test(text2);
+var policyChange = /인하|인상|개편|개정|개선|조정|지원|보상|예산|재정|투입|지정|전환|육성|설치|기준|허가|인증|법안|법률|규제|시행|적용|신설|제도|수가|급여|상대가치|환산지수/;
+var hospitalChange = /개원|개소|증설|증축|신축|착공|준공|확충|확장\s*(?:이전|개소)|부채|적자|흑자|구조조정|투자|인수|(?<!종)합병(?!원)/;
+var deviceChange = /도입|구매|설치|가동|개발|연구|임상|협력|협약|인증|지침|학술|학회|심포지엄|취임|선임|임명|회장/;
+var names = { company: "캐논 뉴스", competitor: "경쟁사", policy: "정책", hospital: "병원·학회" };
+function assessArticle(title, source2, excerpt = {}) {
+  title = String(title || "").normalize("NFKC");
+  const groups = keywordMatch(title, source2);
+  const reject = (reason2) => ({ selected: false, level: selectionLevel(groups), groups, reasons: [reason2] });
+  if (!groups.length) return reject("제목의 유효한 수집 키워드·정보원 조건과 일치하지 않습니다.");
+  if (/채용|면접|기출문제|자기소개서|취업|경력직|구인|求人|recruitment|job vacancy/i.test(title)) return reject("채용·취업 준비 콘텐츠입니다.");
+  if (/\[(?:부고|부음|동정|신간)\]|김장|헌혈|기부자|기부|후원|모금|기념음악회|갤러리|표창|수상|워크숍|수료식|수료…|아카데미|Academy/i.test(title)) return reject("일반 행사·기부·인사·교육·수상 소식입니다.");
+  if (/주가|주식시장|상승\s*마감|하락\s*마감|강세\s*마감|약세\s*마감/.test(title)) return reject("주가 등락 중심 기사입니다.");
+  const category = groups[0].category;
+  const lead = [excerpt.subtitle, excerpt.first_paragraph].filter(Boolean).join(" ").slice(0, 1600);
+  const titleImaging = imaging(title);
+  const firstSentence = lead.split(/(?<=[.!?。])\s+|\n/)[0] || "";
+  const leadImaging = !/예를\s*들|예컨대|달리|처럼|비교하면|비교할\s*때/.test(firstSentence) && imaging(firstSentence);
+  const titleMedical = medical(title);
+  let reason = "";
+  if (category === "company" || category === "competitor") {
+    if (/산업용|산업재|자동화|전력기기|반도체|ASML|카메라|프린터|화장품|기미|에어로스페이스|항공|데이터센터/i.test(title) && !/의료기기|의료사업|의료 사업|헬시니어스|healthineers/i.test(title) && !titleImaging) return reject("의료 사업과 관계없는 산업·소비재 기사입니다.");
+    const medicalName = groups.some((g) => (g.exact_names || []).some((word) => hasWord(title, word))) || groups.some((g) => g.id === "K001") || source2.kind === "canon_official";
+    const businessSubject = /사업|자회사|분사|분리|인수|합병|실적|매출|영업이익|공급|출시|제품|허가|조직|대표|책임자|협력|협약|투자|생산|공장|개발|business|launch|supply|approval|research|partnership|発売|供給|承認|開発|導入/i.test(title);
+    if (!medicalName && !titleMedical && !(businessSubject && medical(firstSentence))) return reject("회사명 외에 의료 사업과 연결되는 근거가 부족합니다.");
+    reason = "의료 사업의 제품·공급·투자·조직·실적 또는 관련 활동";
+  } else if (category === "policy") {
+    if (/의약품|약제|신약|치료제|임신중지약|비만주사|GLP.?1/i.test(title) && !titleImaging && !/의료기기|디지털의료/.test(title)) return reject("영상의료·의료기기와 관계없는 개별 의약품·급여 기사입니다.");
+    const corePolicy = /검사\s*수가|검체검사|수가\s*(?:체계|개편)|상대가치|환산지수|관리급여|비급여\s*(?:관리|법|항목)|특수의료장비|병상공동활용|공동활용병상|상급종합병원/.test(title);
+    const systemPolicy = /필수의료|국립대병원|국립대학교병원|의료전달체계|의료\s*전달체계/.test(title) && policyChange.test(title);
+    const devicePolicy = /의료기기법|디지털의료제품법|신의료기술평가|의료기기\s*(?:허가|인증)|혁신의료기술/.test(title);
+    const imagingTechnology = titleImaging && /AI|인공지능/i.test(title) && /솔루션|장비|제품|기술/.test(title) && /개발|공급|도입|임상|허가/.test(title);
+    if (!(corePolicy && policyChange.test(title)) && !systemPolicy && !devicePolicy && !imagingTechnology && !(titleImaging && policyChange.test(title)) && !(leadImaging && /검사|진단|판독|의료기기|영상|수가|급여|규제/.test(title) && policyChange.test(title))) return reject("영상의료 제도·검사 수가·병원 지정 등 핵심 정책 변화와 관련성이 부족합니다.");
+    if (/다짐|기념|홍보|유공|표창/.test(title)) return reject("정책 변화보다 기관 홍보·행사에 해당합니다.");
+    reason = imagingTechnology ? "의료영상 AI 기술의 개발·공급·임상 적용" : "영상의료 제도·검사 수가 또는 의료체계·병원 지정 변화";
+  } else {
+    const vet = globalThis.NewsRules.isVeterinaryImaging(title);
+    const genuineOpening = hospitalChange.test(title) && !/개원가|개원의|주년|기념|신설\s*(?:요구|촉구)|수가\s*신설/.test(title);
+    const imagingNews = (titleImaging || leadImaging && /진단|판독|영상|장비|검사/.test(title)) && deviceChange.test(title);
+    const institution = /[가-힣A-Za-z0-9]+(?:병원|의료원)|영상\s*센터|의대/.test(title);
+    if (!vet && !(genuineOpening && institution) && !imagingNews) return reject("병원명·일반 AI만 일치하며 장비·시설·경영 변화나 영상의료 관련성이 부족합니다.");
+    if (/경영/.test(title) && /교육|수료|신간|매니지먼트/.test(title) && !titleImaging) return reject("병원 투자·경영 변화가 아닌 교육·출판 소식입니다.");
+    reason = vet ? "수의 영상진단·장비 관련 소식" : genuineOpening ? "병원 시설·투자·경영 변화" : "영상의학·장비·검사·관련 학회 소식";
+  }
+  return { selected: true, level: selectionLevel(groups), groups, reasons: [
+    names[category] + " · " + reason,
+    ...groups.map((g) => g.id + " · " + [...g.mainMatches, ...g.auxiliaryMatches].join(", "))
+  ] };
+}
+
 // src/service.js
 function parseExcerpt(value) {
   try {
@@ -2804,7 +2885,7 @@ async function readBody(env, source2, articleId = null) {
   const candidate = await findPending(env, source2, articleId);
   if (!candidate) return { message: "처리할 기사 없음" };
   candidate.title = cleanArticleTitle(candidate.title, source2);
-  const groups = keywordMatch(candidate.title, source2);
+  let groups = keywordMatch(candidate.title, source2);
   if (groups.length === 0) {
     await run(db, "UPDATE news_candidates SET processing_status='excluded' WHERE id=?", [candidate.id]);
     return { skipped: true };
@@ -2820,6 +2901,18 @@ async function readBody(env, source2, articleId = null) {
       detail = await readArticle(candidate.url, source2, candidate.title, candidate.published_date);
     }
     if (!detail.date || !detail.excerpt.first_paragraph) throw new Error("발행일 또는 첫 문단을 확인하지 못했습니다.");
+    const assessment = assessArticle(candidate.title, source2, detail.excerpt);
+    if (!assessment.selected) {
+      const excerpt2 = { ...detail.excerpt, source_id: source2.id, config_version: config_default.version };
+      await run(
+        db,
+        `UPDATE news_candidates SET processing_status='excluded',fetch_status='success',
+        published_date=?,body_text=?,snippet=?,fetch_error='',body_fetched_at=CURRENT_TIMESTAMP WHERE id=?`,
+        [detail.date, detail.body || "", JSON.stringify(excerpt2), candidate.id]
+      );
+      return { skipped: true, source: source2.label || source2.name, title: candidate.title, reasons: assessment.reasons };
+    }
+    groups = assessment.groups;
     const excerpt = await translateExcerptTitle(
       env,
       candidate.title,
@@ -2865,10 +2958,10 @@ async function candidates(env, sourceId = null, titleOptions = {}) {
     if (!current || current.name !== row.source_name) continue;
     if (current.kind !== "bing" && hostOf(row.url) !== hostOf(current.url)) continue;
     row.title = cleanArticleTitle(row.title, current);
-    const chosen = selection(row.title, current);
-    if (!chosen.selected) continue;
-    delete row.body_text;
     const excerpt = parseExcerpt(row.snippet);
+    const chosen = assessArticle(row.title, current, excerpt);
+    delete chosen.groups;
+    delete row.body_text;
     const ko = translatedTitle(excerpt, row.title);
     result.push({ ...row, title: ko || row.title, original_title: ko ? row.title : "", selection: chosen, excerpt });
   }
@@ -2884,18 +2977,23 @@ async function articles(env, titleOptions = {}) {
     if (!excerpt.first_paragraph) continue;
     const sources = SOURCES.filter((s) => s.id === excerpt.source_id || hostOf(row.url) === hostOf(s.url) && s.name === row.source);
     sources.sort((a, b) => (a.id === excerpt.source_id ? 0 : 1) - (b.id === excerpt.source_id ? 0 : 1));
-    let groups = [];
+    let assessment;
     for (const s of sources) {
-      groups = keywordMatch(row.title, s);
-      if (groups.length > 0) break;
+      const chosen = assessArticle(row.title, s, excerpt);
+      if (!assessment) assessment = chosen;
+      if (chosen.selected) {
+        assessment = chosen;
+        break;
+      }
     }
-    if (groups.length === 0) continue;
-    translationRows.push(row);
+    if (!assessment || !assessment.selected && !titleOptions.includeExcluded) continue;
+    const groups = assessment.groups;
+    if (assessment.selected) translationRows.push(row);
     result.push({
       id: row.id,
-      category: groups[0].category,
+      category: groups[0]?.category || row.category,
       match_level: selectionLevel(groups),
-      entity: groups[0].mainMatches[0],
+      entity: groups[0]?.mainMatches[0] || row.entity || "",
       date: row.published_date,
       source: row.source,
       title: translatedTitle(excerpt, row.title) || row.title,
@@ -2912,12 +3010,16 @@ async function articles(env, titleOptions = {}) {
       memo: row.memo,
       impact_override: row.impact_override || "",
       hidden: row.hidden === 1,
-      saved_at: row.created_at
+      saved_at: row.created_at,
+      selection: { selected: assessment.selected, reasons: assessment.reasons }
     });
     if (result.length === 500) break;
   }
   await warmArticleTranslations(env, translationRows, titleOptions);
   return result;
+}
+async function excludedArticles(env, titleOptions = {}) {
+  return (await articles(env, { ...titleOptions, includeExcluded: true })).filter((a) => !a.selection.selected);
 }
 async function visibleArticles(env) {
   return (await articles(env)).filter((a) => !a.hidden);
@@ -2948,7 +3050,7 @@ async function makeReport(env, day) {
   const days = 30;
   const maxCount = 60;
   const since = addDays(day, -(days - 1));
-  const inRange = (await visibleArticles(env)).filter((a) => a.date >= since && a.date <= day && (a.starred || a.match_level !== "main"));
+  const inRange = (await visibleArticles(env)).filter((a) => a.date >= since && a.date <= day);
   const chosen = selectReportArticles(inRange, maxCount);
   if (chosen.length === 0) return { error: "최근 " + days + "일 동안 리포트에 쓸 기사가 없습니다." };
   const report = await monthlyReport(env, chosen);
@@ -2957,7 +3059,7 @@ async function makeReport(env, day) {
 }
 async function makeTrendInsight(env, day) {
   const since = addDays(day, -6);
-  const chosen = (await visibleArticles(env)).filter((a) => a.date >= since && a.match_level !== "main").slice(0, 40);
+  const chosen = (await visibleArticles(env)).filter((a) => a.date >= since).slice(0, 40);
   if (chosen.length === 0) return { error: "최근 7일 동안 분석할 기사가 없습니다." };
   const insight = await trendInsight(env, chosen);
   if (!insight) return { error: "AI 인사이트를 만들지 못했습니다. OPENAI_API_KEY 설정과 인터넷 연결을 확인해 주세요." };
@@ -3142,14 +3244,14 @@ function csvCell(value) {
   return /[",\r\n]/.test(value) ? '"' + value.replace(/"/g, '""') + '"' : value;
 }
 async function exportCsv(env) {
-  const names = {};
-  for (const c of config_default.categories) names[c.id] = c.name;
+  const names2 = {};
+  for (const c of config_default.categories) names2[c.id] = c.name;
   const lines = [["발행일", "카테고리", "회사·기관", "출처", "제목", "AI 인사이트", "첫 문단", "키워드", "중요", "메모", "원문 링크"]];
   for (const a of await visibleArticles(env)) {
     const aiSummary = a.ai_summary.split("\n").map((line) => line.startsWith("- ") ? "• " + line.slice(2) : line).join("\n");
     lines.push([
       a.date,
-      names[a.category] || a.category,
+      names2[a.category] || a.category,
       a.entity,
       a.source,
       a.title,
@@ -3191,6 +3293,10 @@ async function handleApi(request, env, path, ctx) {
       title_refresh_pending: titleState.pending > 0,
       title_refresh_failed: titleState.failed
     });
+  }
+  if (method === "GET" && path === "/api/excluded-articles") {
+    const rows = await excludedArticles(env, titleOptions);
+    return json({ articles: rows, count: rows.length });
   }
   if (method === "GET" && path === "/api/export.csv") {
     return exportCsv(env);

@@ -23,11 +23,32 @@ test("라포르시안에 이미 저장된 순위 2는 원문 제목으로 복원
   assert.equal(row.title, "2 " + correct);
 });
 
+test("라포르시안 순위와 제목 사이 공백이 없어도 원문 제목으로 복원합니다", async (t) => {
+  const correct = "내년부터 지역·필수의료 수가 2.7조 투입…검체·CT·MRI 검사비 2.6조 줄인다";
+  let fetched = 0;
+  t.mock.method(globalThis, "fetch", async () => {
+    fetched++;
+    return new Response(`<meta property="og:title" content="${correct}">`, { headers: { "Content-Type": "text/html" } });
+  });
+  const row = { title: "2" + correct, url: "https://www.rapportian.com/news/articleView.html?idxno=990104" };
+  assert.equal((await resolveArticleTitles([row]))[0].title, correct);
+  assert.equal(fetched, 1);
+  assert.equal(row.title, "2" + correct);
+});
+
 test("라포르시안의 숫자로 시작하는 실제 제목은 원문 확인 후에도 보존합니다", async (t) => {
   const title = "2 CT 장비 신규 도입하는 병원";
   t.mock.method(globalThis, "fetch", async () => new Response(`<meta property="og:title" content="${title}">`, { headers: { "Content-Type": "text/html" } }));
   const rows = [{ title, url: "https://www.rapportian.com/news/articleView.html?idxno=990103" }];
   assert.equal((await resolveArticleTitles(rows))[0].title, title);
+});
+
+test("공백 없는 실제 수량과 소수로 시작하는 제목도 원문 그대로 보존합니다", async (t) => {
+  for (const [i, title] of ["2개 병원 CT 장비 도입 확대", "2.7조 투입 CT MRI 검사비 조정"].entries()) {
+    t.mock.method(globalThis, "fetch", async () => new Response(`<meta property="og:title" content="${title}">`, { headers: { "Content-Type": "text/html" } }));
+    const rows = [{ title, url: `https://www.rapportian.com/news/articleView.html?idxno=${990105 + i}` }];
+    assert.equal((await resolveArticleTitles(rows))[0].title, title);
+  }
 });
 
 test("기사 API는 원문 응답을 기다리지 않고 200을 반환하고 응답 뒤에 캐시를 갱신합니다", async (t) => {

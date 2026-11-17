@@ -13,7 +13,9 @@ const inFlight = new Map();
 
 function titleUrl(value, title = "") {
   // 이미 저장된 순위 혼입 제목도 원문 메타데이터로 확인합니다. 실제 숫자 제목은 임의로 자르지 않습니다.
-  if (/^https?:\/\/(?:www\.)?rapportian\.com\//i.test(value || "") && /^\d{1,2}\s+\S/.test(String(title).trim())) {
+  // 과거에는 순위와 제목 사이 공백 없이 "2내년부터…"로 저장된 경우도 있습니다.
+  // 숫자로 시작하는 정상 제목도 조회 대상일 수 있지만, 원문과 대조한 결과만 사용합니다.
+  if (/^https?:\/\/(?:www\.)?rapportian\.com\//i.test(value || "") && /^\d{1,2}(?=\s*[^\d\s])/.test(String(title).normalize("NFKC").trim())) {
     return articleUrl(value, rankedSource);
   }
   if (!/^https?:\/\/(?:www\.)?whosaeng\.com\//i.test(value || "")) return null;

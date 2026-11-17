@@ -105,6 +105,10 @@ async function handleApi(request, env, path, ctx) {
     return json({ storage: "D1", count: rows.length, limit: 500, articles: rows,
       title_refresh_pending: titleState.pending > 0, title_refresh_failed: titleState.failed });
   }
+  if (method === "GET" && path === "/api/excluded-articles") {
+    const rows = await service.excludedArticles(env, titleOptions);
+    return json({ articles: rows, count: rows.length });
+  }
   if (method === "GET" && path === "/api/export.csv") {
     return exportCsv(env);
   }

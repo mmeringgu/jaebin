@@ -9,6 +9,10 @@ export function hasWord(text, word) {
   // 일본어 제목의 전각 영문(ＣＡＮＯＮ·ＣＴ·ＭＲＩ)도 같은 단어로 판정합니다.
   const lowerText = text.normalize("NFKC").toLowerCase();
   const lowerWord = word.normalize("NFKC").toLowerCase();
+  // 기관명·직종이 지명이나 다른 단어 일부에 섞인 경우는 제외합니다.
+  if (lowerWord === "정부") return /(?<![가-힣])정부(?=$|[\s·,.'"“”‘’():…]|가|는|의|에|와|도|를)/u.test(lowerText);
+  if (lowerWord === "전문의") return /전문의(?!약품)/u.test(lowerText);
+  if (lowerWord === "수의") return /(?<!필)수의(?!\s*계약)/u.test(lowerText);
   const isEnglish = /^[a-z0-9 ]+$/i.test(lowerWord);
   if (!isEnglish) return lowerText.includes(lowerWord);
 
@@ -63,8 +67,11 @@ export function keywordMatch(title, source) {
   if (matches.length === 0) return [];
 
   // 카테고리 우선순위 → full 먼저 순서로 정렬하고, 1등과 같은 카테고리만 남깁니다.
+  // 명확한 제도·수가·지정 규칙은 병원명이 함께 있어도 정책으로 분류합니다.
+  const hospitalPolicy = matches.some((r) => ["K022", "K015", "K020", "K013", "K017", "K012"].includes(r.id) && r.matchLevel === "full");
   matches.sort((a, b) => {
-    const byCategory = PRIORITY[a.category] - PRIORITY[b.category];
+    const rank = (r) => hospitalPolicy && r.category === "policy" ? 1.5 : PRIORITY[r.category];
+    const byCategory = rank(a) - rank(b);
     if (byCategory !== 0) return byCategory;
     return (a.matchLevel === "full" ? 0 : 1) - (b.matchLevel === "full" ? 0 : 1);
   });

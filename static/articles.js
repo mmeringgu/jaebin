@@ -151,8 +151,6 @@ function groupSameNews(rows){return NewsRules.groupSameNews(rows);}
 function render(){
  const q=document.getElementById('search').value.trim().toLocaleLowerCase();
  const topic=document.getElementById('topic').value;
- // "키워드 일치 기사만" 스위치를 켜면 키워드가 모두 맞은 기사만 보여줍니다. (끄면 대표 키워드만 맞은 기사도 함께)
- const onlyFull=document.getElementById('only-full').checked;
  const period=document.getElementById('period').value;
  const impact=document.getElementById('impact').value;
  const sort=document.getElementById('sort').value;
@@ -161,7 +159,7 @@ function render(){
  searchWord=q;
  const matches=articles.filter(function(a){
   const text=[a.title,a.original_title,a.entity,a.source,a.summary,a.ai_summary].concat(a.tags).join(' ').toLocaleLowerCase();
-  return (!onlyFull||a.match_level!=='main')&&(!q||text.includes(q))&&matchesTopic(a,topic)&&matchesPeriod(a,period)&&matchesImpact(a,impact)&&(!onlyStar||a.starred)&&(!a.hidden||showHidden);
+  return (!q||text.includes(q))&&matchesTopic(a,topic)&&matchesPeriod(a,period)&&matchesImpact(a,impact)&&(!onlyStar||a.starred)&&(!a.hidden||showHidden);
  });
  // 통계 탭은 필터와 상관없이 전체 기사로 다시 계산합니다. (stats.js)
  if(typeof renderStats==='function')renderStats();
@@ -215,7 +213,6 @@ function renderBriefing(list){
 function changeFilters(){resetPages();render();}
 document.getElementById('search').addEventListener('input',changeFilters);
 document.getElementById('topic').addEventListener('change',changeFilters);
-document.getElementById('only-full').addEventListener('change',changeFilters);
 ['period','impact','sort','only-star','show-hidden'].forEach(function(id){document.getElementById(id).addEventListener('change',changeFilters);});
 // 서버에 저장 요청을 보냅니다. 실패하면 한국어 메시지를 띄웁니다.
 async function postJson(path,data){
@@ -273,5 +270,5 @@ let lastTab='news';
 try{lastTab=localStorage.getItem('lastTab')||'news';}catch(e){}
 showTab(lastTab);
 let titleRefreshTimer=null,titleRefreshAttempts=0;
-async function refreshArticles(){clearTimeout(titleRefreshTimer);const r=await fetch('/api/articles');const data=await r.json().catch(function(){return null;});if(!r.ok)throw new Error(data?.error||'기사 목록을 불러오지 못했습니다. (HTTP '+r.status+')');if(!Array.isArray(data?.articles))throw new Error('기사 목록 응답 형식이 올바르지 않습니다.');articles=data.articles.filter(function(a){return !isAwardNews(a);}).map(splitConference);changeFilters();if(data.title_refresh_pending&&titleRefreshAttempts<60){titleRefreshAttempts++;titleRefreshTimer=setTimeout(function(){refreshArticles().catch(function(e){console.warn('제목 재조회 실패:',e.message);});},2000);}else if(!data.title_refresh_pending){titleRefreshAttempts=0;}}
+async function refreshArticles(){clearTimeout(titleRefreshTimer);const r=await fetch('/api/articles');const data=await r.json().catch(function(){return null;});if(!r.ok)throw new Error(data?.error||'기사 목록을 불러오지 못했습니다. (HTTP '+r.status+')');if(!Array.isArray(data?.articles))throw new Error('기사 목록 응답 형식이 올바르지 않습니다.');articles=data.articles.filter(function(a){return !isAwardNews(a);}).map(splitConference);changeFilters();if((data.title_refresh_pending||data.title_refresh_failed>0)&&titleRefreshAttempts<60){titleRefreshAttempts++;titleRefreshTimer=setTimeout(function(){refreshArticles().catch(function(e){console.warn('제목 재조회 실패:',e.message);});},data.title_refresh_pending?2000:65000);}else if(!data.title_refresh_pending&&!data.title_refresh_failed){titleRefreshAttempts=0;}}
 refreshArticles().catch(function(e){document.getElementById('sections').textContent=e.message;});

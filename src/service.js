@@ -7,7 +7,8 @@ import { resolveArticleTitles } from "./title-resolver.js";
 import { translatedTitle, translateExcerptTitle, warmArticleTranslations } from "./title-translation.js";
 import { selectReportArticles } from "./report.js";
 import { all, first, run } from "./db.js";
-import { articleTags, hostOf, keywordMatch, selection, selectionLevel } from "./rules.js";
+import { articleTags, hostOf, keywordMatch, selectionLevel } from "./rules.js";
+import { assessArticle } from "./selection-policy.js";
 import { addDays, automationSettings, CONFIG, integer, koreaNow, SOURCE_BY_ID, SOURCES } from "./settings.js";
 
 // DB의 summary 칸(JSON 글)을 읽습니다. 형식이 이상하면 빈 요약을 돌려줍니다.
@@ -131,7 +132,7 @@ export async function readBody(env, source, articleId = null) {
   candidate.title = cleanArticleTitle(candidate.title, source);
 
   // 키워드 설정이 바뀌어 더 이상 맞지 않는 기사는 제외합니다.
-  const groups = keywordMatch(candidate.title, source);
+  let groups = keywordMatch(candidate.title, source);
   if (groups.length === 0) {
     await run(db, "UPDATE news_candidates SET processing_status='excluded' WHERE id=?", [candidate.id]);
     return { skipped: true };
@@ -149,6 +150,16 @@ export async function readBody(env, source, articleId = null) {
       detail = await readArticle(candidate.url, source, candidate.title, candidate.published_date);
     }
     if (!detail.date || !detail.excerpt.first_paragraph) throw new Error("발행일 또는 첫 문단을 확인하지 못했습니다.");
+
+    const assessment = assessArticle(candidate.title, source, detail.excerpt);
+    if (!assessment.selected) {
+      const excerpt = { ...detail.excerpt, source_id: source.id, config_version: CONFIG.version };
+      await run(db, `UPDATE news_candidates SET processing_status='excluded',fetch_status='success',
+        published_date=?,body_text=?,snippet=?,fetch_error='',body_fetched_at=CURRENT_TIMESTAMP WHERE id=?`,
+        [detail.date, detail.body || "", JSON.stringify(excerpt), candidate.id]);
+      return { skipped: true, source: source.label || source.name, title: candidate.title, reasons: assessment.reasons };
+    }
+    groups = assessment.groups;
 
     const excerpt = await translateExcerptTitle(env, candidate.title,
       { ...detail.excerpt, source_id: source.id, config_version: CONFIG.version, match_level: selectionLevel(groups) },
@@ -204,10 +215,10 @@ export async function candidates(env, sourceId = null, titleOptions = {}) {
     // 검색 RSS는 원문 매체의 주소를 저장하므로 검색 사이트 도메인과 같을 필요가 없습니다.
     if (current.kind !== "bing" && hostOf(row.url) !== hostOf(current.url)) continue;
     row.title = cleanArticleTitle(row.title, current);
-    const chosen = selection(row.title, current);
-    if (!chosen.selected) continue;
-    delete row.body_text; // 본문은 길어서 화면에 보내지 않습니다.
     const excerpt = parseExcerpt(row.snippet);
+    const chosen = assessArticle(row.title, current, excerpt);
+    delete chosen.groups;
+    delete row.body_text; // 본문은 길어서 화면에 보내지 않습니다.
     const ko = translatedTitle(excerpt, row.title);
     result.push({ ...row, title: ko || row.title, original_title: ko ? row.title : "", selection: chosen, excerpt });
   }
@@ -230,17 +241,19 @@ export async function articles(env, titleOptions = {}) {
     // (빙 검색 기사는 주소가 bing.com이 아니라 원래 언론사 주소라서, 주소만 비교하면 못 찾고 화면에서 빠졌습니다)
     const sources = SOURCES.filter((s) => s.id === excerpt.source_id || (hostOf(row.url) === hostOf(s.url) && s.name === row.source));
     sources.sort((a, b) => (a.id === excerpt.source_id ? 0 : 1) - (b.id === excerpt.source_id ? 0 : 1));
-    let groups = [];
+    let assessment;
     for (const s of sources) {
-      groups = keywordMatch(row.title, s);
-      if (groups.length > 0) break;
+      const chosen = assessArticle(row.title, s, excerpt);
+      if (!assessment) assessment = chosen;
+      if (chosen.selected) { assessment = chosen; break; }
     }
-    if (groups.length === 0) continue;
-    translationRows.push(row);
+    if (!assessment || (!assessment.selected && !titleOptions.includeExcluded)) continue;
+    const groups = assessment.groups;
+    if (assessment.selected) translationRows.push(row);
 
     result.push({
-      id: row.id, category: groups[0].category, match_level: selectionLevel(groups),
-      entity: groups[0].mainMatches[0], date: row.published_date, source: row.source,
+      id: row.id, category: groups[0]?.category || row.category, match_level: selectionLevel(groups),
+      entity: groups[0]?.mainMatches[0] || row.entity || "", date: row.published_date, source: row.source,
       title: translatedTitle(excerpt, row.title) || row.title,
       original_title: translatedTitle(excerpt, row.title) ? row.title : "",
       url: row.url, subtitle: excerpt.subtitle || "",
@@ -249,11 +262,17 @@ export async function articles(env, titleOptions = {}) {
       starred: row.starred, memo: row.memo,
       impact_override: row.impact_override || "",
       hidden: row.hidden === 1, saved_at: row.created_at,
+      selection: { selected: assessment.selected, reasons: assessment.reasons },
     });
     if (result.length === 500) break;
   }
   await warmArticleTranslations(env, translationRows, titleOptions);
   return result;
+}
+
+// 기존 저장 기사의 제외 여부는 읽기 시점에 판단하며 DB를 삭제·수정하지 않습니다.
+export async function excludedArticles(env, titleOptions = {}) {
+  return (await articles(env, { ...titleOptions, includeExcluded: true })).filter((a) => !a.selection.selected);
 }
 
 // 숨기지 않은 기사만 돌려줍니다. (CSV·브리핑·월간 리포트용)
@@ -315,7 +334,7 @@ export async function makeReport(env, day) {
   const maxCount = 60;
 
   const since = addDays(day, -(days - 1));
-  const inRange = (await visibleArticles(env)).filter((a) => a.date >= since && a.date <= day && (a.starred || a.match_level !== "main"));
+  const inRange = (await visibleArticles(env)).filter((a) => a.date >= since && a.date <= day);
   const chosen = selectReportArticles(inRange, maxCount);
   if (chosen.length === 0) return { error: "최근 " + days + "일 동안 리포트에 쓸 기사가 없습니다." };
 
@@ -327,8 +346,8 @@ export async function makeReport(env, day) {
 // 통계 탭 "AI 인사이트": 최근 7일 기사로 이번 주 핵심 이슈 3가지와 한 문단 요약을 만듭니다.
 export async function makeTrendInsight(env, day) {
   const since = addDays(day, -6);
-  // 키워드가 다 맞은 기사만, 비용을 줄이기 위해 40건까지 보냅니다.
-  const chosen = (await visibleArticles(env)).filter((a) => a.date >= since && a.match_level !== "main").slice(0, 40);
+  // 공통 선별을 통과한 기사 중 비용을 줄이기 위해 40건까지 보냅니다.
+  const chosen = (await visibleArticles(env)).filter((a) => a.date >= since).slice(0, 40);
   if (chosen.length === 0) return { error: "최근 7일 동안 분석할 기사가 없습니다." };
   const insight = await trendInsight(env, chosen);
   if (!insight) return { error: "AI 인사이트를 만들지 못했습니다. OPENAI_API_KEY 설정과 인터넷 연결을 확인해 주세요." };

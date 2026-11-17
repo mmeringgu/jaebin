@@ -48,11 +48,10 @@ let statsPeriod='week'; // 회사별 언급 수 추이: 'week'(주간) 또는 'm
 // ── 작은 도우미 ──
 // 통계에 쓸 기사: 숨기지 않은 기사 중, 고른 분야(AI·CT·MRI·UL·VL/XR·Vet)에 맞는 기사
 // 분야는 뉴스 탭의 "분야" 칸 값을 그대로 씁니다. (matchesTopic은 articles.js에 있음)
-// 맨 위 "키워드 일치 기사만" 스위치가 켜져 있으면 통계에서도 키워드가 모두 맞은 기사만 셉니다.
+// 서버의 공통 업무 관련성 기준을 통과한 기사만 받아 뉴스와 같은 모집단으로 셉니다.
 function statsArticles(){
  const topic=document.getElementById('topic').value;
- const onlyFull=document.getElementById('only-full').checked;
- return articles.filter(function(a){return !a.hidden&&matchesTopic(a,topic)&&(!onlyFull||a.match_level!=='main');});
+ return articles.filter(function(a){return !a.hidden&&matchesTopic(a,topic);});
 }
 function textOf(a){return [a.title,a.subtitle,a.summary].join(' ').toLowerCase();}
 function linkOf(a){return '<a href="'+esc(a.url)+'" target="_blank" rel="noopener noreferrer">'+esc(a.title)+'</a>';}
@@ -133,6 +132,61 @@ function companyShare(list){
  }).join('');
  return '<div class="stat-box company-share"><h3>언급 점유율 <span class="muted">최근 30일 · '+total+'건 기준</span></h3>'+
   '<p class="share-rank">우리 회사 노출 <b>'+rank+'위</b> / '+rows.length+'개 회사</p>'+bars+'</div>';
+}
+
+// 두 비교는 점유율과 같은 최근 30일·회사 판정 기준을 사용합니다.
+function recentExposureArticles(list){
+ const since=kstDate(29),today=kstDate(0);
+ return list.filter(function(a){return a.date>=since&&a.date<=today;});
+}
+function exposureCounts(list){
+ return COMPANIES.map(function(c){return list.filter(function(a){return mentions(a,c);}).length;});
+}
+function topicExposureRows(list){
+ const recent=recentExposureArticles(list);
+ return ['CT','MRI','UL','VL/XR','AI','Vet'].map(function(topic){
+  return {name:topic,counts:exposureCounts(recent.filter(function(a){return matchesTopic(a,topic);}))};
+ });
+}
+function mediaExposureRows(list){
+ const media=new Map();
+ recentExposureArticles(list).forEach(function(a){
+  const counts=exposureCounts([a]);
+  if(!counts.some(function(n){return n>0;}))return;
+  // 같은 매체의 직접 수집과 빙 검색을 한 줄로 합칩니다.
+  const name=String(a.source||'').replace(/\s*\(빙 검색\)\s*$/,'').trim()||'매체 미확인';
+  if(!media.has(name))media.set(name,{name:name,counts:COMPANIES.map(function(){return 0;})});
+  const row=media.get(name);
+  counts.forEach(function(n,i){row.counts[i]+=n;});
+ });
+ return Array.from(media.values()).sort(function(a,b){
+  return b.counts.reduce(function(s,n){return s+n;},0)-a.counts.reduce(function(s,n){return s+n;},0)||a.name.localeCompare(b.name,'ko');
+ });
+}
+function exposureTable(rows,label){
+ const mine=COMPANIES.findIndex(function(c){return c.mine;});
+ const head='<thead><tr><th scope="col">'+esc(label)+'</th>'+COMPANIES.map(function(c){return '<th scope="col" class="num'+(c.mine?' exposure-mine':'')+'">'+esc(c.name)+'</th>';}).join('')+'<th scope="col" class="num">언급 합계</th><th scope="col" class="num">캐논 점유율</th></tr></thead>';
+ const body=rows.map(function(row){
+  const total=row.counts.reduce(function(sum,n){return sum+n;},0);
+  const max=Math.max(1,...row.counts);
+  return '<tr><th scope="row">'+esc(row.name)+'</th>'+row.counts.map(function(n,i){
+   return '<td class="num'+(COMPANIES[i].mine?' exposure-mine':'')+'"><span class="exposure-count">'+n+'<span class="exposure-track" aria-hidden="true"><span style="width:'+Math.round(n/max*100)+'%"></span></span></span></td>';
+  }).join('')+'<td class="num">'+total+'</td><td class="num">'+(total?Math.round(row.counts[mine]/total*100)+'%':'–')+'</td></tr>';
+ }).join('');
+ return '<div class="exposure-scroll" tabindex="0" role="region" aria-label="'+esc(label)+'별 회사 언급 비교"><table class="trend-table exposure-table">'+head+'<tbody>'+body+'</tbody></table></div>';
+}
+function exposureComparisons(list){
+ const topic=document.getElementById('topic').value;
+ const basis='최근 30일 · '+(topic?topic+' 분야':'전체 분야')+' · 공통 선별 기준';
+ const note='<p class="muted exposure-note">'+esc(basis)+' · 수집된 기사 기준입니다. 여러 회사를 언급한 기사는 회사별로 각각 집계하며, 캐논 점유율은 해당 행의 회사 언급 합계 대비 비율입니다.</p>';
+ const topics=topicExposureRows(list),media=mediaExposureRows(list);
+ const hasTopics=topics.some(function(row){return row.counts.some(function(n){return n>0;});});
+ return '<div class="exposure-comparisons"><div class="stat-box"><h3>분야별 회사 비교</h3>'+note+
+  '<p class="muted exposure-note">한 기사가 여러 분야에 해당하면 각 분야에 포함됩니다.</p>'+
+  (hasTopics?exposureTable(topics,'분야'):'<p class="muted">조건에 맞는 분야별 회사 언급 기사가 없습니다.</p>')+'</div>'+
+  '<div class="stat-box"><h3>매체별 노출 비교</h3>'+note+
+  '<p class="muted exposure-note">매체·공식 정보원별로 비교합니다. 같은 매체의 빙 검색 결과는 합산하며, 언급 합계가 많은 순서입니다.</p>'+
+  (media.length?exposureTable(media,'매체·정보원'):'<p class="muted">조건에 맞는 매체별 회사 언급 기사가 없습니다.</p>')+'</div></div>';
 }
 // 회수·판매중지 현황: 경쟁사 이름과 회수·판매중지 단어가 함께 나온 기사
 function recallList(list){
@@ -288,8 +342,8 @@ function renderStats(){
  // 통계 탭의 분야 칸도 뉴스 탭과 같은 값으로 맞추고, 지금 몇 건으로 계산했는지 알려줍니다.
  const topic=document.getElementById('topic').value;
  document.getElementById('stats-topic').value=topic;
- document.getElementById('stats-topic-note').textContent=(topic?topic+' 분야 ':'전체 ')+(document.getElementById('only-full').checked?'키워드 일치 ':'')+'기사 '+list.length+'건 기준 · 뉴스 탭의 분야 필터와 같이 바뀝니다';
- document.getElementById('stats-company').innerHTML='<div class="stat-grid company-comparison">'+companyTrend(list)+companyShare(list)+'</div>';
+ document.getElementById('stats-topic-note').textContent=(topic?topic+' 분야 ':'전체 ')+'선별 기사 '+list.length+'건 기준 · 뉴스 탭의 분야 필터와 같이 바뀝니다';
+ document.getElementById('stats-company').innerHTML='<div class="stat-grid company-comparison">'+companyTrend(list)+companyShare(list)+'</div>'+exposureComparisons(list);
  document.getElementById('stats-competitor').innerHTML=recallList(list);
  document.getElementById('stats-hospital').innerHTML='<div class="stat-grid">'+newHospitals(list)+'</div>';
  const statuses=policyStatus(list);
