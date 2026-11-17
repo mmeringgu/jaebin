@@ -109,8 +109,8 @@ function companyTrend(list){
  const toggle='<div class="seg" role="group" aria-label="기간 단위">'+
   '<button type="button" class="seg-button'+(statsPeriod==='week'?' on':'')+'" data-stats-period="week">주간</button>'+
   '<button type="button" class="seg-button'+(statsPeriod==='month'?' on':'')+'" data-stats-period="month">월간</button></div>';
- return '<div class="stat-box wide"><div class="box-head"><h3>회사별 언급 수 추이</h3>'+toggle+'</div>'+
-  '<table class="trend-table">'+head+body+'</table></div>';
+ return '<div class="stat-box company-trend"><div class="box-head"><h3>회사별 언급 수 추이</h3>'+toggle+'</div>'+
+  '<div class="company-trend-scroll"><table class="trend-table">'+head+body+'</table></div></div>';
 }
 // 증감 표시: 늘면 ▲(빨강), 줄면 ▼(회색), 같으면 –
 function changeMark(now,before){
@@ -125,13 +125,13 @@ function companyShare(list){
  const rows=COMPANIES.map(function(c){return {c:c,n:recent.filter(function(a){return mentions(a,c);}).length};});
  const total=rows.reduce(function(sum,r){return sum+r.n;},0);
  rows.sort(function(x,y){return y.n-x.n;});
- if(total===0)return '<div class="stat-box"><h3>언급 점유율 <span class="muted">최근 30일</span></h3><p class="muted">최근 30일 동안 회사 이름이 나온 기사가 없습니다.</p></div>';
+ if(total===0)return '<div class="stat-box company-share"><h3>언급 점유율 <span class="muted">최근 30일</span></h3><p class="muted">최근 30일 동안 회사 이름이 나온 기사가 없습니다.</p></div>';
  const rank=rows.findIndex(function(r){return r.c.mine;})+1;
  const bars=rows.map(function(r){
   const pct=Math.round(r.n/total*100);
   return '<div class="bar-row'+(r.c.mine?' mine':'')+'"><span class="bar-name">'+esc(r.c.name)+'</span><span class="bar-track"><span class="bar-fill" style="width:'+pct+'%"></span></span><span class="bar-num">'+pct+'%</span></div>';
  }).join('');
- return '<div class="stat-box"><h3>언급 점유율 <span class="muted">최근 30일 · '+total+'건 기준</span></h3>'+
+ return '<div class="stat-box company-share"><h3>언급 점유율 <span class="muted">최근 30일 · '+total+'건 기준</span></h3>'+
   '<p class="share-rank">우리 회사 노출 <b>'+rank+'위</b> / '+rows.length+'개 회사</p>'+bars+'</div>';
 }
 // 회수·판매중지 현황: 경쟁사 이름과 회수·판매중지 단어가 함께 나온 기사
@@ -289,7 +289,8 @@ function renderStats(){
  const topic=document.getElementById('topic').value;
  document.getElementById('stats-topic').value=topic;
  document.getElementById('stats-topic-note').textContent=(topic?topic+' 분야 ':'전체 ')+(document.getElementById('only-full').checked?'키워드 일치 ':'')+'기사 '+list.length+'건 기준 · 뉴스 탭의 분야 필터와 같이 바뀝니다';
- document.getElementById('stats-company').innerHTML='<div class="stat-grid">'+companyTrend(list)+companyShare(list)+recallList(list)+'</div>';
+ document.getElementById('stats-company').innerHTML='<div class="stat-grid company-comparison">'+companyTrend(list)+companyShare(list)+'</div>';
+ document.getElementById('stats-competitor').innerHTML=recallList(list);
  document.getElementById('stats-hospital').innerHTML='<div class="stat-grid">'+newHospitals(list)+'</div>';
  const statuses=policyStatus(list);
  document.getElementById('stats-policy').innerHTML='<div class="stat-grid">'+policyBoard(statuses)+policyChanges(statuses)+policySchedule(list,statuses)+'</div>';

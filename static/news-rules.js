@@ -3,7 +3,8 @@
 // 수의 맥락과 영상진단 맥락이 제목에 함께 있어야 Vet 분야로 봅니다.
 function isVeterinaryImaging(title){
  const text=String(title||'');
- const veterinary=/수의(?!\s*계약)|동물|반려견|반려묘|강아지|고양이|(?:^|[^a-z0-9])(?:veterinary|veterinarian|vet|animal|canine|feline)(?=$|[^a-z0-9])/i.test(text);
+ // '필수의료' 안의 '수의'는 수의학 맥락이 아닙니다. 실제 동물·수의 표현은 따로 판정합니다.
+ const veterinary=/(?<!필)수의(?!\s*계약)|동물|반려견|반려묘|강아지|고양이|(?:^|[^a-z0-9])(?:veterinary|veterinarian|vet|animal|canine|feline)(?=$|[^a-z0-9])/i.test(text);
  const imaging=/수의\s*영상|초음파|영상\s*(?:진단|판독|분석|검사|의학|장비)|진단\s*영상|엑스(?:레이|선)|방사선\s*(?:촬영|검사|진단)|자기공명|컴퓨터단층|전산화단층|(?:^|[^a-z0-9])(?:CT|MRI?|CBCT|PET|XR|x[- ]?ray|x[- ]?선|ultrasound|radiology|radiography)(?=$|[^a-z0-9])/i.test(text);
  return veterinary&&imaging;
 }

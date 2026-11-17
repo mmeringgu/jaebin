@@ -267,6 +267,15 @@ select:hover{border-color:var(--ink-2)}
 .stat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
 .stat-box{background:white;border:1px solid var(--line);border-radius:var(--radius);padding:22px 24px}
 .stat-box.wide{grid-column:1/-1}
+.company-comparison{grid-template-columns:minmax(0,4fr) minmax(0,1fr);align-items:stretch}
+.company-comparison>.stat-box{min-width:0}
+.company-trend-scroll{overflow-x:auto}
+.company-comparison>.company-share{padding:20px 14px}
+.company-comparison .company-share h3 .muted{display:block;margin-left:0;letter-spacing:0}
+.company-share .bar-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 6px;margin:12px 0}
+.company-share .bar-name{width:auto;text-align:left}
+.company-share .bar-num{width:auto}
+.company-share .bar-track{grid-column:1/-1;grid-row:2}
 .stat-box h3{font-size:13px;font-weight:400;color:var(--red);letter-spacing:1.5px;margin:0 0 16px}
 .bar-row{display:flex;align-items:center;gap:10px;font-size:12px;margin:9px 0;color:var(--ink-2)}
 .bar-name{width:110px;flex:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right}
@@ -300,6 +309,11 @@ select:hover{border-color:var(--ink-2)}
 .report-sources a{color:var(--red);text-underline-offset:3px}
 
 /* ===== 수집 관리 (예약 기록, 정보원 상태, 수집 후보 목록) ===== */
+.collection-details>summary{cursor:pointer;font-size:16px;font-weight:600;padding:4px 0}
+.collection-details[open]>summary{margin-bottom:16px}
+.source-table-wrap{overflow-x:auto}
+.source-table .source-actions{white-space:nowrap}
+.source-table .button{font-size:12px;padding:6px 10px}
 .history-row{font-size:13px;color:var(--ink-2);margin:0;padding:8px 12px;background:white;border-top:1px solid var(--line-2)}
 #auto-history:not(:empty){margin-top:12px;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
 #auto-history .history-row:first-child{border-top:0}

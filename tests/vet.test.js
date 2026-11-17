@@ -40,6 +40,23 @@ test("동물 일반·수의계약·사람용 영상 기사와 영어 단어 일�
   assert.equal(keywordMatch("동물병원 MRI 도입", { ...source, categories: ["policy"] }).some((rule) => rule.id === "K018"), false);
 });
 
+test("필수의료 영상 기사는 정책으로 분류하고 Vet에서는 제외합니다", () => {
+  const original = readFileSync(new URL("rapportian-241753-head.html", import.meta.url), "utf8")
+    .match(/property="og:title" content="([^"]+)"/)[1];
+  for (const title of [original, "2 " + original, "필수의료 CT 수가 개선", "지역필수의료 MRI 검사비 조정"]) {
+    const groups = keywordMatch(title, SOURCE_BY_ID.S005);
+    assert.equal(groups[0]?.category, "policy", title);
+    assert.equal(groups.some((rule) => rule.id === "K018"), false, title);
+    assert.equal(articleTags(groups).includes("Vet"), false, title);
+    assert.equal(matchesTopic({ title, tags: articleTags(groups) }, "Vet"), false, title);
+  }
+  // 필수의료가 함께 있어도 실제 수의학 표현까지 제외하지 않습니다.
+  for (const title of ["필수의료와 수의 영상진단 CT 연구", "필수의료 논의와 동물병원 MRI 도입"]) {
+    assert.ok(keywordMatch(title, source).some((rule) => rule.id === "K018"), title);
+    assert.equal(matchesTopic({ title }, "Vet"), true, title);
+  }
+});
+
 test("수의 영상 경쟁사 기사는 기존 경쟁사 분류를 유지하면서 Vet와 MRI에도 표시합니다", () => {
   const title = "GE헬스케어, 동물병원 MRI 장비 공급";
   const groups = keywordMatch(title, source);

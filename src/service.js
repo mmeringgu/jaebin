@@ -389,6 +389,7 @@ export async function sourceStatus(env) {
     const row = rows.find((r) => r.source_id === s.id) || {};
     const lastError = lastErrors.find((r) => r.source_id === s.id);
     return {
+      id: s.id,
       name: s.label || s.name,
       lastRun: row.last_run || null, // 마지막으로 목록을 확인한 시각
       lastNew: row.last_new || null, // 마지막으로 새 기사를 찾은 시각

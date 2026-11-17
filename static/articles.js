@@ -108,7 +108,7 @@ function card(a,others){
 }
 // 페이지 나누기: 카테고리마다 한 페이지에 기사(같은 소식 묶음은 1개로 셈)를 최대 4개까지 보여줍니다.
 const PAGE_SIZE=4;
-const MAX_PAGES=20; // 페이지는 최대 20쪽까지만 보여줍니다. (그보다 오래된 기사는 목록에서 빠짐)
+const MAX_PAGES=10; // 페이지는 최대 10쪽까지만 보여줍니다. (그보다 오래된 기사는 목록에서 빠짐)
 const currentPages={}; // 카테고리별로 지금 보고 있는 페이지 번호 (1부터 시작)
 function resetPages(){categories.forEach(function(c){currentPages[c.id]=1;});}
 function matchesTopic(a,topic){

@@ -3,6 +3,15 @@
 (function(){
  const box=document.getElementById('source-status');
  const refreshButton=document.getElementById('source-status-refresh');
+ let collecting=false;
+ function updateButtons(){box.querySelectorAll('[data-collect-source]').forEach(function(button){button.disabled=collecting;});}
+ document.addEventListener('collection-busy',function(event){collecting=event.detail.busy;updateButtons();});
+ document.addEventListener('collection-finished',load);
+ box.addEventListener('click',function(event){
+  const button=event.target.closest('[data-collect-source]');
+  if(!button||button.disabled||collecting)return;
+  document.dispatchEvent(new CustomEvent('collection-request',{detail:{sourceId:button.dataset.collectSource}}));
+ });
 
  // DB 시각("2026-11-04 01:31:01", 세계 표준시)을 한국 시각 글자로 바꿉니다.
  function koreaTime(value){
@@ -40,10 +49,11 @@
    // 문제 있는 정보원이 위로 오게 정렬합니다. (실패 → 새 기사 없음 → 기록 없음 → 정상)
    const order={bad:0,warn:1,none:2,good:3};
    const rows=d.sources.map(function(s){return {s:s,j:judge(s)};}).sort(function(a,b){return order[a.j.level]-order[b.j.level];});
-   box.innerHTML='<table class="source-table"><thead><tr><th>정보원</th><th>상태</th><th>마지막 확인</th><th>최근 7일 새 기사</th></tr></thead><tbody>'+
+   box.innerHTML='<table class="source-table"><thead><tr><th>정보원</th><th>상태</th><th>마지막 확인</th><th>최근 7일 새 후보</th><th>수집</th></tr></thead><tbody>'+
     rows.map(function(x){
-     return '<tr><td>'+escapeText(x.s.name)+'</td><td><span class="badge badge-'+x.j.level+'" title="'+escapeText(x.j.detail)+'">'+escapeText(x.j.label)+'</span></td><td>'+koreaTime(x.s.lastRun)+'</td><td>'+x.s.newCount+'건</td></tr>';
+     return '<tr><td>'+escapeText(x.s.name)+'</td><td><span class="badge badge-'+x.j.level+'" title="'+escapeText(x.j.detail)+'">'+escapeText(x.j.label)+'</span></td><td>'+koreaTime(x.s.lastRun)+'</td><td>'+x.s.newCount+'건</td><td class="source-actions"><button type="button" class="button" data-collect-source="'+escapeText(x.s.id)+'" aria-label="'+escapeText(x.s.name)+' 지금 수집">지금 수집</button></td></tr>';
     }).join('')+'</tbody></table>';
+   updateButtons();
   }catch(e){
    box.textContent=e.message;
   }
