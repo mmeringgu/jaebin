@@ -101,10 +101,11 @@ test("기관 이름과 CT·MRI·초음파의 순서에 관계없이 수집하고
   }
 });
 
-test("뉴스와 통계 드롭다운에 모두 Vet가 있습니다", () => {
+test("뉴스 분야에 Vet를 유지하고 업계 동향의 분야 필터는 제거합니다", () => {
   const html = readFileSync(new URL("../static/index.html", import.meta.url), "utf8");
-  for (const id of ["topic", "stats-topic"]) {
+  for (const id of ["topic"]) {
     const select = html.match(new RegExp('<select id="' + id + '"[^>]*>([\\s\\S]*?)</select>'))?.[1];
     assert.match(select, /<option>Vet<\/option>/);
   }
+  assert.doesNotMatch(html, /id="stats-topic"/);
 });

@@ -1,5 +1,14 @@
 {
   "version": "2026-11-17-balanced-selection",
+  "automation": {
+    "daily_targets": { "company": 30, "policy": 45, "competitor": 45, "hospital": 30, "conference": 10 },
+    "canon_source_order": ["S030", "S029", "S028", "B014", "B015", "B013", "B001"],
+    "reserved_company_slots": 10,
+    "reserve_release_hour": 17,
+    "afternoon_hour": 14,
+    "twice_daily_sources": ["S030", "S029", "S012", "S018", "S002", "S004", "S001", "S005", "S006", "S009", "S011", "S021", "B002", "B003", "B004", "B005", "B007", "B008", "B009", "B010"],
+    "slow_sources": { "S014": 2, "S016": 3, "S022": 2 }
+  },
   "categories": [
     {
       "id": "company",
@@ -1106,12 +1115,12 @@
     }
   ],
   "auto_order": [
+    "S030",
+    "S029",
+    "S028",
     "S012",
     "S018",
     "S002",
-    "S028",
-    "S030",
-    "S029",
     "B013",
     "B014",
     "B015",

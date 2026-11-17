@@ -50,6 +50,7 @@ INSERT OR IGNORE INTO monitor_control(id) VALUES(1);
 CREATE TABLE IF NOT EXISTS monitor_jobs (
  job_key TEXT PRIMARY KEY, run_day TEXT NOT NULL, kind TEXT NOT NULL,
  source_id TEXT NOT NULL, article_id INTEGER, status TEXT NOT NULL,
+ category TEXT NOT NULL DEFAULT '',
  message TEXT NOT NULL DEFAULT '', started_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
  finished_at TEXT
 );

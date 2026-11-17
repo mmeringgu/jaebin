@@ -4,7 +4,7 @@ function renderReport(report,output){
  report.sections.forEach(function(section){
   const heading=document.createElement('h3');heading.textContent=section.title;output.append(heading);
   if(!section.items.length){
-   const empty=document.createElement('p');empty.className='muted';empty.textContent='리포트에 포함할 항목이 없습니다.';output.append(empty);return;
+   const empty=document.createElement('p');empty.className='muted';empty.textContent='월간 요약에 포함할 항목이 없습니다.';output.append(empty);return;
   }
   const list=document.createElement('ul');
   section.items.forEach(function(item){
@@ -30,11 +30,11 @@ function renderReport(report,output){
  async function makeReport(){
   monthButton.disabled=true;
   output.replaceChildren();
-  statusBox.textContent='월간 리포트를 만드는 중입니다… (최대 2분 정도 걸릴 수 있어요)';
+  statusBox.textContent='월간 요약을 만드는 중입니다… (최대 2분 정도 걸릴 수 있어요)';
   try{
    const r=await fetch('/api/monthly-report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})});
    const d=await r.json();
-   if(!r.ok)throw new Error(d.error||'리포트를 만들지 못했습니다.');
+   if(!r.ok)throw new Error(d.error||'월간 요약을 만들지 못했습니다.');
    renderReport(d.report,output);
    statusBox.textContent=d.since+' ~ '+d.until+' · 기사 '+d.article_count+'건으로 작성';
   }catch(e){statusBox.textContent=e.message;}

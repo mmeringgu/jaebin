@@ -12,8 +12,8 @@
  </div>
  <nav class="tabs" role="tablist" aria-label="화면 선택">
   <button type="button" class="tab" role="tab" data-tab="news">📰 뉴스</button>
-  <button type="button" class="tab" role="tab" data-tab="report">📝 리포트</button>
-  <button type="button" class="tab" role="tab" data-tab="stats">📊 통계</button>
+  <button type="button" class="tab" role="tab" data-tab="report">📝 월간 요약</button>
+  <button type="button" class="tab" role="tab" data-tab="stats">📊 업계 동향</button>
   <button type="button" class="tab" role="tab" data-tab="admin">⚙️ 관리</button>
  </nav>
 </header>
@@ -48,18 +48,13 @@
  <div id="sections"></div>
  </div>
 
- <!-- 탭 2: 월간 리포트 -->
+ <!-- 탭 2: 월간 요약 -->
  <div data-panel="report" hidden>
- <section class="section" id="report"><div class="section-head"><h2>월간 리포트</h2></div><div class="controls"><button class="button primary" id="report-month-button">월간 리포트 만들기</button></div><p id="report-status" class="status" role="status" aria-live="polite"></p><div id="report-output" class="report-output"></div></section>
+ <section class="section" id="report"><div class="section-head"><h2>월간 요약</h2></div><div class="controls"><button class="button primary" id="report-month-button">월간 요약 만들기</button></div><p id="report-status" class="status" role="status" aria-live="polite"></p><div id="report-output" class="report-output"></div></section>
  </div>
 
- <!-- 탭 3: 통계 (내용은 stats.js가 채웁니다) -->
+ <!-- 탭 3: 업계 동향 (내용은 stats.js가 채웁니다) -->
  <div data-panel="stats" hidden>
- <!-- 통계용 분야 선택: 뉴스 탭의 "분야" 칸과 같은 값입니다. 한쪽을 바꾸면 다른 쪽도 같이 바뀝니다 -->
- <div class="toolbar stats-filter"><div class="toolbar-row">
-  <select id="stats-topic" aria-label="통계 분야 필터"><option value="">All</option><option>AI</option><option>CT</option><option>MRI</option><option>UL</option><option>VL/XR</option><option>Vet</option></select>
-  <span id="stats-topic-note" class="muted"></span>
- </div></div>
  <section class="section"><div class="section-head"><h2>정책</h2></div><div id="stats-policy"></div></section>
  <section class="section"><div class="section-head"><h2>병원</h2></div><div id="stats-hospital"></div></section>
  <section class="section"><div class="section-head"><h2>경쟁사 현황</h2><span class="basis">언론 노출 기준</span></div><div id="stats-competitor"></div></section>
@@ -68,7 +63,7 @@
  <!-- 탭 4: 관리 -->
  <div data-panel="admin" hidden>
  <details class="section management-group" id="collection-management"><summary>수집 관리</summary><div class="management-content">
- <section class="section" id="admin"><div class="section-head"><h2>자동 수집 현황</h2><button class="button" id="auto-refresh">상태 확인</button></div><p id="auto-status" class="status" role="status">상태 확인 중…</p></section>
+ <section class="section" id="admin"><div class="section-head"><h2>자동 수집 현황</h2><button class="button" id="auto-refresh">상태 확인</button></div><p id="auto-status" class="status" role="status">상태 확인 중…</p><p id="auto-schedule-note" class="muted"></p><div id="auto-distribution" class="quota-grid"></div></section>
 
  <!-- 정보원 상태: 어느 매체가 며칠째 새 기사가 없는지 보여줍니다 -->
  <details class="section collection-details" id="source-collection-details"><summary>정보원별 수집</summary><p class="desc">최근 7일 목록 수집 기록입니다. 문제가 있는 정보원이 위에 나옵니다. ‘지금 수집’을 누르면 해당 정보원의 목록과 기사 원문을 확인합니다.</p><div class="controls"><button class="button" id="source-status-refresh">새로고침</button></div><p id="collect-result" class="status" role="status" aria-live="polite"></p><div id="source-status" class="source-table-wrap"></div></details>

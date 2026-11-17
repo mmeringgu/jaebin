@@ -9,6 +9,7 @@ import { selectReportArticles } from "./report.js";
 import { all, first, run } from "./db.js";
 import { articleTags, hostOf, keywordMatch, selectionLevel } from "./rules.js";
 import { assessArticle } from "./selection-policy.js";
+import { planNextTask, schedulerState, collectionCadence } from "./scheduler.js";
 import { addDays, automationSettings, CONFIG, integer, koreaNow, SOURCE_BY_ID, SOURCES } from "./settings.js";
 
 // DB의 summary 칸(JSON 글)을 읽습니다. 형식이 이상하면 빈 요약을 돌려줍니다.
@@ -372,22 +373,44 @@ function automationSources(env) {
   return sources.slice(0, automationSettings(env).sourceLimit);
 }
 
+// 정보원마다 조회하지 않고, 예약 결정을 위한 자료를 각각 한 번씩 읽습니다.
+async function schedulerData(db, day) {
+  const daily = await all(db, `SELECT j.*,c.title,c.url,c.published_date,c.suggested_category,c.first_collected_at
+    FROM monitor_jobs j LEFT JOIN news_candidates c ON c.id=j.article_id
+    WHERE j.run_day=? ORDER BY j.started_at,j.job_key`, [day]);
+  const runs = await all(db, `SELECT source_id,MAX(started_at) AS last_run,
+    MAX(CASE WHEN run_status='success' THEN started_at END) AS last_success FROM collection_runs GROUP BY source_id`);
+  const pending = await all(db, `SELECT id,source_id,source_name,title,url,published_date,suggested_category,first_collected_at
+    FROM news_candidates WHERE ${PENDING_CONDITION}
+    AND NOT EXISTS(SELECT 1 FROM monitor_jobs j WHERE j.run_day=? AND j.kind='body' AND j.article_id=news_candidates.id)
+    AND NOT EXISTS(SELECT 1 FROM articles a WHERE a.url=news_candidates.url AND a.title=news_candidates.title AND a.review_status='published')
+    ${PENDING_SORT}`, [CURRENT_VERSION, day]);
+  const published = await all(db, `SELECT title,url,category,entity,published_date FROM articles
+    WHERE review_status='published' AND is_sample=0 AND published_date>=? AND published_date<=?`, [addDays(day, -3), day]);
+  return { daily, runs, pending, published };
+}
+
 // 예약 수집 화면에 보여줄 오늘의 진행 상황
 export async function automationStatus(env) {
   const settings = automationSettings(env);
   const sources = automationSources(env);
-  const day = koreaNow().day;
+  const { day, hour } = koreaNow();
   const control = await first(env.DB, "SELECT * FROM monitor_control WHERE id=1");
-  const jobs = await all(env.DB, "SELECT * FROM monitor_jobs WHERE run_day=? ORDER BY started_at DESC,job_key DESC", [day]);
+  const data = await schedulerData(env.DB, day);
+  const jobs = data.daily;
+  const state = schedulerState({ ...data, sources, day, hour, maxBodies: settings.maxBodies });
   const active = sources.map((s) => s.id);
-  const recent = jobs.slice(0, 8).map((j) => ({ ...j, source: SOURCE_BY_ID[j.source_id]?.label || j.source_id }));
+  const recent = jobs.slice(-8).reverse().map((j) => ({ ...j, source: SOURCE_BY_ID[j.source_id]?.label || j.source_id }));
   return {
     setupRequired: false, settings, day, paused: control.pause_day === day,
     last_tick: control.last_tick, last_message: control.last_message, source_count: sources.length,
     sources: sources.map((s) => s.label || s.name),
-    lists_done: jobs.filter((j) => j.kind === "list" && active.includes(j.source_id)).length,
+    lists_done: new Set(jobs.filter((j) => j.kind === "list" && active.includes(j.source_id)).map((j) => j.source_id)).size,
+    lists_run: jobs.filter((j) => j.kind === "list").length, lists_due: state.due.length,
     bodies_done: jobs.filter((j) => j.kind === "body").length,
     failed: jobs.filter((j) => j.status === "error" || j.status === "aborted").length,
+    categories: state.categories, pending_count: state.queue.length, reserved_slots: state.reserved,
+    reserve_release_hour: CONFIG.automation.reserve_release_hour,
     recent,
   };
 }
@@ -415,12 +438,13 @@ export async function sourceStatus(env) {
       newCount: row.new_count || 0, // 최근 7일 동안 찾은 새 기사 수
       errorCount: row.error_count || 0, // 최근 7일 실패 횟수
       lastError: lastError ? lastError.error_message : "", // 가장 최근 수집이 실패했다면 그 이유
+      cadence: collectionCadence(s),
     };
   });
 }
 
 // 1분마다 불려서 작업을 "딱 하나"만 합니다.
-// 순서: 정보원 목록 수집(정보원마다 하루 1번) → 기사 본문 읽기(하루 상한까지) → 모두 끝나면 아침 브리핑
+// 캐논 우선 처리 → 일반 목록·원문 교대 → 카테고리 배분·오후 예약분 보호
 export async function scheduledStep(env, manual = false, time = Date.now()) {
   const { day, hour } = koreaNow(time);
   const settings = automationSettings(env);
@@ -432,58 +456,29 @@ export async function scheduledStep(env, manual = false, time = Date.now()) {
     await run(db, "UPDATE monitor_jobs SET status='aborted',finished_at=CURRENT_TIMESTAMP,message='이전 작업 중단' WHERE status='running' AND started_at<=datetime('now','-3 minutes')");
     await run(db, "DELETE FROM monitor_jobs WHERE run_day<date(?,'-7 days')", [day]);
     const control = await first(db, "SELECT * FROM monitor_control WHERE id=1");
-    const daily = await all(db, "SELECT * FROM monitor_jobs WHERE run_day=?", [day]);
     const isFailed = (j) => j.status === "error" || j.status === "aborted";
 
     if (control.pause_day === day) return { status: "paused", message: "오늘 자동 수집이 중지되어 있습니다." };
+    const data = await schedulerData(db, day);
+    const daily = data.daily;
     if (daily.filter(isFailed).length >= 10) {
       await run(db, "UPDATE monitor_control SET pause_day=?,last_tick=CURRENT_TIMESTAMP,last_message='하루 실패 10회로 중지' WHERE id=1", [day]);
       return { status: "paused", message: "하루 실패 10회로 중지" };
     }
 
-    // 1) 오늘 아직 목록을 수집하지 않은 정보원을 찾습니다.
     const sources = automationSources(env);
-    let source = sources.find((s) => !daily.some((j) => j.kind === "list" && j.source_id === s.id)) || null;
-    let kind = "list";
-    let candidate = null;
-
-    // 2) 목록 수집이 다 끝났으면, 본문을 읽을 기사 하나를 찾습니다.
-    if (!source) {
-      if (daily.filter((j) => j.kind === "body").length >= settings.maxBodies) {
-        // 하루 처리 상한에 걸려도 오늘 수집은 끝난 것이므로 브리핑을 보냅니다.
-        await sendDailyBriefing(env, day);
-        return { status: "limit", message: "오늘 기사 처리 상한에 도달했습니다." };
-      }
-      kind = "body";
-      // 본문을 읽을 후보를 DB에서 "한 번만" 가져옵니다. (같은 날 이미 시도한 후보는 제외)
-      // 예전에는 정보원마다 따로 DB를 조회해서 1분에 수십 번씩 읽었고,
-      // 그 때문에 D1 무료 요금제의 하루 읽기 한도(500만 행)를 넘었습니다.
-      const pendingRows = await all(db, `SELECT id, source_id, source_name FROM news_candidates WHERE ${PENDING_CONDITION}
-        AND NOT EXISTS(SELECT 1 FROM monitor_jobs j WHERE j.run_day=? AND j.kind='body' AND j.article_id=news_candidates.id)
-        ${PENDING_SORT}`, [CURRENT_VERSION, day]);
-      // 가져온 후보 중에서 정보원 순서대로 첫 번째 후보를 고릅니다.
-      for (const s of sources) {
-        // 오늘 3번 이상 실패한 정보원은 건너뜁니다.
-        if (daily.filter((j) => j.source_id === s.id && isFailed(j)).length >= 3) continue;
-        const row = pendingRows.find((r) => r.source_id === s.id && r.source_name === s.name);
-        if (row) {
-          source = s;
-          candidate = row;
-          break;
-        }
-      }
-      if (!source) {
-        // 오늘 할 수집이 모두 끝났으니 아침 브리핑을 보냅니다.
-        await sendDailyBriefing(env, day);
-        await run(db, "UPDATE monitor_control SET last_tick=CURRENT_TIMESTAMP,last_message='처리할 작업 없음' WHERE id=1");
-        return { status: "idle", message: "처리할 작업 없음" };
-      }
+    const plan = planNextTask({ ...data, sources, day, hour: manual && hour < 7 ? 7 : hour, maxBodies: settings.maxBodies });
+    if (!plan.kind) {
+      await sendDailyBriefing(env, day);
+      await run(db, "UPDATE monitor_control SET last_tick=CURRENT_TIMESTAMP,last_message=? WHERE id=1", [plan.message]);
+      return { status: plan.status, message: plan.message };
     }
+    const { source, kind, candidate } = plan;
 
     // 3) 같은 작업을 두 번 하지 않도록 작업 기록을 먼저 남깁니다.
-    const key = day + ":" + kind + ":" + (candidate ? candidate.id : source.id);
-    const claimed = await first(db, "INSERT OR IGNORE INTO monitor_jobs(job_key,run_day,kind,source_id,article_id,status) VALUES(?,?,?,?,?,'running') RETURNING job_key",
-      [key, day, kind, source.id, candidate ? candidate.id : null]);
+    const key = day + ":" + kind + ":" + (candidate ? candidate.id : source.id + ":" + plan.slot);
+    const claimed = await first(db, "INSERT OR IGNORE INTO monitor_jobs(job_key,run_day,kind,source_id,article_id,category,status) VALUES(?,?,?,?,?,?,'running') RETURNING job_key",
+      [key, day, kind, source.id, candidate ? candidate.id : null, candidate?.category || ""]);
     if (!claimed) return { status: "skipped", message: "이미 처리한 작업" };
     await run(db, "UPDATE monitor_control SET last_tick=CURRENT_TIMESTAMP,last_message=? WHERE id=1", [source.name + " · 처리 중"]);
 
@@ -493,7 +488,7 @@ export async function scheduledStep(env, manual = false, time = Date.now()) {
     try {
       const result = kind === "list" ? await collectSource(env, source, true) : await readBody(env, source, candidate.id);
       const doneMessage = kind === "list" ? "목록 확인 완료 · 새 기사 " + result.saved + "건" : "기사 확인 완료";
-      message = result.error || result.warning || result.message || doneMessage;
+      message = result.error || result.warning || result.message || result.reasons?.join(" / ") || doneMessage;
       if (result.error) status = "error";
       else if (result.skipped || result.message) status = "skipped";
       else status = "success";

@@ -61,4 +61,6 @@ test("월간 버튼만 있는 화면에서 생성·버튼 복구가 정상 동�
   assert.deepEqual([...html.matchAll(/data-tab="([^"]+)"/g)].map((match) => match[1]), ["news", "report", "stats", "admin"]);
   assert.deepEqual([...html.matchAll(/data-panel="([^"]+)"/g)].map((match) => match[1]), ["news", "report", "stats", "admin"]);
   assert.doesNotMatch(html, /주간 리포트|id="report-button"/);
+  assert.match(html, /data-tab="report">📝 월간 요약/);
+  assert.match(html, /data-tab="stats">📊 업계 동향/);
 });

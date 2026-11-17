@@ -54,7 +54,7 @@ test("매체별로 빙 검색 표기를 합치고 회사별 건수와 정렬을 
   assert.equal(rows[2].name, "매체 미확인");
 });
 
-test("숨김·분야 필터를 적용하고 선별된 main 기사도 두 비교에 포함합니다", () => {
+test("업계 동향은 숨김만 제외하고 뉴스 분야 필터와 독립적으로 전체를 집계합니다", () => {
   const api = setup([
     article("캐논메디칼 CT 출시", { hidden: true }),
     article("지멘스 CT 출시", { match_level: "main" }),
@@ -62,9 +62,10 @@ test("숨김·분야 필터를 적용하고 선별된 main 기사도 두 비교�
   ]);
   api.get("topic").value = "CT";
   const list = api.statsArticles();
-  assert.equal(list.length, 2);
+  assert.equal(list.length, 3);
   assert.deepEqual(plain(api.topicExposureRows(list)).find((r) => r.name === "CT").counts, [0, 1, 1, 0, 0]);
-  assert.deepEqual(plain(api.mediaExposureRows(list))[0].counts, [0, 1, 1, 0, 0]);
+  assert.deepEqual(plain(api.topicExposureRows(list)).find((r) => r.name === "MRI").counts, [0, 0, 0, 1, 0]);
+  assert.deepEqual(plain(api.mediaExposureRows(list))[0].counts, [0, 1, 1, 1, 0]);
 });
 
 test("노출 관리에 두 비교와 행 기준 점유율을 표시하며 매체 이름은 HTML로 실행하지 않습니다", () => {

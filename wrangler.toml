@@ -23,7 +23,7 @@ database_id = "28e28b03-add2-48c3-87af-9bbc17261700"
 [vars]
 AUTO_ENABLED = "true"
 AUTO_SOURCE_LIMIT = "40"
-AUTO_MAX_BODY_PER_DAY = "120"
+AUTO_MAX_BODY_PER_DAY = "160"
 OPENAI_MODEL = "gpt-5-mini"
 ARCHIVE_DAYS = "90"
 # 다른 주소에서 이 사이트의 버튼을 쓰게 하려면 쉼표로 구분해 넣으세요. (보통은 비워 둠)

@@ -46,12 +46,10 @@ const STAGE_ORDER=['발의','논의','확정','시행'];
 let statsPeriod='week'; // 회사별 언급 수 추이: 'week'(주간) 또는 'month'(월간)
 
 // ── 작은 도우미 ──
-// 통계에 쓸 기사: 숨기지 않은 기사 중, 고른 분야(AI·CT·MRI·UL·VL/XR·Vet)에 맞는 기사
-// 분야는 뉴스 탭의 "분야" 칸 값을 그대로 씁니다. (matchesTopic은 articles.js에 있음)
+// 업계 동향·노출 분석은 뉴스 화면의 검색·분야 필터와 독립적으로 전체 분야를 집계합니다.
 // 서버의 공통 업무 관련성 기준을 통과한 기사만 받아 뉴스와 같은 모집단으로 셉니다.
 function statsArticles(){
- const topic=document.getElementById('topic').value;
- return articles.filter(function(a){return !a.hidden&&matchesTopic(a,topic);});
+ return articles.filter(function(a){return !a.hidden;});
 }
 function textOf(a){return [a.title,a.subtitle,a.summary].join(' ').toLowerCase();}
 function linkOf(a){return '<a href="'+esc(a.url)+'" target="_blank" rel="noopener noreferrer">'+esc(a.title)+'</a>';}
@@ -176,8 +174,7 @@ function exposureTable(rows,label){
  return '<div class="exposure-scroll" tabindex="0" role="region" aria-label="'+esc(label)+'별 회사 언급 비교"><table class="trend-table exposure-table">'+head+'<tbody>'+body+'</tbody></table></div>';
 }
 function exposureComparisons(list){
- const topic=document.getElementById('topic').value;
- const basis='최근 30일 · '+(topic?topic+' 분야':'전체 분야')+' · 공통 선별 기준';
+ const basis='최근 30일 · 전체 분야 · 공통 선별 기준';
  const note='<p class="muted exposure-note">'+esc(basis)+' · 수집된 기사 기준입니다. 여러 회사를 언급한 기사는 회사별로 각각 집계하며, 캐논 점유율은 해당 행의 회사 언급 합계 대비 비율입니다.</p>';
  const topics=topicExposureRows(list),media=mediaExposureRows(list);
  const hasTopics=topics.some(function(row){return row.counts.some(function(n){return n>0;});});
@@ -339,21 +336,12 @@ function policySchedule(list,statuses){
 // articles.js의 render()가 기사 목록이 바뀔 때마다 부릅니다.
 function renderStats(){
  const list=statsArticles();
- // 통계 탭의 분야 칸도 뉴스 탭과 같은 값으로 맞추고, 지금 몇 건으로 계산했는지 알려줍니다.
- const topic=document.getElementById('topic').value;
- document.getElementById('stats-topic').value=topic;
- document.getElementById('stats-topic-note').textContent=(topic?topic+' 분야 ':'전체 ')+'선별 기사 '+list.length+'건 기준 · 뉴스 탭의 분야 필터와 같이 바뀝니다';
  document.getElementById('stats-company').innerHTML='<div class="stat-grid company-comparison">'+companyTrend(list)+companyShare(list)+'</div>'+exposureComparisons(list);
  document.getElementById('stats-competitor').innerHTML=recallList(list);
  document.getElementById('stats-hospital').innerHTML='<div class="stat-grid">'+newHospitals(list)+'</div>';
  const statuses=policyStatus(list);
  document.getElementById('stats-policy').innerHTML='<div class="stat-grid">'+policyBoard(statuses)+policyChanges(statuses)+policySchedule(list,statuses)+'</div>';
 }
-// 통계 탭에서 분야를 바꾸면 뉴스 탭의 분야 칸을 바꾸고 화면 전체를 다시 그립니다. (changeFilters는 articles.js에 있음)
-document.getElementById('stats-topic').addEventListener('change',function(){
- document.getElementById('topic').value=this.value;
- changeFilters();
-});
 // 주간/월간 버튼
 document.getElementById('stats-company').addEventListener('click',function(event){
  const button=event.target.closest('button[data-stats-period]');

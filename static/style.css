@@ -317,6 +317,11 @@ select:hover{border-color:var(--ink-2)}
 .management-group[open]>summary{border-bottom:1px solid var(--line)}
 .management-content{padding:0 20px}
 .management-content>.section{margin:24px 0}
+.quota-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:12px}
+.quota-card{border:1px solid var(--line);padding:12px;font-size:13px}
+.quota-card strong{color:var(--red);font-weight:600}
+.quota-card p{margin:6px 0}
+.quota-card span{font-size:12px;color:var(--muted)}
 .collection-details>summary{cursor:pointer;font-size:16px;font-weight:600;padding:4px 0}
 .collection-details[open]>summary{margin-bottom:16px}
 .source-table-wrap{overflow-x:auto}

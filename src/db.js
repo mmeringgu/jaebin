@@ -44,5 +44,10 @@ export async function addMissingColumns(db) {
   } catch (error) {
     if (!/duplicate column name/i.test(String(error.message))) throw error;
   }
+  try {
+    await db.prepare("ALTER TABLE monitor_jobs ADD COLUMN category TEXT NOT NULL DEFAULT ''").run();
+  } catch (error) {
+    if (!/duplicate column name/i.test(String(error.message))) throw error;
+  }
   columnsChecked = true;
 }

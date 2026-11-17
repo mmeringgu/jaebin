@@ -1,5 +1,5 @@
 
-const categories=[{id:'company',name:'캐논 뉴스'},{id:'policy',name:'정책'},{id:'hospital',name:'병원'},{id:'conference',name:'학회'},{id:'competitor',name:'경쟁사'}];
+const categories=[{id:'company',name:'캐논 뉴스'},{id:'competitor',name:'경쟁사'},{id:'policy',name:'정책'},{id:'hospital',name:'병원'},{id:'conference',name:'학회'}];
 // 학회·병원 나누기: 서버(DB)에는 둘 다 "hospital"로 저장돼 있어서, 화면에서 제목을 보고 나눕니다.
 // 제목에 아래 단어가 있으면 "학회", 없으면 "병원"으로 보여줍니다.
 const CONFERENCE_WORDS=['학회','학술대회','학술회의','심포지엄','symposium','congress','conference'];

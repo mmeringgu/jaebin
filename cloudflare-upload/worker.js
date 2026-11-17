@@ -32,6 +32,11 @@ async function addMissingColumns(db) {
   } catch (error) {
     if (!/duplicate column name/i.test(String(error.message))) throw error;
   }
+  try {
+    await db.prepare("ALTER TABLE monitor_jobs ADD COLUMN category TEXT NOT NULL DEFAULT ''").run();
+  } catch (error) {
+    if (!/duplicate column name/i.test(String(error.message))) throw error;
+  }
   columnsChecked = true;
 }
 
@@ -124,6 +129,15 @@ async function addMissingColumns(db) {
 // src/config.json
 var config_default = {
   version: "2026-11-17-balanced-selection",
+  automation: {
+    daily_targets: { company: 30, policy: 45, competitor: 45, hospital: 30, conference: 10 },
+    canon_source_order: ["S030", "S029", "S028", "B014", "B015", "B013", "B001"],
+    reserved_company_slots: 10,
+    reserve_release_hour: 17,
+    afternoon_hour: 14,
+    twice_daily_sources: ["S030", "S029", "S012", "S018", "S002", "S004", "S001", "S005", "S006", "S009", "S011", "S021", "B002", "B003", "B004", "B005", "B007", "B008", "B009", "B010"],
+    slow_sources: { S014: 2, S016: 3, S022: 2 }
+  },
   categories: [
     {
       id: "company",
@@ -1392,12 +1406,12 @@ var config_default = {
     }
   ],
   auto_order: [
+    "S030",
+    "S029",
+    "S028",
     "S012",
     "S018",
     "S002",
-    "S028",
-    "S030",
-    "S029",
     "B013",
     "B014",
     "B015",
@@ -1449,7 +1463,7 @@ function automationSettings(env) {
     enabled: String(env.AUTO_ENABLED || "false").toLowerCase() === "true",
     sourceLimit: integer(env, "AUTO_SOURCE_LIMIT", 24, 1, 40),
     // 하루에 목록을 확인할 정보원 수 (최대 40곳)
-    maxBodies: integer(env, "AUTO_MAX_BODY_PER_DAY", 120, 1, 240)
+    maxBodies: integer(env, "AUTO_MAX_BODY_PER_DAY", 160, 1, 240)
   };
 }
 function koreaNow(time = Date.now()) {
@@ -2793,6 +2807,162 @@ function assessArticle(title, source2, excerpt = {}) {
   ] };
 }
 
+// src/scheduler.js
+var config = config_default.automation;
+var categories = ["company", "policy", "competitor", "hospital", "conference"];
+var labels = { company: "캐논", policy: "정책", competitor: "경쟁사", hospital: "병원", conference: "학회" };
+var rotation = ["policy", "competitor", "hospital", "policy", "competitor", "conference"];
+var conference = /학회|학술대회|학술회의|심포지엄|symposium|congress|conference/i;
+var failure = (job) => ["error", "aborted"].includes(job.status);
+var utcTime = (value) => {
+  if (!value) return 0;
+  const text2 = String(value).replace(" ", "T");
+  return Date.parse(/(?:Z|[+-]\d{2}:?\d{2})$/.test(text2) ? text2 : text2 + "Z");
+};
+var total = (values) => values.reduce((sum, n) => sum + n, 0);
+function dailyTargets(maxBodies) {
+  const base = config.daily_targets;
+  const scale = maxBodies / total(Object.values(base));
+  const targets = Object.fromEntries(categories.map((c) => [c, Math.floor(base[c] * scale)]));
+  let remaining = maxBodies - total(Object.values(targets));
+  for (const c of [...categories].sort((a, b) => base[b] * scale % 1 - base[a] * scale % 1)) {
+    if (remaining <= 0) break;
+    targets[c]++;
+    remaining--;
+  }
+  return targets;
+}
+function collectionCadence(source2) {
+  if (["snuh", "sev", "amc", "cmc"].includes(source2.kind)) return { days: 3, twice: false };
+  return { days: config.slow_sources[source2.id] || 1, twice: config.twice_daily_sources.includes(source2.id) };
+}
+function canonRank(sourceId) {
+  const index = config.canon_source_order.indexOf(sourceId);
+  return index < 0 ? 1e3 : index;
+}
+function dueCollections(sources, day, hour, jobs, runs = []) {
+  if (hour < 7) return [];
+  const today = Date.parse(day + "T00:00:00+09:00");
+  return sources.flatMap((source2) => {
+    const cadence = collectionCadence(source2);
+    const slot = cadence.twice && hour >= config.afternoon_hour ? "pm" : "am";
+    const slotStart = today + (slot === "pm" ? config.afternoon_hour : 7) * 36e5;
+    const completedSlot = jobs.some((j) => j.kind === "list" && j.source_id === source2.id && (j.job_key === day + ":list:" + source2.id + ":" + slot || j.job_key === day + ":list:" + source2.id && (slot === "am" || utcTime(j.started_at) >= slotStart)));
+    if (completedSlot) return [];
+    const record = runs.find((r) => r.source_id === source2.id);
+    if (utcTime(record?.last_run) >= slotStart) return [];
+    const lastDay = record?.last_success ? koreaNow(utcTime(record.last_success)).day : "1970-01-01";
+    if (cadence.days > 1 && Date.parse(day) - Date.parse(lastDay) < cadence.days * 864e5) return [];
+    return [{ source: source2, slot }];
+  }).sort((a, b) => canonRank(a.source.id) - canonRank(b.source.id));
+}
+function annotate(row) {
+  const source2 = SOURCE_BY_ID[row.source_id];
+  let category = row.category || row.suggested_category || source2?.categories[0] || "hospital";
+  if (source2?.kind === "canon_official") category = "company";
+  if (category === "hospital" && conference.test(row.title || "")) category = "conference";
+  let entity = row.entity || "";
+  if (category === "competitor") {
+    entity = config_default.rules.find((r) => r.category === "competitor" && r.main.some((word) => hasWord(row.title || "", word)))?.id || entity || row.source_id;
+  }
+  const title = row.title || "";
+  const signature = [...new Set(title.normalize("NFKC").match(/\d+(?:[.,]\d+)*/g) || [])].sort().join("|");
+  return { ...row, category, entity, story: { signature, pieces: globalThis.NewsRules.titlePieces(title) } };
+}
+function sameStory(a, b) {
+  if (!a.title || !b.title || a.category !== b.category) return false;
+  if (a.category === "competitor" && a.entity !== b.entity) return false;
+  const dateA = a.published_date || a.first_collected_at?.slice(0, 10);
+  const dateB = b.published_date || b.first_collected_at?.slice(0, 10);
+  if (!dateA || !dateB || Math.abs(Date.parse(dateA) - Date.parse(dateB)) > 3 * 864e5) return false;
+  if (a.story.signature !== b.story.signature) return false;
+  return globalThis.NewsRules.similarity(a.story.pieces, b.story.pieces) >= 0.6;
+}
+function pendingQueue(pending, sources, daily, published) {
+  const active = new Map(sources.map((s) => [s.id, s]));
+  const attempted = new Set(daily.filter((j) => j.kind === "body").map((j) => j.article_id));
+  const queued = pending.filter((row) => {
+    const source2 = active.get(row.source_id);
+    return source2 && source2.name === row.source_name && !attempted.has(row.id) && daily.filter((j) => j.source_id === source2.id && failure(j)).length < 3;
+  }).map(annotate).sort((a, b) => canonRank(a.source_id) - canonRank(b.source_id) || String(b.published_date || "").localeCompare(a.published_date || "") || a.id - b.id);
+  const representatives = /* @__PURE__ */ new Map();
+  const key = (row) => row.category + ":" + (row.category === "competitor" ? row.entity : "") + ":" + row.story.signature;
+  const remember2 = (row) => {
+    const id = key(row);
+    if (!representatives.has(id)) representatives.set(id, []);
+    representatives.get(id).push(row);
+  };
+  for (const row of [...daily.filter((j) => j.kind === "body" && j.status === "success").map(annotate), ...published.map(annotate)]) remember2(row);
+  return queued.map((row) => {
+    const duplicate = (representatives.get(key(row)) || []).some((other) => sameStory(row, other));
+    if (!duplicate) remember2(row);
+    return { ...row, duplicate };
+  });
+}
+function schedulerState({ sources, day, hour, daily, runs = [], pending = [], published = [], maxBodies }) {
+  const bodies = daily.filter((j) => j.kind === "body").map(annotate);
+  const targets = dailyTargets(maxBodies);
+  const counts = Object.fromEntries(categories.map((c) => [c, bodies.filter((j) => j.category === c).length]));
+  const queue = pendingQueue(pending, sources, daily, published);
+  const due = dueCollections(sources, day, hour, daily, runs).filter(({ source: source2 }) => daily.filter((j) => j.source_id === source2.id && failure(j)).length < 3);
+  const companyReserve = Math.min(targets.company, config.reserved_company_slots, Math.ceil(config.reserved_company_slots * maxBodies / 160));
+  const reserved = hour < config.reserve_release_hour ? Math.min(companyReserve, Math.max(0, targets.company - counts.company)) : 0;
+  return {
+    bodies,
+    targets,
+    counts,
+    queue,
+    due,
+    reserved,
+    remaining: Math.max(0, maxBodies - bodies.length),
+    companyMorningLimit: targets.company - companyReserve,
+    companyAfternoonReady: hour >= config.afternoon_hour,
+    categories: categories.map((category) => ({
+      category,
+      name: labels[category],
+      target: targets[category],
+      done: counts[category],
+      pending: queue.filter((a) => a.category === category).length,
+      duplicates: queue.filter((a) => a.category === category && a.duplicate).length
+    }))
+  };
+}
+function chooseBody(state, maxBodies, canonOnly = false) {
+  if (!state.remaining) return null;
+  let pool = state.queue.filter((row) => (!canonOnly || row.category === "company") && (row.category !== "company" || state.companyAfternoonReady || state.counts.company < state.companyMorningLimit) && (row.category === "company" || state.bodies.length < maxBodies - state.reserved));
+  const novel = pool.filter((row) => !row.duplicate);
+  if (novel.length) pool = novel;
+  const underTarget = pool.filter((row) => state.counts[row.category] < state.targets[row.category]);
+  if (underTarget.length) pool = underTarget;
+  else if (state.due.length) return null;
+  if (!pool.length) return null;
+  const rounds = state.bodies.filter((j) => j.category !== "company").length;
+  let bucket = canonOnly ? "company" : null;
+  for (let i = 0; !bucket && i < rotation.length; i++) {
+    const c = rotation[(rounds + i) % rotation.length];
+    if (pool.some((row) => row.category === c)) bucket = c;
+  }
+  bucket ||= "company";
+  const sourceUse = (row) => state.bodies.filter((j) => j.source_id === row.source_id).length;
+  const entityUse = (row) => state.bodies.filter((j) => j.category === row.category && j.entity === row.entity).length;
+  const last = state.bodies.at(-1);
+  return pool.filter((row) => row.category === bucket).sort((a, b) => (bucket === "company" ? canonRank(a.source_id) - canonRank(b.source_id) : 0) || (bucket === "competitor" ? entityUse(a) - entityUse(b) : 0) || Number(a.source_id === last?.source_id) - Number(b.source_id === last?.source_id) || sourceUse(a) - sourceUse(b) || String(b.published_date || "").localeCompare(a.published_date || "") || a.id - b.id)[0] || null;
+}
+function planNextTask(input) {
+  const state = schedulerState(input);
+  const canonList = state.due.find(({ source: source2 }) => canonRank(source2.id) < 1e3);
+  const canonBody = state.counts.company < state.targets.company ? chooseBody(state, input.maxBodies, true) : null;
+  if (canonBody && (!canonList || canonRank(canonBody.source_id) < canonRank(canonList.source.id))) return { kind: "body", candidate: canonBody, source: SOURCE_BY_ID[canonBody.source_id], state };
+  if (canonList) return { kind: "list", ...canonList, state };
+  const body = chooseBody(state, input.maxBodies);
+  const last = input.daily.at(-1);
+  if (body && (last?.kind === "list" || !state.due.length)) return { kind: "body", candidate: body, source: SOURCE_BY_ID[body.source_id], state };
+  if (state.due.length) return { kind: "list", ...state.due[0], state };
+  if (body) return { kind: "body", candidate: body, source: SOURCE_BY_ID[body.source_id], state };
+  const status = !state.remaining ? "limit" : state.queue.length && state.reserved ? "reserved" : "idle";
+  return { status, state, message: status === "limit" ? "오늘 기사 처리 상한에 도달했습니다." : status === "reserved" ? "캐논 오후 갱신용 " + state.reserved + "회를 남겨두고 대기합니다. " + config.reserve_release_hour + "시부터 다른 기사에도 배분합니다." : "현재 처리할 작업이 없습니다. 다음 수집 시간에 다시 확인합니다." };
+}
+
 // src/service.js
 function parseExcerpt(value) {
   try {
@@ -3076,14 +3246,31 @@ function automationSources(env) {
   const sources = config_default.auto_order.filter((id) => SOURCE_BY_ID[id]).map((id) => SOURCE_BY_ID[id]);
   return sources.slice(0, automationSettings(env).sourceLimit);
 }
+async function schedulerData(db, day) {
+  const daily = await all(db, `SELECT j.*,c.title,c.url,c.published_date,c.suggested_category,c.first_collected_at
+    FROM monitor_jobs j LEFT JOIN news_candidates c ON c.id=j.article_id
+    WHERE j.run_day=? ORDER BY j.started_at,j.job_key`, [day]);
+  const runs = await all(db, `SELECT source_id,MAX(started_at) AS last_run,
+    MAX(CASE WHEN run_status='success' THEN started_at END) AS last_success FROM collection_runs GROUP BY source_id`);
+  const pending = await all(db, `SELECT id,source_id,source_name,title,url,published_date,suggested_category,first_collected_at
+    FROM news_candidates WHERE ${PENDING_CONDITION}
+    AND NOT EXISTS(SELECT 1 FROM monitor_jobs j WHERE j.run_day=? AND j.kind='body' AND j.article_id=news_candidates.id)
+    AND NOT EXISTS(SELECT 1 FROM articles a WHERE a.url=news_candidates.url AND a.title=news_candidates.title AND a.review_status='published')
+    ${PENDING_SORT}`, [CURRENT_VERSION, day]);
+  const published = await all(db, `SELECT title,url,category,entity,published_date FROM articles
+    WHERE review_status='published' AND is_sample=0 AND published_date>=? AND published_date<=?`, [addDays(day, -3), day]);
+  return { daily, runs, pending, published };
+}
 async function automationStatus(env) {
   const settings = automationSettings(env);
   const sources = automationSources(env);
-  const day = koreaNow().day;
+  const { day, hour } = koreaNow();
   const control = await first(env.DB, "SELECT * FROM monitor_control WHERE id=1");
-  const jobs = await all(env.DB, "SELECT * FROM monitor_jobs WHERE run_day=? ORDER BY started_at DESC,job_key DESC", [day]);
+  const data = await schedulerData(env.DB, day);
+  const jobs = data.daily;
+  const state = schedulerState({ ...data, sources, day, hour, maxBodies: settings.maxBodies });
   const active = sources.map((s) => s.id);
-  const recent = jobs.slice(0, 8).map((j) => ({ ...j, source: SOURCE_BY_ID[j.source_id]?.label || j.source_id }));
+  const recent = jobs.slice(-8).reverse().map((j) => ({ ...j, source: SOURCE_BY_ID[j.source_id]?.label || j.source_id }));
   return {
     setupRequired: false,
     settings,
@@ -3093,9 +3280,15 @@ async function automationStatus(env) {
     last_message: control.last_message,
     source_count: sources.length,
     sources: sources.map((s) => s.label || s.name),
-    lists_done: jobs.filter((j) => j.kind === "list" && active.includes(j.source_id)).length,
+    lists_done: new Set(jobs.filter((j) => j.kind === "list" && active.includes(j.source_id)).map((j) => j.source_id)).size,
+    lists_run: jobs.filter((j) => j.kind === "list").length,
+    lists_due: state.due.length,
     bodies_done: jobs.filter((j) => j.kind === "body").length,
     failed: jobs.filter((j) => j.status === "error" || j.status === "aborted").length,
+    categories: state.categories,
+    pending_count: state.queue.length,
+    reserved_slots: state.reserved,
+    reserve_release_hour: config_default.automation.reserve_release_hour,
     recent
   };
 }
@@ -3122,8 +3315,9 @@ async function sourceStatus(env) {
       // 최근 7일 동안 찾은 새 기사 수
       errorCount: row.error_count || 0,
       // 최근 7일 실패 횟수
-      lastError: lastError ? lastError.error_message : ""
+      lastError: lastError ? lastError.error_message : "",
       // 가장 최근 수집이 실패했다면 그 이유
+      cadence: collectionCadence(s)
     };
   });
 }
@@ -3137,46 +3331,27 @@ async function scheduledStep(env, manual = false, time = Date.now()) {
     await run(db, "UPDATE monitor_jobs SET status='aborted',finished_at=CURRENT_TIMESTAMP,message='이전 작업 중단' WHERE status='running' AND started_at<=datetime('now','-3 minutes')");
     await run(db, "DELETE FROM monitor_jobs WHERE run_day<date(?,'-7 days')", [day]);
     const control = await first(db, "SELECT * FROM monitor_control WHERE id=1");
-    const daily = await all(db, "SELECT * FROM monitor_jobs WHERE run_day=?", [day]);
     const isFailed = (j) => j.status === "error" || j.status === "aborted";
     if (control.pause_day === day) return { status: "paused", message: "오늘 자동 수집이 중지되어 있습니다." };
+    const data = await schedulerData(db, day);
+    const daily = data.daily;
     if (daily.filter(isFailed).length >= 10) {
       await run(db, "UPDATE monitor_control SET pause_day=?,last_tick=CURRENT_TIMESTAMP,last_message='하루 실패 10회로 중지' WHERE id=1", [day]);
       return { status: "paused", message: "하루 실패 10회로 중지" };
     }
     const sources = automationSources(env);
-    let source2 = sources.find((s) => !daily.some((j) => j.kind === "list" && j.source_id === s.id)) || null;
-    let kind = "list";
-    let candidate = null;
-    if (!source2) {
-      if (daily.filter((j) => j.kind === "body").length >= settings.maxBodies) {
-        await sendDailyBriefing(env, day);
-        return { status: "limit", message: "오늘 기사 처리 상한에 도달했습니다." };
-      }
-      kind = "body";
-      const pendingRows = await all(db, `SELECT id, source_id, source_name FROM news_candidates WHERE ${PENDING_CONDITION}
-        AND NOT EXISTS(SELECT 1 FROM monitor_jobs j WHERE j.run_day=? AND j.kind='body' AND j.article_id=news_candidates.id)
-        ${PENDING_SORT}`, [CURRENT_VERSION, day]);
-      for (const s of sources) {
-        if (daily.filter((j) => j.source_id === s.id && isFailed(j)).length >= 3) continue;
-        const row = pendingRows.find((r) => r.source_id === s.id && r.source_name === s.name);
-        if (row) {
-          source2 = s;
-          candidate = row;
-          break;
-        }
-      }
-      if (!source2) {
-        await sendDailyBriefing(env, day);
-        await run(db, "UPDATE monitor_control SET last_tick=CURRENT_TIMESTAMP,last_message='처리할 작업 없음' WHERE id=1");
-        return { status: "idle", message: "처리할 작업 없음" };
-      }
+    const plan = planNextTask({ ...data, sources, day, hour: manual && hour < 7 ? 7 : hour, maxBodies: settings.maxBodies });
+    if (!plan.kind) {
+      await sendDailyBriefing(env, day);
+      await run(db, "UPDATE monitor_control SET last_tick=CURRENT_TIMESTAMP,last_message=? WHERE id=1", [plan.message]);
+      return { status: plan.status, message: plan.message };
     }
-    const key = day + ":" + kind + ":" + (candidate ? candidate.id : source2.id);
+    const { source: source2, kind, candidate } = plan;
+    const key = day + ":" + kind + ":" + (candidate ? candidate.id : source2.id + ":" + plan.slot);
     const claimed = await first(
       db,
-      "INSERT OR IGNORE INTO monitor_jobs(job_key,run_day,kind,source_id,article_id,status) VALUES(?,?,?,?,?,'running') RETURNING job_key",
-      [key, day, kind, source2.id, candidate ? candidate.id : null]
+      "INSERT OR IGNORE INTO monitor_jobs(job_key,run_day,kind,source_id,article_id,category,status) VALUES(?,?,?,?,?,?,'running') RETURNING job_key",
+      [key, day, kind, source2.id, candidate ? candidate.id : null, candidate?.category || ""]
     );
     if (!claimed) return { status: "skipped", message: "이미 처리한 작업" };
     await run(db, "UPDATE monitor_control SET last_tick=CURRENT_TIMESTAMP,last_message=? WHERE id=1", [source2.name + " · 처리 중"]);
@@ -3185,7 +3360,7 @@ async function scheduledStep(env, manual = false, time = Date.now()) {
     try {
       const result = kind === "list" ? await collectSource(env, source2, true) : await readBody(env, source2, candidate.id);
       const doneMessage = kind === "list" ? "목록 확인 완료 · 새 기사 " + result.saved + "건" : "기사 확인 완료";
-      message = result.error || result.warning || result.message || doneMessage;
+      message = result.error || result.warning || result.message || result.reasons?.join(" / ") || doneMessage;
       if (result.error) status = "error";
       else if (result.skipped || result.message) status = "skipped";
       else status = "success";
