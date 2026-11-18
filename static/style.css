@@ -258,7 +258,7 @@ select:hover{border-color:var(--ink-2)}
 .stat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
 .stat-box{background:white;border:1px solid var(--line);border-radius:var(--radius);padding:22px 24px}
 .stat-box.wide{grid-column:1/-1}
-.company-comparison{grid-template-columns:minmax(0,4fr) minmax(0,1fr);align-items:stretch}
+.company-comparison{grid-template-columns:minmax(0,7fr) minmax(0,3fr);align-items:stretch}
 .company-comparison>.stat-box{min-width:0}
 .company-trend-scroll{overflow-x:auto}
 .company-comparison>.company-share{padding:20px 14px}

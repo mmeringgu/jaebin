@@ -9,6 +9,8 @@ export function hasWord(text, word) {
   // 일본어 제목의 전각 영문(ＣＡＮＯＮ·ＣＴ·ＭＲＩ)도 같은 단어로 판정합니다.
   const lowerText = text.normalize("NFKC").toLowerCase();
   const lowerWord = word.normalize("NFKC").toLowerCase();
+  // 캐논데일처럼 다른 이름의 일부인 경우는 제외하고 메디컬·메디칼 붙임 표기만 허용합니다.
+  if (lowerWord === "캐논") return /캐논(?=메디[컬칼]|$|[^\p{L}\p{N}_])/u.test(lowerText);
   // 기관명·직종이 지명이나 다른 단어 일부에 섞인 경우는 제외합니다.
   if (lowerWord === "정부") return /(?<![가-힣])정부(?=$|[\s·,.'"“”‘’():…]|가|는|의|에|와|도|를)/u.test(lowerText);
   if (lowerWord === "전문의") return /전문의(?!약품)/u.test(lowerText);

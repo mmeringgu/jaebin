@@ -6,7 +6,7 @@
 // 같은 회사도 기사마다 "지멘스", "Siemens Healthineers"처럼 다르게 써서, 찾을 단어를 여러 개 둡니다. (소문자로)
 // mine: true는 우리 회사입니다. (빨간색으로 강조)
 const COMPANIES=[
- {name:'캐논메디칼',words:['캐논메디칼','캐논 메디칼','canon medical'],mine:true},
+ {name:'캐논',words:['캐논메디칼','캐논 메디칼','캐논메디컬','캐논 메디컬','canon medical'],mine:true},
  {name:'지멘스',words:['지멘스','siemens']},
  {name:'GE',words:['ge헬스케어','ge 헬스케어','ge healthcare','지이헬스케어'],tagWords:['ge']}, // "GE"는 짧아서 본문에서는 찾지 않고 키워드 태그로만 확인합니다.
  {name:'필립스',words:['필립스','philips']},
@@ -51,6 +51,7 @@ let statsPeriod='week'; // 회사별 언급 수 추이: 'week'(주간) 또는 'm
 function statsArticles(){
  return articles.filter(function(a){return !a.hidden;});
 }
+function domesticExposureArticles(list){return list.filter(function(a){return !a.hidden&&NewsRules.isDomesticMedia(a);});}
 function textOf(a){return [a.title,a.subtitle,a.summary].join(' ').toLowerCase();}
 function linkOf(a){return '<a href="'+esc(a.url)+'" target="_blank" rel="noopener noreferrer">'+esc(a.title)+'</a>';}
 function shortDate(day){return day.slice(5).replace('-','/');}
@@ -93,11 +94,16 @@ function periods(){
 // ───── 1. 경쟁사·우리회사 ─────
 // 회사별 언급 수 추이 (표)
 function companyTrend(list){
+ list=domesticExposureArticles(list).filter(function(a){return a.date<=kstDate(0);});
  const ps=periods();
  const head='<tr><th>회사</th>'+ps.map(function(p){return '<th class="num">'+p.label+'</th>';}).join('')+'<th class="num">변화</th></tr>';
- const body=COMPANIES.map(function(c){
+ const rows=COMPANIES.map(function(c){
   const mine=list.filter(function(a){return mentions(a,c);});
   const counts=ps.map(function(p){return mine.filter(function(a){return a.date>=p.start&&a.date<=p.end;}).length;});
+  return {c:c,counts:counts,total:counts.reduce(function(sum,n){return sum+n;},0)};
+ }).sort(function(a,b){return b.total-a.total;});
+ const body=rows.map(function(row){
+  const c=row.c,counts=row.counts;
   const now=counts[counts.length-1],before=counts[counts.length-2];
   return '<tr'+(c.mine?' class="mine-row"':'')+'><td class="trend-name">'+esc(c.name)+'</td>'+
    counts.map(function(n,i){return '<td class="num'+(i===counts.length-1?' now':'')+'">'+n+'</td>';}).join('')+
@@ -106,7 +112,7 @@ function companyTrend(list){
  const toggle='<div class="seg" role="group" aria-label="기간 단위">'+
   '<button type="button" class="seg-button'+(statsPeriod==='week'?' on':'')+'" data-stats-period="week">주간</button>'+
   '<button type="button" class="seg-button'+(statsPeriod==='month'?' on':'')+'" data-stats-period="month">월간</button></div>';
- return '<div class="stat-box company-trend"><div class="box-head"><h3>회사별 언급 수 추이</h3>'+toggle+'</div>'+
+ return '<div class="stat-box company-trend"><div class="box-head"><h3>회사별 언급 수 추이 <span class="muted">표시 기간 합계순</span></h3>'+toggle+'</div>'+
   '<div class="company-trend-scroll"><table class="trend-table">'+head+body+'</table></div></div>';
 }
 // 증감 표시: 늘면 ▲(빨강), 줄면 ▼(회색), 같으면 –
@@ -117,8 +123,7 @@ function changeMark(now,before){
 }
 // 언급 점유율: 최근 30일, 다섯 회사 언급 수 합계 중 각 회사 비율
 function companyShare(list){
- const since=kstDate(29);
- const recent=list.filter(function(a){return a.date>=since;});
+ const recent=recentExposureArticles(list);
  const rows=COMPANIES.map(function(c){return {c:c,n:recent.filter(function(a){return mentions(a,c);}).length};});
  const total=rows.reduce(function(sum,r){return sum+r.n;},0);
  rows.sort(function(x,y){return y.n-x.n;});
@@ -135,7 +140,7 @@ function companyShare(list){
 // 두 비교는 점유율과 같은 최근 30일·회사 판정 기준을 사용합니다.
 function recentExposureArticles(list){
  const since=kstDate(29),today=kstDate(0);
- return list.filter(function(a){return a.date>=since&&a.date<=today;});
+ return domesticExposureArticles(list).filter(function(a){return a.date>=since&&a.date<=today;});
 }
 function exposureCounts(list){
  return COMPANIES.map(function(c){return list.filter(function(a){return mentions(a,c);}).length;});
@@ -153,37 +158,39 @@ function mediaExposureRows(list){
   if(!counts.some(function(n){return n>0;}))return;
   // 같은 매체의 직접 수집과 빙 검색을 한 줄로 합칩니다.
   const name=String(a.source||'').replace(/\s*\(빙 검색\)\s*$/,'').trim()||'매체 미확인';
-  if(!media.has(name))media.set(name,{name:name,counts:COMPANIES.map(function(){return 0;})});
+  if(!media.has(name))media.set(name,{name:name,counts:COMPANIES.map(function(){return 0;}),competitorArticles:0});
   const row=media.get(name);
   counts.forEach(function(n,i){row.counts[i]+=n;});
+  // 여러 경쟁사를 동시에 언급해도 매체의 경쟁사 기사 수는 한 건입니다.
+  if(counts.some(function(n,i){return !COMPANIES[i].mine&&n>0;}))row.competitorArticles++;
  });
  return Array.from(media.values()).sort(function(a,b){
-  return b.counts.reduce(function(s,n){return s+n;},0)-a.counts.reduce(function(s,n){return s+n;},0)||a.name.localeCompare(b.name,'ko');
+  return b.competitorArticles-a.competitorArticles||b.counts.reduce(function(s,n){return s+n;},0)-a.counts.reduce(function(s,n){return s+n;},0)||a.name.localeCompare(b.name,'ko');
  });
 }
 function exposureTable(rows,label){
- const mine=COMPANIES.findIndex(function(c){return c.mine;});
- const head='<thead><tr><th scope="col">'+esc(label)+'</th>'+COMPANIES.map(function(c){return '<th scope="col" class="num'+(c.mine?' exposure-mine':'')+'">'+esc(c.name)+'</th>';}).join('')+'<th scope="col" class="num">언급 합계</th><th scope="col" class="num">캐논 점유율</th></tr></thead>';
+ const order=COMPANIES.map(function(c,i){return {c:c,index:i,total:rows.reduce(function(sum,row){return sum+row.counts[i];},0)};}).sort(function(a,b){return b.total-a.total;});
+ const head='<thead><tr><th scope="col">'+esc(label)+'</th>'+order.map(function(item){return '<th scope="col" class="num'+(item.c.mine?' exposure-mine':'')+'">'+esc(item.c.name)+'</th>';}).join('')+'</tr></thead>';
  const body=rows.map(function(row){
-  const total=row.counts.reduce(function(sum,n){return sum+n;},0);
   const max=Math.max(1,...row.counts);
-  return '<tr><th scope="row">'+esc(row.name)+'</th>'+row.counts.map(function(n,i){
-   return '<td class="num'+(COMPANIES[i].mine?' exposure-mine':'')+'"><span class="exposure-count">'+n+'<span class="exposure-track" aria-hidden="true"><span style="width:'+Math.round(n/max*100)+'%"></span></span></span></td>';
-  }).join('')+'<td class="num">'+total+'</td><td class="num">'+(total?Math.round(row.counts[mine]/total*100)+'%':'–')+'</td></tr>';
+  return '<tr><th scope="row">'+esc(row.name)+'</th>'+order.map(function(item){
+   const n=row.counts[item.index];
+   return '<td class="num'+(item.c.mine?' exposure-mine':'')+'"><span class="exposure-count">'+n+'<span class="exposure-track" aria-hidden="true"><span style="width:'+Math.round(n/max*100)+'%"></span></span></span></td>';
+  }).join('')+'</tr>';
  }).join('');
  return '<div class="exposure-scroll" tabindex="0" role="region" aria-label="'+esc(label)+'별 회사 언급 비교"><table class="trend-table exposure-table">'+head+'<tbody>'+body+'</tbody></table></div>';
 }
 function exposureComparisons(list){
- const basis='최근 30일 · 전체 분야 · 공통 선별 기준';
- const note='<p class="muted exposure-note">'+esc(basis)+' · 수집된 기사 기준입니다. 여러 회사를 언급한 기사는 회사별로 각각 집계하며, 캐논 점유율은 해당 행의 회사 언급 합계 대비 비율입니다.</p>';
+ const basis='최근 30일 · 국내 언론 기사만 · 전체 분야';
+ const note='<p class="muted exposure-note">'+esc(basis)+' · 여러 회사를 언급한 기사는 회사별로 각각 집계합니다. 회사 열은 표에 표시된 언급 수가 많은 순서입니다.</p>';
  const topics=topicExposureRows(list),media=mediaExposureRows(list);
  const hasTopics=topics.some(function(row){return row.counts.some(function(n){return n>0;});});
  return '<div class="exposure-comparisons"><div class="stat-box"><h3>분야별 회사 비교</h3>'+note+
   '<p class="muted exposure-note">한 기사가 여러 분야에 해당하면 각 분야에 포함됩니다.</p>'+
   (hasTopics?exposureTable(topics,'분야'):'<p class="muted">조건에 맞는 분야별 회사 언급 기사가 없습니다.</p>')+'</div>'+
   '<div class="stat-box"><h3>매체별 노출 비교</h3>'+note+
-  '<p class="muted exposure-note">매체·공식 정보원별로 비교합니다. 같은 매체의 빙 검색 결과는 합산하며, 언급 합계가 많은 순서입니다.</p>'+
-  (media.length?exposureTable(media,'매체·정보원'):'<p class="muted">조건에 맞는 매체별 회사 언급 기사가 없습니다.</p>')+'</div></div>';
+  '<p class="muted exposure-note">같은 국내 언론사의 빙 검색 결과는 합산합니다. 경쟁사 기사 수가 많은 매체부터 표시하며, 한 기사가 여러 경쟁사를 언급해도 정렬 기준에서는 한 건으로 셉니다.</p>'+
+  (media.length?exposureTable(media,'매체'):'<p class="muted">조건에 맞는 국내 매체별 회사 언급 기사가 없습니다.</p>')+'</div></div>';
 }
 // 회수·판매중지 현황: 경쟁사 이름과 회수·판매중지 단어가 함께 나온 기사
 function recallList(list){
@@ -197,15 +204,28 @@ function recallList(list){
  const body=rows.length?'<ul class="stat-list">'+rows.slice(0,10).map(function(r){
   return '<li><span class="list-date">'+shortDate(r.a.date)+'</span><span class="chip">'+esc(r.company)+'</span>'+linkOf(r.a)+' <span class="muted">'+esc(r.a.source)+'</span></li>';
  }).join('')+'</ul>':'<p class="muted">최근 90일 동안 언론에 나온 경쟁사 회수·판매중지 소식이 없습니다.</p>';
- return '<div class="stat-box"><h3>회수·판매중지 현황 <span class="muted">경쟁사 품질 이슈</span></h3>'+body+'</div>';
+ return '<div class="stat-box"><h3>회수·판매중지 현황</h3>'+body+'</div>';
 }
 
 // ───── 2. 병원 ─────
 // 기사 제목에서 병원 이름을 꺼냅니다. 예) "OO대학교병원, 암센터 신축" → "OO대학교병원"
-// "병원"·"의료원"으로 끝나는 첫 단어를 씁니다. 못 찾으면 "–"
+// "병원"·"의료원"으로 끝나는 첫 이름과 뒤에 붙은 분원·캠퍼스를 씁니다. 못 찾으면 "–"
 function hospitalNameOf(a){
- const m=a.title.match(/[가-힣A-Za-z0-9]+(?:병원|의료원)/);
- return m?m[0]:'–';
+ const title=a.title.normalize('NFKC');
+ const m=title.match(/[가-힣A-Za-z0-9]+(?:대학교\s*병원|대\s*병원|병원|의료원)(?:\s+[가-힣A-Za-z0-9]*(?:분원|캠퍼스))?/);
+ return m?m[0].replace(/\s+/g,' ').trim():'–';
+}
+// 약칭만 통일하고 지역·분원명은 남겨 서로 다른 병원이 합쳐지지 않게 합니다.
+function hospitalKeyOf(name){
+ return name.normalize('NFKC').replace(/\s+/g,'').replace(/대학(?:교)?병원/g,'대병원').toLowerCase();
+}
+// 착공·준공 등 진행 단계가 달라도 같은 시설이면 같은 사업입니다.
+function hospitalProjectOf(a){
+ const title=a.title.normalize('NFKC');
+ const name=hospitalNameOf(a);
+ const projectTitle=name==='–'?title:title.replace(name,' ');
+ const targets=projectTitle.match(/[가-힣A-Za-z0-9]+센터|[가-힣A-Za-z0-9]*(?:별관|본관|신관|동관|서관|남관|북관)|제\d+병동/g)||[];
+ return Array.from(new Set(targets)).sort().join(' · ')||'병원 전체';
 }
 // 기사에서 예상 시기(개원·준공 예정 시기)를 찾습니다. 못 찾으면 "–"
 // 예) "2027년 3월 개원 예정" → "2027년 3월", "내년 상반기 준공" → "내년 상반기"
@@ -223,12 +243,27 @@ function isNewHospitalNews(a){
  const name=hospitalNameOf(a);
  return name!=='–'&&!GENERIC_HOSPITALS.includes(name);
 }
-// 신설·증설 병원: 위 조건에 맞는 기사만 표(병원명·예상 시기·출처)로 보여줍니다.
+// 병원명·사업별로 모으고 최신 기사를 대표로 씁니다. 원본 기사는 모두 보존합니다.
+function hospitalProjects(list){
+ const groups=new Map();
+ list.filter(isNewHospitalNews).slice().sort(NewsRules.compareNewest).forEach(function(a){
+  const name=hospitalNameOf(a),project=hospitalProjectOf(a);
+  const key=hospitalKeyOf(name)+'|'+project;
+  if(!groups.has(key))groups.set(key,{name:name,project:project,main:a,articles:[]});
+  const group=groups.get(key);
+  if(!group.articles.some(function(old){return old.url===a.url;}))group.articles.push(a);
+ });
+ return Array.from(groups.values());
+}
+// 신설·증설 병원: 사업당 한 줄, 추가 보도는 같은 줄의 출처로 표시합니다.
 function newHospitals(list){
- const rows=list.filter(isNewHospitalNews);
- const body=rows.length?'<table class="trend-table"><tr><th>병원명</th><th>예상 시기</th><th>출처 기사</th></tr>'+rows.slice(0,15).map(function(a){
-  const source='<a href="'+esc(a.url)+'" target="_blank" rel="noopener noreferrer">'+esc(a.source)+' · '+shortDate(a.date)+'</a>';
-  return '<tr><td class="trend-name">'+esc(hospitalNameOf(a))+'</td><td>'+esc(openTimeOf(a))+'</td><td class="trend-latest">'+source+'</td></tr>';
+ const rows=hospitalProjects(list);
+ const body=rows.length?'<table class="trend-table"><tr><th>병원명</th><th>사업</th><th>예상 시기</th><th>출처 기사</th></tr>'+rows.slice(0,15).map(function(group){
+  const sources=group.articles.map(function(a){
+   return '<a href="'+esc(a.url)+'" target="_blank" rel="noopener noreferrer">'+esc(a.source)+' · '+shortDate(a.date)+'</a>';
+  });
+  const source=sources[0]+(sources.length>1?'<details><summary>추가 출처 '+(sources.length-1)+'건</summary>'+sources.slice(1).join('<br>')+'</details>':'');
+  return '<tr><td class="trend-name">'+esc(group.name)+'</td><td>'+esc(group.project)+'</td><td>'+esc(openTimeOf(group.main))+'</td><td class="trend-latest">'+source+'</td></tr>';
  }).join('')+'</table>':'<p class="muted">최근 90일 동안 개원·센터 신설 기사가 없습니다.</p>';
  return '<div class="stat-box wide"><h3>신설·증설 병원</h3>'+body+'</div>';
 }
@@ -273,7 +308,7 @@ function policyBoard(statuses){
    '<td>'+(s.now?stageSteps(s.now):'<span class="muted">–</span>')+'</td>'+
    '<td class="trend-latest">'+latest+'</td></tr>';
  }).join('');
- return '<div class="stat-box wide"><h3>정책 현황판 <span class="muted">추적 중인 정책의 현재 단계</span></h3>'+
+ return '<div class="stat-box wide"><h3>정책 현황판</h3>'+
   '<table class="trend-table policy-table"><tr><th>정책</th><th>현재 단계</th><th>근거 기사</th></tr>'+rows+'</table></div>';
 }
 function policyChanges(statuses){

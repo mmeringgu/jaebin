@@ -255,6 +255,7 @@ export async function articles(env, titleOptions = {}) {
     result.push({
       id: row.id, category: groups[0]?.category || row.category, match_level: selectionLevel(groups),
       entity: groups[0]?.mainMatches[0] || row.entity || "", date: row.published_date, source: row.source,
+      domestic_media: globalThis.NewsRules.isDomesticMedia({ url: row.url, source: row.source, source_kind: sources[0]?.kind }),
       title: translatedTitle(excerpt, row.title) || row.title,
       original_title: translatedTitle(excerpt, row.title) ? row.title : "",
       url: row.url, subtitle: excerpt.subtitle || "",

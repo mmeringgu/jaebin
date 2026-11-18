@@ -97,6 +97,7 @@ test("뉴스·CSV는 공통 선별하고 제외 검토 API는 기존 데이터�
     insert.run(1, source.name, "검사수가 깎아 필수의료 지원", "https://www.docdocdoc.co.kr/news/articleView.html?idxno=1", excerpt);
     insert.run(2, source.name, "지멘스 산업용 컴퓨터 AI 공개", "https://www.docdocdoc.co.kr/news/articleView.html?idxno=2", excerpt);
     assert.deepEqual((await articles(env)).map((a) => a.id), [1]);
+    assert.equal((await articles(env))[0].domestic_media, true);
     const review = await worker.fetch(new Request("https://example.com/api/excluded-articles"), env);
     assert.equal(review.status, 200);
     const data = await review.json();

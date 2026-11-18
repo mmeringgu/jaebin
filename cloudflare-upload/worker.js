@@ -42,6 +42,68 @@ async function addMissingColumns(db) {
 
 // static/news-rules.js
 (function(root) {
+  const domesticMediaHosts = /* @__PURE__ */ new Set([
+    "docdocdoc.co.kr",
+    "whosaeng.com",
+    "medigatenews.com",
+    "khanews.com",
+    "medicaltimes.com",
+    "doctorsnews.co.kr",
+    "etnews.com",
+    "bosa.co.kr",
+    "rapportian.com",
+    "doctorstimes.com",
+    "dailypharm.com",
+    "medipana.com",
+    "monews.co.kr",
+    "yakup.com",
+    "yna.co.kr",
+    "chosun.com",
+    "donga.com",
+    "hankyung.com",
+    "sedaily.com",
+    "fnnews.com",
+    "joongang.co.kr",
+    "hani.co.kr",
+    "khan.co.kr",
+    "mk.co.kr",
+    "mt.co.kr",
+    "edaily.co.kr",
+    "asiae.co.kr",
+    "newsis.com",
+    "news1.kr",
+    "newspim.com",
+    "gukjenews.com",
+    "ytn.co.kr",
+    "kbs.co.kr",
+    "imbc.com",
+    "sbs.co.kr",
+    "koreaherald.com",
+    "koreatimes.co.kr",
+    "bizwatch.co.kr",
+    "businesspost.co.kr",
+    "medifonews.com",
+    "medworld.co.kr",
+    "healthinnews.co.kr",
+    "dailymedi.com"
+  ]);
+  function isDomesticMedia(a) {
+    if (typeof a.domestic_media === "boolean") return a.domestic_media;
+    if (["canon_official", "mohw", "mfds", "hira", "nhis", "kha", "snuh", "sev", "amc", "cmc"].includes(a.source_kind)) return false;
+    let host;
+    try {
+      host = new URL(a.url).hostname.toLowerCase().replace(/^www\./, "");
+    } catch {
+      return false;
+    }
+    const belongs = function(domain) {
+      return host === domain || host.endsWith("." + domain);
+    };
+    if (["canon", "canon.com", "canon.co.kr", "canon.kr", "medical.canon", "yahoo.com", "msn.com", "newswire.ca", "prnewswire.com", "businesswire.com", "globenewswire.com", "reuters.com", "bloomberg.com", "note.com", "nikkei.com"].some(belongs)) return false;
+    if ([...domesticMediaHosts].some(belongs)) return true;
+    const name = String(a.source || "").replace(/\s*\(빙 검색\)\s*$/, "").trim();
+    return host.endsWith(".kr") && !/\.(?:go|ac|or|re)\.kr$/.test(host) && !/공식|보도자료|병원|의료원|협회|학회|공단|진흥원|로이터|블룸버그|야후|Reuters|Bloomberg/i.test(name) && /뉴스|신문|일보|투데이|데일리|타임[스즈]|저널|프레스|미디어|방송|^KBS$|^MBC$|^SBS$|^YTN$|^KNN$/i.test(name);
+  }
   function isVeterinaryImaging(title) {
     const text2 = String(title || "");
     const veterinary = /(?<!필)수의(?!\s*계약)|동물|반려견|반려묘|강아지|고양이|(?:^|[^a-z0-9])(?:veterinary|veterinarian|vet|animal|canine|feline)(?=$|[^a-z0-9])/i.test(text2);
@@ -123,7 +185,7 @@ async function addMissingColumns(db) {
     });
     return groups;
   }
-  root.NewsRules = Object.freeze({ guessImpact, impactOf: impactOf2, compareNewest: compareNewest2, titlePieces, similarity, groupSameNews: groupSameNews2, isVeterinaryImaging });
+  root.NewsRules = Object.freeze({ guessImpact, impactOf: impactOf2, compareNewest: compareNewest2, titlePieces, similarity, groupSameNews: groupSameNews2, isVeterinaryImaging, isDomesticMedia });
 })(globalThis);
 
 // src/config.json
@@ -1481,6 +1543,7 @@ function hasWord(text2, word) {
   if (!word.trim()) return false;
   const lowerText = text2.normalize("NFKC").toLowerCase();
   const lowerWord = word.normalize("NFKC").toLowerCase();
+  if (lowerWord === "캐논") return /캐논(?=메디[컬칼]|$|[^\p{L}\p{N}_])/u.test(lowerText);
   if (lowerWord === "정부") return /(?<![가-힣])정부(?=$|[\s·,.'"“”‘’():…]|가|는|의|에|와|도|를)/u.test(lowerText);
   if (lowerWord === "전문의") return /전문의(?!약품)/u.test(lowerText);
   if (lowerWord === "수의") return /(?<!필)수의(?!\s*계약)/u.test(lowerText);
@@ -3166,6 +3229,7 @@ async function articles(env, titleOptions = {}) {
       entity: groups[0]?.mainMatches[0] || row.entity || "",
       date: row.published_date,
       source: row.source,
+      domestic_media: globalThis.NewsRules.isDomesticMedia({ url: row.url, source: row.source, source_kind: sources[0]?.kind }),
       title: translatedTitle(excerpt, row.title) || row.title,
       original_title: translatedTitle(excerpt, row.title) ? row.title : "",
       url: row.url,

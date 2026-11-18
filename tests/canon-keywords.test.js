@@ -2,12 +2,39 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
-import { keywordMatch, articleTags } from "../src/rules.js";
+import { keywordMatch, articleTags, hasWord } from "../src/rules.js";
 import { parseBingRss } from "../src/crawler.js";
 import { SOURCE_BY_ID } from "../src/settings.js";
 import { articles } from "../src/service.js";
 
 const source = SOURCE_BY_ID.B001;
+
+test("캐논 뒤에 붙는 다른 단어는 제외하고 메디컬·메디칼 표기는 유지합니다", () => {
+  for (const title of ["캐논데일 자전거 의료 연구", "캐논코리아 MRI 공개", "캐논헬스케어 병원 공급", "캐논ABC 의료기기", "캐논123 CT 출시"]) {
+    assert.equal(hasWord(title, "캐논"), false, title);
+    assert.equal(keywordMatch(title, source).some((group) => group.category === "company"), false, title);
+  }
+  for (const name of ["캐논", "캐논메디컬", "캐논메디칼", "캐논메디컬시스템즈", "캐논메디칼시스템즈", "캐논 메디컬", "캐논 메디칼", "캐논,", "캐논·", "'캐논'"]) {
+    const title = `${name} MRI 장비 출시`;
+    assert.equal(hasWord(title, "캐논"), true, title);
+    assert.equal(keywordMatch(title, source)[0]?.category, "company", title);
+  }
+  assert.equal(hasWord("캐논데일 의료 연구, 캐논 MRI 출시", "캐논"), true);
+});
+
+test("캐논데일은 RSS 수집과 기존 저장 기사 조회에서도 제외합니다", async () => {
+  const title = "캐논데일 자전거 의료 연구";
+  const url = "https://example.com/cannondale";
+  const rss = `<rss><channel><item><title>${title}</title><link>${url}</link>
+    <pubDate>${new Date().toUTCString()}</pubDate></item></channel></rss>`;
+  assert.equal(parseBingRss(rss, source).length, 0);
+  const row = { id: 89, title, url, category: "company", source: "빙 검색", published_date: "2026-11-18",
+    summary: JSON.stringify({ format: "excerpt", source_id: "B001", first_paragraph: "자전거 관련 소식입니다." }) };
+  const env = { DB: { prepare() {
+    return { bind() { return this; }, async all() { return { results: [row] }; } };
+  } } };
+  assert.deepEqual(await articles(env), []);
+});
 
 test("일본어·영어 메디컬 회사명과 의료 제목을 캐논 뉴스로 분류합니다", () => {
   for (const title of [

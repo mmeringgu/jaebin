@@ -50,7 +50,8 @@ test("일반 기사를 120회 처리했어도 캐논 후보를 우선 게시합�
   } finally { sqlite.close(); }
 });
 
-test("160회 상한은 캐논에도 적용하고 현황에 대기 후보와 배정량을 표시합니다", async () => {
+test("160회 상한은 캐논에도 적용하고 현황에 대기 후보와 배정량을 표시합니다", async (t) => {
+  t.mock.method(Date, "now", () => morning);
   const { sqlite, env, addBodyJobs, canon } = database();
   try {
     addBodyJobs(160);canon();

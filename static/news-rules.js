@@ -1,5 +1,22 @@
 // Shared title classification and duplicate grouping for browser and Worker.
 (function(root){
+// 제목의 언어나 번역 여부가 아닌 발행처 도메인으로 국내 언론 여부를 확인합니다.
+const domesticMediaHosts=new Set([
+ 'docdocdoc.co.kr','whosaeng.com','medigatenews.com','khanews.com','medicaltimes.com','doctorsnews.co.kr','etnews.com','bosa.co.kr','rapportian.com','doctorstimes.com','dailypharm.com','medipana.com','monews.co.kr','yakup.com','yna.co.kr',
+ 'chosun.com','donga.com','hankyung.com','sedaily.com','fnnews.com','joongang.co.kr','hani.co.kr','khan.co.kr','mk.co.kr','mt.co.kr','edaily.co.kr','asiae.co.kr','newsis.com','news1.kr','newspim.com','gukjenews.com',
+ 'ytn.co.kr','kbs.co.kr','imbc.com','sbs.co.kr','koreaherald.com','koreatimes.co.kr','bizwatch.co.kr','businesspost.co.kr','medifonews.com','medworld.co.kr','healthinnews.co.kr','dailymedi.com'
+]);
+function isDomesticMedia(a){
+ if(typeof a.domestic_media==='boolean')return a.domestic_media;
+ if(['canon_official','mohw','mfds','hira','nhis','kha','snuh','sev','amc','cmc'].includes(a.source_kind))return false;
+ let host;try{host=new URL(a.url).hostname.toLowerCase().replace(/^www\./,'');}catch{return false;}
+ const belongs=function(domain){return host===domain||host.endsWith('.'+domain);};
+ if(['canon','canon.com','canon.co.kr','canon.kr','medical.canon','yahoo.com','msn.com','newswire.ca','prnewswire.com','businesswire.com','globenewswire.com','reuters.com','bloomberg.com','note.com','nikkei.com'].some(belongs))return false;
+ if([...domesticMediaHosts].some(belongs))return true;
+ // 추가 빙 검색 매체는 국내 도메인과 언론사 표기를 모두 요구합니다. 기관·개인 글은 제외합니다.
+ const name=String(a.source||'').replace(/\s*\(빙 검색\)\s*$/,'').trim();
+ return host.endsWith('.kr')&&!/\.(?:go|ac|or|re)\.kr$/.test(host)&&!/공식|보도자료|병원|의료원|협회|학회|공단|진흥원|로이터|블룸버그|야후|Reuters|Bloomberg/i.test(name)&&/뉴스|신문|일보|투데이|데일리|타임[스즈]|저널|프레스|미디어|방송|^KBS$|^MBC$|^SBS$|^YTN$|^KNN$/i.test(name);
+}
 // 수의 맥락과 영상진단 맥락이 제목에 함께 있어야 Vet 분야로 봅니다.
 function isVeterinaryImaging(title){
  const text=String(title||'');
@@ -84,5 +101,5 @@ function groupSameNews(rows){
  return groups;
 }
 
-root.NewsRules=Object.freeze({guessImpact,impactOf,compareNewest,titlePieces,similarity,groupSameNews,isVeterinaryImaging});
+root.NewsRules=Object.freeze({guessImpact,impactOf,compareNewest,titlePieces,similarity,groupSameNews,isVeterinaryImaging,isDomesticMedia});
 })(globalThis);

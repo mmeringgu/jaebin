@@ -143,6 +143,7 @@ test("해외 RSS의 일본어·영어 기사를 수집하고 원문 그대로 �
       assert.equal(visible.title, title);
       assert.equal(visible.summary, description);
       assert.equal(visible.category, "company");
+      assert.equal(visible.domestic_media, false);
       const candidate = (await candidates(env, id)).find((row) => row.url === url);
       assert.equal(candidate.title, title);
       assert.equal(candidate.selection.level, "full");

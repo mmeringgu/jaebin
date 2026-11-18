@@ -5,16 +5,16 @@ import { runInNewContext } from "node:vm";
 
 const read = (name) => readFileSync(new URL(`../static/${name}.js`, import.meta.url), "utf8");
 const articlesScript = read("articles");
-const { matchesTopic } = runInNewContext(read("news-rules") + "\n" + articlesScript.slice(0, articlesScript.indexOf("function render(){")) + "\n({matchesTopic});");
-const article = (title, changes = {}) => ({ title, date: "2026-11-17", category: "competitor", source: "라포르시안", tags: [], hidden: false, ...changes });
+const { matchesTopic, NewsRules } = runInNewContext(read("news-rules") + "\n" + articlesScript.slice(0, articlesScript.indexOf("function render(){")) + "\n({matchesTopic,NewsRules});", { URL });
+const article = (title, changes = {}) => ({ title, date: "2026-11-17", category: "competitor", source: "라포르시안", url: "https://www.rapportian.com/news/articleView.html?idxno=1", tags: [], hidden: false, ...changes });
 function setup(articles = []) {
   const nodes = new Map();
   const get = (id) => {
     if (!nodes.has(id)) nodes.set(id, { value: "", checked: false, innerHTML: "", addEventListener() {} });
     return nodes.get(id);
   };
-  const api = runInNewContext(read("stats") + "\n({topicExposureRows,mediaExposureRows,exposureComparisons,statsArticles,renderStats});", {
-    document: { getElementById: get }, articles, matchesTopic,
+  const api = runInNewContext(read("stats") + "\n({topicExposureRows,mediaExposureRows,exposureComparisons,exposureTable,companyTrend,companyShare,statsArticles,renderStats,COMPANIES});", {
+    document: { getElementById: get }, articles, matchesTopic, NewsRules,
     kstDate: (days) => new Date(Date.UTC(2026, 10, 17 - days)).toISOString().slice(0, 10),
     esc: (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"),
   });
@@ -68,7 +68,7 @@ test("업계 동향은 숨김만 제외하고 뉴스 분야 필터와 독립적�
   assert.deepEqual(plain(api.mediaExposureRows(list))[0].counts, [0, 1, 1, 1, 0]);
 });
 
-test("노출 관리에 두 비교와 행 기준 점유율을 표시하며 매체 이름은 HTML로 실행하지 않습니다", () => {
+test("노출 관리에 비교를 표시하고 합계·캐논 점유율 열을 제거하며 매체 이름을 안전하게 표시합니다", () => {
   const api = setup([article("캐논메디칼 GE헬스케어 CT 협력", { source: '<img src=x onerror="alert(1)">' })]);
   const html = api.get("stats-company").innerHTML;
   assert.match(html, /분야별 회사 비교/);
@@ -78,12 +78,67 @@ test("노출 관리에 두 비교와 행 기준 점유율을 표시하며 매체
   assert.doesNotMatch(html, /<img/);
   assert.doesNotMatch(html, /NaN|Infinity/);
   assert.equal((html.match(/company-comparison/g) || []).length, 1);
+  const comparisons = api.exposureComparisons([article("캐논메디칼 GE헬스케어 CT 협력")]);
+  assert.doesNotMatch(comparisons, /캐논 점유율|언급 합계/);
+  assert.match(comparisons, /국내 언론 기사만/);
+  assert.match(comparisons, />캐논<\/th>/);
+});
+
+test("공식·해외·기관 기사는 제외하고 국내 언론사 기사만 모든 노출 분석에 반영합니다", () => {
+  const api = setup();
+  const list = [
+    article("캐논메디칼 CT 국내 공급", { category: "company" }),
+    article("캐논메디칼 MRI 글로벌 공급", { category: "company", source: "캐논 글로벌 공식", url: "https://global.medical.canon/news/1", original_title: "Canon Medical MRI launch" }),
+    article("캐논 CT 본사 발표", { category: "company", source: "캐논 본사", url: "https://global.canon/ja/news/1.html" }),
+    article("GE헬스케어 MRI 해외 출시", { source: "Yahoo Finance (빙 검색)", url: "https://finance.yahoo.com/news/1" }),
+    article("필립스 MRI 국내 보도", { source: "국제뉴스 (빙 검색)", url: "https://www.gukjenews.com/news/1" }),
+    article("지멘스 MRI 기관 안내", { source: "건강보험심사평가원", url: "https://www.hira.or.kr/bbs/1" }),
+  ];
+  const rows = plain(api.topicExposureRows(list));
+  assert.deepEqual(rows.find((r) => r.name === "CT").counts, [1, 0, 0, 0, 0]);
+  assert.deepEqual(rows.find((r) => r.name === "MRI").counts, [0, 0, 0, 1, 0]);
+  const domestic = article("필립스 MRI 국내 보도", { source: "스페셜타임스 (빙 검색)", url: "https://www.specialtimes.co.kr/news/1" });
+  assert.equal(NewsRules.isDomesticMedia(domestic), true);
+  assert.equal(NewsRules.isDomesticMedia(article("해외 번역", { source: "한국어 뉴스", url: "https://example.com/ko/1" })), false);
+  const media = plain(api.mediaExposureRows(list));
+  assert.deepEqual(media.map((r) => r.name), ["국제뉴스", "라포르시안"]);
+  assert.match(api.companyShare(list), /50%/);
+  const trend = api.companyTrend(list);
+  assert.doesNotMatch(trend, /NaN/);
+});
+
+test("회사 행·열은 언급 수 내림차순이고 정렬 후에도 각 회사의 수치를 유지합니다", () => {
+  const api = setup();
+  const list = [article("GE헬스케어 CT 첫 공급"), article("GE헬스케어 MRI 공급"), article("지멘스 CT 공급"), article("캐논메디칼 MRI 공급")];
+  const rows = api.topicExposureRows(list);
+  const table = api.exposureTable(rows, "분야");
+  const headers = [...table.matchAll(/<th scope="col"[^>]*>([^<]+)<\/th>/g)].map((m) => m[1]);
+  assert.deepEqual(headers.slice(0, 4), ["분야", "GE", "캐논", "지멘스"]);
+  const cells = table.match(/<th scope="row">CT<\/th>([\s\S]*?)<\/tr>/)[1];
+  const numbers = [...cells.matchAll(/class="exposure-count">(\d+)/g)].map((m) => Number(m[1]));
+  assert.deepEqual(numbers.slice(0, 3), [1, 0, 1]);
+  const trend = api.companyTrend(list);
+  assert.ok(trend.indexOf('class="trend-name">GE') < trend.indexOf('class="trend-name">캐논'));
+  assert.equal(api.COMPANIES.find((c) => c.mine).name, "캐논");
+});
+
+test("매체 정렬은 캐논 노출량보다 경쟁사 기사 수를 우선하고 다중 언급 기사도 한 건으로 셉니다", () => {
+  const api = setup();
+  const list = [
+    ...Array.from({ length: 8 }, () => article("캐논메디칼 MRI 공급", { source: "캐논 다수 매체" })),
+    article("GE헬스케어 지멘스 필립스 MRI 공동 연구", { source: "공동 보도 매체" }),
+    article("GE헬스케어 CT 공급", { source: "경쟁사 다수 매체" }),
+    article("지멘스 MRI 공급", { source: "경쟁사 다수 매체 (빙 검색)" }),
+  ];
+  const rows = plain(api.mediaExposureRows(list));
+  assert.deepEqual(rows.map((r) => r.name), ["경쟁사 다수 매체", "공동 보도 매체", "캐논 다수 매체"]);
+  assert.deepEqual(rows.map((r) => r.competitorArticles), [2, 1, 0]);
 });
 
 test("비교할 기사가 없으면 빈 상태를 안내합니다", () => {
   const api = setup();
   const html = api.exposureComparisons([]);
   assert.match(html, /조건에 맞는 분야별 회사 언급 기사가 없습니다/);
-  assert.match(html, /조건에 맞는 매체별 회사 언급 기사가 없습니다/);
+  assert.match(html, /조건에 맞는 국내 매체별 회사 언급 기사가 없습니다/);
   assert.doesNotMatch(html, /NaN|Infinity/);
 });
