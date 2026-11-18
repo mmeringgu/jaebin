@@ -212,10 +212,22 @@ select:hover{border-color:var(--ink-2)}
 .section{scroll-margin-top:120px;margin:32px 0}
 .industry-section{scroll-margin-top:calc(var(--header-height,104px) + 76px)}
 .competitor-sections{display:grid;gap:16px}
-.movement-table th,.movement-table td{vertical-align:top}
-.movement-table td:nth-child(2){min-width:220px}
-.movement-table td:nth-child(3){white-space:nowrap}
-.movement-table details{font-size:12px;margin-top:5px}
+.movement-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:stretch}
+.movement-card{min-width:0;border:1px solid var(--line);border-top:3px solid var(--gray-1);padding:20px;display:flex;flex-direction:column}
+.movement-company{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
+.movement-company h4{font-size:18px;font-weight:600;margin:0}
+.movement-company>span{font-size:12px;color:var(--ink-2);white-space:nowrap}
+.movement-kind{display:inline-block;font-size:11px;font-weight:500;background:var(--k10);color:var(--ink-2);padding:2px 7px;margin-bottom:7px}
+.movement-title{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere;font-size:14px;line-height:1.6;color:var(--ink);text-decoration:none}
+a.movement-title:hover{text-decoration:underline;text-underline-offset:3px}
+.movement-lead .movement-title{font-size:17px;font-weight:600;min-height:3.2em}
+.movement-meta{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:12px;color:var(--ink-2);margin-top:8px}
+.movement-sources{font-size:12px;margin-top:8px;overflow-wrap:anywhere}
+.movement-sources summary{cursor:pointer;color:var(--ink-2)}
+.movement-sources>div{margin-top:5px}
+.movement-more{margin-top:18px;border-top:1px solid var(--line)}
+.movement-more .movement-story{padding-top:14px}
+.movement-more .movement-story+.movement-story{margin-top:14px;border-top:1px solid var(--line)}
 .section-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--gray-1)}
 .section-head h2{font-size:18px;font-weight:300;letter-spacing:3px;margin:0;color:var(--red)}
 
@@ -385,6 +397,8 @@ footer{margin-top:56px;padding:20px 0 0;border-top:1px solid var(--gray-1);font-
  .summary-bar{flex-wrap:nowrap;overflow-x:auto}
  .summary-chip{white-space:nowrap;padding:6px 12px;font-size:13px}
  .stat-grid{grid-template-columns:1fr}
+ .movement-grid{grid-template-columns:1fr}
+ .movement-card{padding:16px}
  .toolbar select{flex:1}
  .item{padding:12px 14px}
  .item-title{font-size:15px}

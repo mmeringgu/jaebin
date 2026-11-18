@@ -209,13 +209,53 @@ function competitorMovementRows(list){
  });
  return rows.sort(function(a,b){return NewsRules.compareNewest(a.a,b.a);});
 }
+// 제목에서 확인되는 변화만 구분합니다. 본문에서 새 사실이나 영향을 추정하지 않습니다.
+function movementType(title){
+ if(/인허가|허가|승인|인증|FDA|CE\s*mark|clearance|approval|submission/i.test(title))return '인허가';
+ if(/협력|협약|계약|수주|공급|선정|partnership|collaborat|agreement|contract|supply/i.test(title))return '협력·수주';
+ if(/투자|공장|증설|생산|설립|착공|investment|factory|manufactur|production|facility/i.test(title))return '투자·생산';
+ if(/실적|매출|이익|분기|조직|대표|선임|이사회|인수|합병|분사|사업|results|revenue|quarter|earnings|board|appoint|acqui|rebrand|business/i.test(title))return '실적·조직';
+ if(/출시|신제품|공개|발표|도입|launch|introduc|unveil|new\s+(?:system|product)/i.test(title))return '제품 출시';
+ return '주요 변화';
+}
+function movementHeadline(row){
+ // 카드 머리의 회사명을 제목 앞에서만 덜어내고 제품·규모·시점 등 원문 사실은 유지합니다.
+ const company=COMPANIES.find(function(c){return c.name===row.company;});
+ const names=(company?company.words.concat(company.tagWords||[]):[row.company])
+  .concat(row.company==='지멘스'?['지멘스 헬시니어스','지멘스헬시니어스','Siemens Healthineers']:[])
+  .sort(function(a,b){return b.length-a.length;});
+ let title=String(row.a.title||'').trim();
+ for(const name of names){
+  if(title.toLowerCase().startsWith(name.toLowerCase())){
+   const rest=title.slice(name.length);
+   if(rest&&!/^[\s,，:：·…'’"“”‘「『]/.test(rest))continue;
+   const clean=rest.replace(/^['’]s\b/i,'').replace(/^[\s,，:：·…'’"“”‘「『]+/,'').trim();
+   if(clean.length>=8)title=clean;
+   break;
+  }
+ }
+ return title;
+}
+function movementStory(row,lead){
+ const a=row.a,headline=movementHeadline(row);
+ const link=/^https?:\/\//i.test(a.url)?'<a class="movement-title" href="'+esc(a.url)+'" target="_blank" rel="noopener noreferrer" title="'+esc(a.title)+'">'+esc(headline)+'</a>':'<span class="movement-title">'+esc(headline)+'</span>';
+ const others=row.others.length?'<details class="movement-sources"><summary>추가 출처 '+row.others.length+'건</summary>'+row.others.map(function(other){return '<div>'+linkOf(other)+' · '+esc(other.source)+'</div>';}).join('')+'</details>':'';
+ return '<div class="movement-story'+(lead?' movement-lead':'')+'"><span class="movement-kind">'+esc(movementType(a.title))+'</span>'+link+
+  '<div class="movement-meta"><time datetime="'+esc(a.date)+'">'+esc(shortDate(a.date))+'</time><span>'+esc(a.source)+'</span></div>'+others+'</div>';
+}
 function competitorMovements(list){
- const rows=competitorMovementRows(list);
- const body=rows.length?'<div class="table-scroll"><table class="trend-table movement-table"><thead><tr><th>회사</th><th>주요 변화</th><th>보도일</th><th>출처</th></tr></thead><tbody>'+rows.map(function(row){
-  const a=row.a;
-  const others=row.others.length?'<details><summary>추가 출처 '+row.others.length+'건</summary>'+row.others.map(function(other){return '<div>'+linkOf(other)+' · '+esc(other.source)+'</div>';}).join('')+'</details>':'';
-  return '<tr><th scope="row">'+esc(row.company)+'</th><td>'+linkOf(a)+others+'</td><td>'+esc(shortDate(a.date))+'</td><td>'+esc(a.source)+'</td></tr>';
- }).join('')+'</tbody></table></div>':'<p class="muted">최근 30일의 경쟁사 움직임 기사가 없습니다.</p>';
+ const companies=new Map();
+ competitorMovementRows(list).forEach(function(row){
+  if(!companies.has(row.company))companies.set(row.company,[]);
+  companies.get(row.company).push(row);
+ });
+ // rows가 최신순이므로 카드도 해당 회사의 최신 소식 순으로 배치됩니다.
+ const cards=Array.from(companies,function(entry){
+  const name=entry[0],rows=entry[1];
+  return '<article class="movement-card"><header class="movement-company"><h4>'+esc(name)+'</h4><span>최근 소식 '+rows.length+'건</span></header>'+
+   movementStory(rows[0],true)+(rows.length>1?'<div class="movement-more">'+rows.slice(1).map(function(row){return movementStory(row,false);}).join('')+'</div>':'')+'</article>';
+ });
+ const body=cards.length?'<div class="movement-grid">'+cards.join('')+'</div>':'<p class="muted">최근 30일의 경쟁사 움직임 기사가 없습니다.</p>';
  return '<div class="stat-box wide"><h3>경쟁사 움직임</h3>'+body+'</div>';
 }
 // 회수·판매중지 현황: 경쟁사 이름과 회수·판매중지 단어가 함께 나온 기사

@@ -170,7 +170,44 @@ test("업계 동향 이동 바는 뉴스와 같은 디자인이며 경쟁사 움
   assert.deepEqual([...nav.matchAll(/href="#([^"]+)"/g)].map((m) => m[1]), ["industry-competitor", "industry-policy", "industry-hospital"]);
   assert.deepEqual([...nav.matchAll(/<\/span>([^<]+)<\/a>/g)].map((m) => m[1]), ["경쟁사", "정책", "병원"]);
   assert.ok(html.indexOf('id="stats-movements"') < html.indexOf('id="stats-competitor"'));
+  assert.ok(html.indexOf('id="industry-competitor"') < html.indexOf('id="industry-policy"'));
+  assert.ok(html.indexOf('id="industry-policy"') < html.indexOf('id="industry-hospital"'));
   for (const id of ["industry-competitor", "industry-policy", "industry-hospital"]) assert.ok(html.includes(`id="${id}"`));
   const api = setup([article("지멘스 MRI 신제품 출시", { entity: "지멘스" })]);
   assert.match(api.get("stats-movements").innerHTML, /지멘스 MRI 신제품 출시/);
+});
+
+test("경쟁사 카드는 최신 회사부터 표시하고 대표 1건과 추가 2건으로 제한합니다", () => {
+  const api = setup();
+  const rows = [
+    article("지멘스 CT 100대 공급 계약", { entity: "지멘스", date: "2026-11-16", url: "https://example.com/1" }),
+    article("지멘스 MRI 3.0T 신제품 출시", { entity: "지멘스", date: "2026-11-15", url: "https://example.com/2" }),
+    article("지멘스 초음파 공장 투자", { entity: "지멘스", date: "2026-11-14", url: "https://example.com/3" }),
+    article("지멘스 이사회 대표 선임", { entity: "지멘스", date: "2026-11-13", url: "https://example.com/4" }),
+    article("GE헬스케어 CT FDA 승인", { entity: "GE헬스케어", url: "https://example.com/5" }),
+  ];
+  const html = api.competitorMovements(rows);
+  assert.equal((html.match(/<article class="movement-card">/g) || []).length, 2);
+  assert.equal((html.match(/movement-story movement-lead/g) || []).length, 2);
+  assert.equal((html.match(/class="movement-story"/g) || []).length, 2);
+  assert.ok(html.indexOf('<h4>GE</h4>') < html.indexOf('<h4>지멘스</h4>'));
+  assert.match(html, /최근 소식 3건/);
+  assert.match(html, />CT 100대 공급 계약<|>CT 100대 공급 계약<\/a>/);
+  assert.match(html, /협력·수주/);assert.match(html, /제품 출시/);assert.match(html, /투자·생산/);assert.match(html, /인허가/);
+  assert.doesNotMatch(html, /이사회 대표 선임|<table/);
+  const css = readFileSync(new URL('../static/style.css', import.meta.url), 'utf8');
+  assert.match(css, /\.movement-grid\{display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(css.slice(css.indexOf('@media(max-width:700px)')), /\.movement-grid\{grid-template-columns:1fr\}/);
+});
+
+test("카드 제목은 원문 사실과 전체 제목을 보존하며 HTML과 잘못된 원문 링크를 실행하지 않습니다", () => {
+  const api = setup();
+  const html = api.competitorMovements([
+    article("GE HealthCare’s new MRI system launches worldwide", { entity: "GE Healthcare", url: "https://example.com/ge" }),
+    article('필립스 <img src=x onerror=alert(1)> MRI 3.0T 출시', { entity: '필립스', url: 'javascript:alert(1)' }),
+  ]);
+  assert.match(html, /title="GE HealthCare’s new MRI system launches worldwide"/);
+  assert.match(html, />new MRI system launches worldwide<\/a>/);
+  assert.doesNotMatch(html, /<img|href="javascript:/);
+  assert.match(html, /MRI 3.0T 출시/);
 });
