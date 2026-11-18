@@ -5,7 +5,7 @@
  const toggle=document.getElementById('show-other');
  let rows=[],busy=false;
  function setBusy(value){busy=value;select.disabled=value;document.dispatchEvent(new CustomEvent('collection-busy',{detail:{busy:value}}));}
- async function api(path,input){const r=await fetch(path,input?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)}:{});let d;const raw=await r.text();try{d=JSON.parse(raw);}catch(e){if(/1102|exceeded.*(CPU|resource)|CPU.*limit/i.test(raw))throw new Error('FastAPI 실행 자원 한도를 초과했습니다.');throw new Error('응답을 확인하지 못했습니다. 새로고침하고 로그인 상태를 확인해 주세요.');}if(!r.ok)throw new Error(d.error||'처리 실패');return d;}
+ async function api(path,input){const r=await fetch(path,input?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)}:{});let d;const raw=await r.text();try{d=JSON.parse(raw);}catch(e){if(/1102|exceeded.*(CPU|resource)|CPU.*limit/i.test(raw))throw new Error('서버 처리 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.');throw new Error('응답을 확인하지 못했습니다. 새로고침하고 로그인 상태를 확인해 주세요.');}if(!r.ok)throw new Error(d.error||'처리 실패');return d;}
  function render(){
   const box=document.getElementById('candidate-list');box.replaceChildren();
   const selected=rows.filter(function(a){return a.selection.selected;});
@@ -24,7 +24,8 @@
   if(!selected.length&&!toggle.checked){const p=document.createElement('p');p.textContent='선별된 기사가 없습니다. 제외 후보도 보기에서 이유를 확인해 주세요.';box.append(p);}
  }
  async function refresh(){const d=await api('/api/candidates?source_id='+encodeURIComponent(select.value));rows=d.candidates;render();}
- select.onchange=async function(){rows=[];render();try{await refresh();resultBox.textContent='저장된 기사입니다.';}catch(e){resultBox.textContent=e.message;}};
+ // 정보원을 바꾸면 이 상자 안(선별 건수 자리)에 진행 상황을 보여줍니다.
+ select.onchange=async function(){const count=document.getElementById('selection-count');rows=[];render();count.textContent='불러오는 중…';try{await refresh();}catch(e){count.textContent=e.message;}};
  toggle.onchange=render;
  async function collect(sourceId){
   if(busy)return;

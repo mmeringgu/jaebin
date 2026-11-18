@@ -22,7 +22,7 @@ function renderReport(report,output){
  });
 }
 (function(){
- // 월간 리포트: 최근 30일 기사를 바탕으로 생성합니다.
+ // 월간 요약: 최근 30일 기사를 바탕으로 생성합니다.
  const monthButton=document.getElementById('report-month-button');
  const statusBox=document.getElementById('report-status');
  const output=document.getElementById('report-output');
@@ -33,7 +33,7 @@ function renderReport(report,output){
   statusBox.textContent='월간 요약을 만드는 중입니다… (최대 2분 정도 걸릴 수 있어요)';
   try{
    const r=await fetch('/api/monthly-report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})});
-   const d=await r.json();
+   let d;try{d=await r.json();}catch(e){throw new Error('월간 요약 응답을 확인하지 못했습니다. 시간이 오래 걸렸을 수 있으니 잠시 후 다시 눌러 주세요.');}
    if(!r.ok)throw new Error(d.error||'월간 요약을 만들지 못했습니다.');
    renderReport(d.report,output);
    statusBox.textContent=d.since+' ~ '+d.until+' · 기사 '+d.article_count+'건으로 작성';

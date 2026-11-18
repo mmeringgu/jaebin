@@ -6,7 +6,7 @@
   busy=true;button.disabled=true;status.textContent='제외 기사를 확인하는 중…';
   try{
    const r=await fetch('/api/excluded-articles');
-   const data=await r.json();
+   let data;try{data=await r.json();}catch(e){throw new Error('제외 기사 응답을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.');}
    if(!r.ok)throw new Error(data.error||'제외 기사 조회 실패');
    if(!Array.isArray(data.articles))throw new Error('제외 기사 응답을 확인하지 못했습니다.');
    box.replaceChildren();

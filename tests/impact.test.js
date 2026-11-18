@@ -84,7 +84,7 @@ test("직접 분류는 저장 성공 후 화면과 필터에 반영합니다", a
       assert.equal(rows[0].impact_override, undefined);
       assert.ok(controls.every((b) => b.disabled));
     },
-    render() { rendered++; }, alert() { assert.fail("저장 실패"); },
+    render() { rendered++; }, showNotice() { assert.fail("저장 실패"); },
   });
   await save(button);
   assert.equal(rows[0].impact_override, "위협");
@@ -100,7 +100,7 @@ test("저장 실패 시 기존 분류를 유지하고 다시 선택할 수 있�
     articles: rows,
     async postJson() { throw new Error("저장 실패"); },
     render() { assert.fail("저장 실패 상태를 반영하면 안 됩니다."); },
-    alert(value) { message = value; },
+    showNotice(value) { message = value; },
   });
   await save({ getAttribute(name) { return name === "data-impact" ? "1" : "위협"; }, closest() { return { querySelectorAll() { return controls; } }; } });
   assert.equal(rows[0].impact_override, "기회");
