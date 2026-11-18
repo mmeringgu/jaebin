@@ -188,7 +188,7 @@ function exposureComparisons(list){
   '<div class="stat-box"><h3>매체별 노출 비교</h3>'+
   (media.length?exposureTable(media,'매체'):'<p class="muted">조건에 맞는 국내 매체별 회사 언급 기사가 없습니다.</p>')+'</div></div>';
 }
-// 경쟁사 움직임은 최근 30일 기사에서 회사별 같은 소식을 묶어 최신 3건씩 표시합니다.
+// 최근 30일 경쟁사 소식을 회사별로 묶고 중복 보도는 같은 행의 출처로 표시합니다.
 function competitorMovementRows(list){
  const since=kstDate(29),today=kstDate(0),companies=new Map();
  list.filter(function(a){return !a.hidden&&a.category==='competitor'&&a.date>=since&&a.date<=today
@@ -205,18 +205,9 @@ function competitorMovementRows(list){
  const rows=[];
  companies.forEach(function(items,name){
   const groups=NewsRules.groupSameNews(items).sort(function(a,b){return NewsRules.compareNewest(a.main,b.main);});
-  groups.slice(0,3).forEach(function(group){rows.push({company:name,a:group.main,others:group.others});});
+  groups.forEach(function(group){rows.push({company:name,a:group.main,others:group.others});});
  });
  return rows.sort(function(a,b){return NewsRules.compareNewest(a.a,b.a);});
-}
-// 제목에서 확인되는 변화만 구분합니다. 본문에서 새 사실이나 영향을 추정하지 않습니다.
-function movementType(title){
- if(/인허가|허가|승인|인증|FDA|CE\s*mark|clearance|approval|submission/i.test(title))return '인허가';
- if(/협력|협약|계약|수주|공급|선정|partnership|collaborat|agreement|contract|supply/i.test(title))return '협력·수주';
- if(/투자|공장|증설|생산|설립|착공|investment|factory|manufactur|production|facility/i.test(title))return '투자·생산';
- if(/실적|매출|이익|분기|조직|대표|선임|이사회|인수|합병|분사|사업|results|revenue|quarter|earnings|board|appoint|acqui|rebrand|business/i.test(title))return '실적·조직';
- if(/출시|신제품|공개|발표|도입|launch|introduc|unveil|new\s+(?:system|product)/i.test(title))return '제품 출시';
- return '주요 변화';
 }
 function movementHeadline(row){
  // 카드 머리의 회사명을 제목 앞에서만 덜어내고 제품·규모·시점 등 원문 사실은 유지합니다.
@@ -236,12 +227,16 @@ function movementHeadline(row){
  }
  return title;
 }
-function movementStory(row,lead){
+function movementStory(row){
  const a=row.a,headline=movementHeadline(row);
  const link=/^https?:\/\//i.test(a.url)?'<a class="movement-title" href="'+esc(a.url)+'" target="_blank" rel="noopener noreferrer" title="'+esc(a.title)+'">'+esc(headline)+'</a>':'<span class="movement-title">'+esc(headline)+'</span>';
- const others=row.others.length?'<details class="movement-sources"><summary>추가 출처 '+row.others.length+'건</summary>'+row.others.map(function(other){return '<div>'+linkOf(other)+' · '+esc(other.source)+'</div>';}).join('')+'</details>':'';
- return '<div class="movement-story'+(lead?' movement-lead':'')+'"><span class="movement-kind">'+esc(movementType(a.title))+'</span>'+link+
-  '<div class="movement-meta"><time datetime="'+esc(a.date)+'">'+esc(shortDate(a.date))+'</time><span>'+esc(a.source)+'</span></div>'+others+'</div>';
+ const sources=[a].concat(row.others).filter(function(other){return /^https?:\/\//i.test(other.url);});
+ const links=sources.map(function(other,index){
+  const label=index?'+'+index:other.source||'원문';
+  const title=index?'추가 출처 '+row.others.length+'건 · '+other.source:other.source||'원문 기사';
+  return '<a href="'+esc(other.url)+'" target="_blank" rel="noopener noreferrer" title="'+esc(title)+'" aria-label="'+esc(title)+'">'+esc(label)+'</a>';
+ }).join(' ');
+ return '<li class="movement-story">'+link+'<time datetime="'+esc(a.date)+'">'+esc(shortDate(a.date))+'</time><span class="movement-row-sources">'+links+'</span></li>';
 }
 function competitorMovements(list){
  const companies=new Map();
@@ -253,7 +248,7 @@ function competitorMovements(list){
  const cards=Array.from(companies,function(entry){
   const name=entry[0],rows=entry[1];
   return '<article class="movement-card"><header class="movement-company"><h4>'+esc(name)+'</h4><span>최근 소식 '+rows.length+'건</span></header>'+
-   movementStory(rows[0],true)+(rows.length>1?'<div class="movement-more">'+rows.slice(1).map(function(row){return movementStory(row,false);}).join('')+'</div>':'')+'</article>';
+   '<ul class="movement-stories">'+rows.map(movementStory).join('')+'</ul></article>';
  });
  const body=cards.length?'<div class="movement-grid">'+cards.join('')+'</div>':'<p class="muted">최근 30일의 경쟁사 움직임 기사가 없습니다.</p>';
  return '<div class="stat-box wide"><h3>경쟁사 움직임</h3>'+body+'</div>';
@@ -348,8 +343,8 @@ function policyStatus(list){
   const related=list.filter(function(a){
    const text=a.title+' '+(a.subtitle||'');
    return p.words.some(function(w){return text.includes(w);});
-  });
-  const staged=related.filter(function(a){return stageOf(a)!=='';}); // articles는 최신 날짜순
+  }).sort(NewsRules.compareNewest);
+  const staged=related.filter(function(a){return stageOf(a)!=='';});
   const latest=staged[0]||null;
   const beforeWeek=staged.find(function(a){return a.date<weekStart;})||null;
   const now=latest?stageOf(latest):'';
@@ -377,10 +372,39 @@ function policyBoard(statuses){
  return '<div class="stat-box wide"><h3>정책 현황판</h3>'+
   '<div class="table-scroll"><table class="trend-table policy-table"><tr><th>정책</th><th>현재 단계</th><th>근거 기사</th></tr>'+rows+'</table></div></div>';
 }
+// 같은 기사·중복 보도는 한 번만 표시하되 정책마다 다른 이전 단계는 유지합니다.
+function policyChangeGroups(statuses){
+ const stages=new Map(),groups=[];
+ statuses.filter(function(s){return s.changed&&s.latest;}).forEach(function(s){
+  if(!stages.has(s.now))stages.set(s.now,[]);
+  stages.get(s.now).push(s);
+ });
+ stages.forEach(function(changed){
+  const articles=new Map();
+  changed.slice().sort(function(a,b){return NewsRules.compareNewest(a.latest,b.latest);}).forEach(function(s){
+   if(!articles.has(s.latest.url))articles.set(s.latest.url,s.latest);
+  });
+  NewsRules.groupSameNews(Array.from(articles.values())).forEach(function(story){
+   const urls=new Set([story.main].concat(story.others).map(function(a){return a.url;})),seen=new Set();
+   const changes=changed.filter(function(s){
+    if(!urls.has(s.latest.url)||seen.has(s.policy.name))return false;
+    seen.add(s.policy.name);return true;
+   });
+   groups.push({main:story.main,others:story.others,changes:changes});
+  });
+ });
+ return groups.sort(function(a,b){return NewsRules.compareNewest(a.main,b.main);});
+}
 function policyChanges(statuses){
- const changed=statuses.filter(function(s){return s.changed;});
- const body=changed.length?'<ul class="stat-list">'+changed.map(function(s){
-  return '<li><b>'+esc(s.policy.name)+'</b> <span class="stage-move">'+esc(s.before||'처음 확인')+' → <b>'+esc(s.now)+'</b></span> '+linkOf(s.latest)+'</li>';
+ const groups=policyChangeGroups(statuses);
+ const body=groups.length?'<ul class="stat-list policy-changes">'+groups.map(function(group){
+  const changes=group.changes.map(function(s){
+   return '<div><b>'+esc(s.policy.name)+'</b> <span class="stage-move">'+esc(s.before||'처음 확인')+' → <b>'+esc(s.now)+'</b></span></div>';
+  }).join('');
+  const others=group.others.length?'<span class="policy-change-sources">추가 출처 '+group.others.length+'건 · '+group.others.map(function(a){
+   return '<a href="'+esc(a.url)+'" target="_blank" rel="noopener noreferrer">'+esc(a.source||'원문')+'</a>';
+  }).join(' · ')+'</span>':'';
+  return '<li><div class="policy-change-stages">'+changes+'</div>'+linkOf(group.main)+others+'</li>';
  }).join('')+'</ul>':'<p class="muted">이번 주에 단계가 바뀐 정책이 없습니다.</p>';
  return '<div class="stat-box"><h3>이번 주 단계 변화</h3>'+body+'</div>';
 }

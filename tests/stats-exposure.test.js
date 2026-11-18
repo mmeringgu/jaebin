@@ -177,7 +177,7 @@ test("업계 동향 이동 바는 뉴스와 같은 디자인이며 경쟁사 움
   assert.match(api.get("stats-movements").innerHTML, /지멘스 MRI 신제품 출시/);
 });
 
-test("경쟁사 카드는 최신 회사부터 표시하고 대표 1건과 추가 2건으로 제한합니다", () => {
+test("경쟁사 카드는 최신 회사부터 표시하고 회사별 모든 소식을 간결한 행으로 모읍니다", () => {
   const api = setup();
   const rows = [
     article("지멘스 CT 100대 공급 계약", { entity: "지멘스", date: "2026-11-16", url: "https://example.com/1" }),
@@ -188,13 +188,14 @@ test("경쟁사 카드는 최신 회사부터 표시하고 대표 1건과 추가
   ];
   const html = api.competitorMovements(rows);
   assert.equal((html.match(/<article class="movement-card">/g) || []).length, 2);
-  assert.equal((html.match(/movement-story movement-lead/g) || []).length, 2);
-  assert.equal((html.match(/class="movement-story"/g) || []).length, 2);
+  assert.equal((html.match(/class="movement-story"/g) || []).length, 5);
   assert.ok(html.indexOf('<h4>GE</h4>') < html.indexOf('<h4>지멘스</h4>'));
-  assert.match(html, /최근 소식 3건/);
+  assert.match(html, /최근 소식 4건/);
   assert.match(html, />CT 100대 공급 계약<|>CT 100대 공급 계약<\/a>/);
-  assert.match(html, /협력·수주/);assert.match(html, /제품 출시/);assert.match(html, /투자·생산/);assert.match(html, /인허가/);
-  assert.doesNotMatch(html, /이사회 대표 선임|<table/);
+  assert.match(html, /이사회 대표 선임/);
+  assert.match(html, /<time datetime="2026-11-16">11\/16<\/time>/);
+  assert.match(html, /class="movement-row-sources"><a href="https:\/\/example.com\/1"/);
+  assert.doesNotMatch(html, /movement-kind|movement-lead|movement-meta|movement-more|<table|<details/);
   const css = readFileSync(new URL('../static/style.css', import.meta.url), 'utf8');
   assert.match(css, /\.movement-grid\{display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(css.slice(css.indexOf('@media(max-width:700px)')), /\.movement-grid\{grid-template-columns:1fr\}/);
