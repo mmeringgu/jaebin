@@ -54,20 +54,63 @@ function renderReport(report,output){
 // 월간 요약은 생성 요청 없이 중요 기사에서 바로 계산합니다.
 function importantReport(list){
  const since=kstDate(29),until=kstDate(0);
- const important=list.filter(function(a){return a.starred&&!a.hidden&&a.date>=since&&a.date<=until;}).slice().sort(NewsRules.compareNewest);
+ const important=NewsRules.monthlyArticles(list,since,until);
  const categories={company:'캐논 뉴스',policy:'정책',hospital:'병원',conference:'학회',competitor:'경쟁사'};
  function item(a){return {target:a.entity||categories[a.category]||'중요 기사',text:a.title,
   impact:['기회','위협'].includes(a.impact_override)?a.impact_override:'',
   sources:[{title:a.title,url:a.url,source:a.source,date:a.date}]};}
- return {since:since,until:until,count:important.length,sections:[
-  {title:'이번 달 핵심 동향',format:'table',empty_message:'최근 30일의 중요 기사가 없습니다.',items:important.map(item)},
-  {title:'비즈니스 기회',format:'table',empty_message:'선택된 기사가 없습니다.',items:important.filter(function(a){return a.impact_override==='기회';}).map(item)},
-  {title:'위협·리스크',format:'table',empty_message:'선택된 기사가 없습니다.',items:important.filter(function(a){return a.impact_override==='위협';}).map(item)}
+ return {since:since,until:until,count:important.length,
+  unclassified:important.filter(function(a){return a.category!=='policy'&&!['기회','위협'].includes(a.impact_override);}).length,sections:[
+  {title:'정책',format:'table',empty_message:'선택된 정책 기사가 없습니다.',items:important.filter(function(a){return a.category==='policy'&&!['기회','위협'].includes(a.impact_override);}).map(item)},
+  {title:'기회',format:'table',empty_message:'선택된 기사가 없습니다.',items:important.filter(function(a){return a.impact_override==='기회';}).map(item)},
+  {title:'위협',format:'table',empty_message:'선택된 기사가 없습니다.',items:important.filter(function(a){return a.impact_override==='위협';}).map(item)}
  ]};
 }
 function renderMonthlySummary(){
  const report=importantReport(articles);
  renderReport(report,document.getElementById('report-output'));
- document.getElementById('report-status').textContent=report.since+' ~ '+report.until+' · 중요 기사 '+report.count+'건';
+ document.getElementById('report-status').textContent=report.since+' ~ '+report.until+' · 중요 기사 '+report.count+'건'
+  +(report.unclassified?' · 미분류 '+report.unclassified+'건: 중요 기사에서 기회·위협을 선택해 주세요.':'');
+ refreshInsightState(report);
 }
-(function(){renderMonthlySummary();})();
+let monthlyInsightKey='',monthlyInsightBusy=false,monthlyInsightRequest=0;
+function insightKey(){return JSON.stringify(NewsRules.monthlyArticles(articles,kstDate(29),kstDate(0))
+ .map(function(a){return [a.id,a.url,a.title,a.summary,a.impact_override,a.category];}));}
+function refreshInsightState(report){
+ const button=document.getElementById('monthly-insight-button');
+ if(!button)return;
+ const key=insightKey();
+ if(monthlyInsightKey&&monthlyInsightKey!==key){
+  monthlyInsightRequest++;monthlyInsightBusy=false;monthlyInsightKey='';
+  document.getElementById('monthly-insight-output').replaceChildren();
+  document.getElementById('monthly-insight-status').textContent='중요 기사가 변경되었습니다. 인사이트를 다시 만들어 주세요.';
+ }
+ button.disabled=monthlyInsightBusy||report.count===0;
+ button.textContent=monthlyInsightBusy?'AI 인사이트 만드는 중…':'AI 인사이트 만들기';
+}
+async function createMonthlyInsights(){
+ if(monthlyInsightBusy)return;
+ const report=importantReport(articles),status=document.getElementById('monthly-insight-status');
+ if(!report.count){status.textContent='최근 30일의 중요 기사가 없습니다.';return;}
+ monthlyInsightBusy=true;monthlyInsightKey=insightKey();const requestId=++monthlyInsightRequest;
+ status.textContent='중요 기사를 바탕으로 대응 방향과 비즈니스 영향을 분석하고 있습니다…';refreshInsightState(report);
+ try{
+  const response=await fetch('/api/monthly-report',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+  const data=await response.json();
+  if(!response.ok)throw new Error(data.error||'인사이트를 만들지 못했습니다. 다시 시도해 주세요.');
+  if(requestId!==monthlyInsightRequest||monthlyInsightKey!==insightKey())return;
+  const items=data.report&&data.report.insights;
+  if(!Array.isArray(items)||items.length<2||items.length>3)throw new Error('인사이트 응답을 확인하지 못했습니다. 다시 시도해 주세요.');
+  const output=document.getElementById('monthly-insight-output');output.replaceChildren();
+  const list=document.createElement('ul');
+  items.forEach(function(item){const row=document.createElement('li'),text=document.createElement('div');text.textContent=item.text;
+   row.append(text);row.append(reportSources(item));list.append(row);});output.append(list);
+  status.textContent=data.since+' ~ '+data.until+' · 중요 기사 '+data.article_count+'건 분석';
+ }catch(error){if(requestId===monthlyInsightRequest)status.textContent=error.message;}
+ finally{if(requestId===monthlyInsightRequest){monthlyInsightBusy=false;refreshInsightState(importantReport(articles));}}
+}
+(function(){
+ const button=document.getElementById('monthly-insight-button');
+ if(button&&button.addEventListener)button.addEventListener('click',createMonthlyInsights);
+ renderMonthlySummary();
+})();

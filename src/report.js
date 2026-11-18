@@ -4,6 +4,28 @@ import { hasWord } from "./rules.js";
 
 const { groupSameNews, compareNewest } = globalThis.NewsRules;
 
+// AI가 만든 출처 번호를 중요 기사 원문에만 연결합니다.
+export function normalizeInsights(raw, articles) {
+  let value;
+  try { value = JSON.parse(raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim()); }
+  catch { return null; }
+  const seen = new Set();
+  const insights = (Array.isArray(value?.insights) ? value.insights : []).flatMap((item) => {
+    if (typeof item?.text !== "string" || !Array.isArray(item.sources)) return [];
+    const text = item.text.replace(/^\s*[-•*]\s*/, "").replace(/\s+/g, " ").trim();
+    const ids = [...new Set(item.sources)];
+    if (!text || text.length > 100 || seen.has(text) || !ids.length || !ids.every((id) =>
+      Number.isInteger(id) && id >= 1 && id <= articles.length && articles[id - 1].starred
+      && /^https?:\/\//i.test(articles[id - 1].url))) return [];
+    if (articles.some((a) => text === a.title || text === a.summary)) return [];
+    seen.add(text);
+    return [{ text, sources: ids.map((id) => {
+      const a = articles[id - 1];return { title: a.title, url: a.url, source: a.source, date: a.date };
+    }) }];
+  }).slice(0, 3);
+  return insights.length >= 2 ? { insights } : null;
+}
+
 function competitorNames(title) {
   return CONFIG.rules.filter((rule) => rule.category === "competitor" && rule.status === "사용" &&
     rule.main.some((word) => hasWord(title, word))).map((rule) => rule.main[0]);

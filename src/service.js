@@ -1,5 +1,5 @@
 // 기사 수집·저장·예약 수집의 전체 흐름입니다. (예전 app/service.py)
-import { monthlyReport } from "./ai_summary.js";
+import { monthlyInsights } from "./ai_summary.js";
 import { buildBriefing, sendBriefing } from "./briefing.js";
 import { loadCandidates, readArticle, normalizedDate, fetchPage, articleDetails } from "./crawler.js";
 import { cleanArticleTitle } from "./article-title.js";
@@ -8,7 +8,6 @@ import { MANUAL_CATEGORIES, manualArticleUrl, fetchManualArticle } from "./manua
 import { detailExcerpt, genericDetailExcerpt } from "./article-excerpt.js";
 import { resolveArticleTitles } from "./title-resolver.js";
 import { translatedTitle, translateExcerptTitle, warmArticleTranslations } from "./title-translation.js";
-import { selectReportArticles } from "./report.js";
 import { all, first, run } from "./db.js";
 import { articleTags, hostOf, keywordMatch, selectionLevel } from "./rules.js";
 import { assessArticle } from "./selection-policy.js";
@@ -402,19 +401,14 @@ export async function archiveOldArticles(env) {
 
 // ───────────────────────── 월간 리포트 · 브리핑 ─────────────────────────
 
-// 중요 기사를 우선하고 중복 보도가 많은 다른 소식도 활용해 리포트를 만듭니다.
-// 최근 30일 기사를 최대 60건 활용합니다.
+// 표와 동일하게 최근 30일 중요 기사만 중복 제거해 AI에 전달합니다.
 export async function makeReport(env, day) {
   const days = 30;
-  const maxCount = 60;
-
   const since = addDays(day, -(days - 1));
-  const inRange = (await visibleArticles(env)).filter((a) => a.date >= since && a.date <= day);
-  const chosen = selectReportArticles(inRange, maxCount);
-  if (chosen.length === 0) return { error: "최근 " + days + "일 동안 리포트에 쓸 기사가 없습니다." };
-
-  const report = await monthlyReport(env, chosen);
-  if (!report) return { error: "리포트를 만들지 못했습니다. OPENAI_API_KEY 설정과 인터넷 연결을 확인해 주세요." };
+  const chosen = globalThis.NewsRules.monthlyArticles(await visibleArticles(env), since, day);
+  if (chosen.length === 0) return { error: "최근 " + days + "일의 중요 기사가 없습니다." };
+  const report = await monthlyInsights(env, chosen);
+  if (!report) return { error: "AI 인사이트를 만들지 못했습니다. OPENAI_API_KEY 설정을 확인하거나 다시 시도해 주세요." };
   return { report, article_count: chosen.length, since, until: day };
 }
 
