@@ -6,6 +6,7 @@
 import { hostOf, keywordMatch, selectionLevel } from "./rules.js";
 import { cleanArticleTitle } from "./article-title.js";
 import { parseCanonCandidates, readCanonArticle } from "./canon.js";
+import { detailExcerpt } from "./article-excerpt.js";
 
 // ───────────────────────── 글자 정리 ─────────────────────────
 
@@ -682,6 +683,8 @@ export async function articleDetails(page, source, title = "") {
       excerpt_version: 2,
       subtitle,
       first_paragraph: first.length <= 300 ? first : first.slice(0, 299).trimEnd() + "…",
+      detail_text: detailExcerpt(chosen.paragraphs.filter((p) => !removed.includes(p) && !p.inFigure && !/caption|photo|credit/i.test(p.attrs)).map((p) => text(p.text)), title)
+        || detailExcerpt([text(joinParts(keptParts.filter((part) => !part.inFigure)))], title),
     },
   };
 }
@@ -718,6 +721,6 @@ function dateFromJson(jsonScripts) {
 // 기사 하나를 가져와 내용을 꺼냅니다.
 export async function readArticle(url, source, title, dateHint = null) {
   if (!articleUrl(url, source, true)) throw new Error("등록된 기사 주소가 아닙니다.");
-  if (source.kind === "canon_official") return readCanonArticle(url, source, dateHint);
+  if (source.kind === "canon_official") return readCanonArticle(url, source, dateHint, title);
   return articleDetails(await fetchPage(url, source), source, title);
 }

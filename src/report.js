@@ -9,19 +9,19 @@ function competitorNames(title) {
     rule.main.some((word) => hasWord(title, word))).map((rule) => rule.main[0]);
 }
 
-// 같은 소식은 한 번만 보내고 별표를 우선하되 다른 소식도 반드시 포함합니다.
+// 같은 소식은 한 번만 보내고 중요 기사를 우선하되 다른 소식도 반드시 포함합니다.
 export function selectReportArticles(rows, maxCount) {
   const stories = groupSameNews(rows).map((group) => {
     const members = [group.main, ...group.others];
     const starred = members.filter((a) => a.starred).sort(compareNewest);
-    const article = starred[0] || group.main;
+    const article = starred.find((a) => ["기회", "위협"].includes(a.impact_override)) || starred[0] || group.main;
     return { ...article, starred: starred.length > 0, duplicate_count: members.length,
       competitors: competitorNames(article.title) };
   });
   const byCoverage = (a, b) => b.duplicate_count - a.duplicate_count || compareNewest(a, b);
   const starred = stories.filter((a) => a.starred).sort(byCoverage);
   const others = stories.filter((a) => !a.starred).sort(byCoverage);
-  // 양쪽에 기사가 있으면 별표에 약 2/3, 다른 소식에 약 1/3을 우선 배정합니다.
+  // 양쪽에 기사가 있으면 중요 기사에 약 2/3, 다른 소식에 약 1/3을 우선 배정합니다.
   const starLimit = others.length ? Math.min(starred.length, Math.max(1, Math.floor(maxCount * 2 / 3))) : maxCount;
   const chosen = starred.slice(0, starLimit);
   chosen.push(...others.slice(0, maxCount - chosen.length));
@@ -52,10 +52,26 @@ export function normalizeReport(raw, articles) {
   const sections = [
     { title: "이번 달 핵심 동향", items: trends },
   ];
+  for (const [key, title, impact] of [["opportunities", "비즈니스 기회", "기회"], ["risks", "위협·리스크", "위협"]]) {
+    const eligible = (a) => a.starred && a.impact_override === impact;
+    const rows = (Array.isArray(value[key]) ? value[key] : []).flatMap((row) => {
+      const item = normalizeItem(row, eligible);
+      if (!item) return [];
+      const target = typeof row.target === "string" ? row.target.replace(/\s+/g, " ").trim().slice(0, 80) : "";
+      return [{ ...item, target: target || articles[row.sources[0] - 1].entity || "주요 변화" }];
+    }).slice(0, 3);
+    // 모델이 해당 영역을 누락해도 직접 선택한 기사는 원문 제목으로 표시합니다.
+    if (!rows.length) articles.forEach((a, index) => {
+      if (!eligible(a) || rows.length >= 3) return;
+      const item = normalizeItem({ text: a.title, sources: [index + 1] }, eligible);
+      if (item) rows.push({ ...item, target: a.entity || "주요 변화" });
+    });
+    sections.push({ title, format: "table", empty_message: "선택된 기사가 없습니다.", items: rows });
+  }
   const seen = new Set();
   const competitors = (Array.isArray(value.competitors) ? value.competitors : []).flatMap((row) => {
     if (!row || typeof row.name !== "string" || seen.has(row.name)) return [];
-    const item = normalizeItem(row, (a) => a.competitors.includes(row.name));
+    const item = normalizeItem(row, (a) => (a.competitors || []).includes(row.name));
     if (!item) return [];
     seen.add(row.name);
     return [{ ...item, target: row.name }];

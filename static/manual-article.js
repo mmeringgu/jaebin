@@ -2,7 +2,7 @@
  const get=function(id){return document.getElementById('manual-'+id);};
  const form=document.getElementById('manual-article-form'),fields=get('fields'),status=get('status');
  const url=get('url'),preview=get('preview'),save=get('save');
- let articleUrl='',busy=false;
+ let articleUrl='',detailText='',busy=false;
  function setBusy(value){busy=value;preview.disabled=value;save.disabled=value;fields.disabled=value||!articleUrl;url.disabled=value;}
  async function post(path,data){
   const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
@@ -16,6 +16,7 @@
   try{
    const d=await post('/api/manual-article-preview',{url:url.value.trim()});
    articleUrl=d.article.url;
+   detailText=d.article.detail_text||'';
    ['title','source','date','category','summary'].forEach(function(key){get(key).value=d.article[key]||'';});
    fields.hidden=false;status.textContent='내용을 확인하고 비어 있는 정보를 보완한 뒤 추가해 주세요.';
   }catch(e){status.textContent=e.message;}
@@ -23,7 +24,7 @@
  };
  form.addEventListener('submit',async function(event){
   event.preventDefault();if(busy||!articleUrl||!form.reportValidity())return;
-  const payload={url:articleUrl};['title','source','date','category','summary'].forEach(function(key){payload[key]=get(key).value.trim();});
+  const payload={url:articleUrl,detail_text:detailText};['title','source','date','category','summary'].forEach(function(key){payload[key]=get(key).value.trim();});
   setBusy(true);status.textContent='기사를 추가하는 중…';
   try{
    const d=await post('/api/manual-article',payload);

@@ -8,6 +8,13 @@ function reportSources(item){
  });
  return sources;
 }
+function validReport(report){
+ return report&&Array.isArray(report.sections)&&report.sections.every(function(s){
+  return typeof s.title==='string'&&Array.isArray(s.items)&&s.items.every(function(i){
+   return typeof i.text==='string'&&Array.isArray(i.sources)&&i.sources.every(function(source){return source&&typeof source.url==='string';});
+  });
+ });
+}
 function reportTable(section){
  const scroll=document.createElement('div');scroll.className='table-scroll';
  const table=document.createElement('table');table.className='report-table';
@@ -26,7 +33,7 @@ function reportTable(section){
    const symbol=document.createElement('span');
    symbol.className=item.impact==='기회'?'report-positive':'report-negative';
    symbol.textContent=item.impact==='기회'?'▲':'▼';
-   symbol.title=item.impact==='기회'?'긍정 영향 · 별표 기사 직접 선택':'부정 영향 · 별표 기사 직접 선택';
+   symbol.title=item.impact==='기회'?'긍정 영향 · 중요 기사 직접 선택':'부정 영향 · 중요 기사 직접 선택';
    symbol.setAttribute('role','img');symbol.setAttribute('aria-label',symbol.title);impact.append(symbol);
   }
   const source=document.createElement('td');source.append(reportSources(item));
@@ -39,7 +46,7 @@ function renderReport(report,output){
  report.sections.forEach(function(section){
   const heading=document.createElement('h3');heading.textContent=section.title;output.append(heading);
   if(!section.items.length){
-   const empty=document.createElement('p');empty.className='muted';empty.textContent='월간 요약에 포함할 항목이 없습니다.';output.append(empty);return;
+   const empty=document.createElement('p');empty.className='muted';empty.textContent=section.empty_message||'월간 요약에 포함할 항목이 없습니다.';output.append(empty);return;
   }
   if(section.format==='table'){output.append(reportTable(section));return;}
   const list=document.createElement('ul');
@@ -56,17 +63,30 @@ function renderReport(report,output){
  const monthButton=document.getElementById('report-month-button');
  const statusBox=document.getElementById('report-status');
  const output=document.getElementById('report-output');
+ const intro=document.getElementById('report-description');
+ const cacheKey='smd-monthly-report-v2';
+ intro.hidden=output.hasChildNodes();
+ // 같은 브라우저에서 다시 열어도 생성한 결과와 설명 숨김 상태를 유지합니다.
+ try{
+  const saved=JSON.parse(localStorage.getItem(cacheKey)||'null');
+  if(saved&&typeof saved.status==='string'&&validReport(saved.report)&&saved.report.sections.length){
+   renderReport(saved.report,output);intro.hidden=true;
+   statusBox.textContent=saved.status+' · 저장된 요약';
+  }
+ }catch(e){/* 저장된 결과가 없거나 형식이 다르면 새로 생성할 수 있습니다. */}
 
  async function makeReport(){
   monthButton.disabled=true;
-  output.replaceChildren();
   statusBox.textContent='월간 요약을 만드는 중입니다… (최대 2분 정도 걸릴 수 있어요)';
   try{
    const r=await fetch('/api/monthly-report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})});
    let d;try{d=await r.json();}catch(e){throw new Error('월간 요약 응답을 확인하지 못했습니다. 시간이 오래 걸렸을 수 있으니 잠시 후 다시 눌러 주세요.');}
    if(!r.ok)throw new Error(d.error||'월간 요약을 만들지 못했습니다.');
+   if(!validReport(d.report))throw new Error('월간 요약 형식을 확인하지 못했습니다. 다시 시도해 주세요.');
    renderReport(d.report,output);
+   intro.hidden=true;
    statusBox.textContent=d.since+' ~ '+d.until+' · 기사 '+d.article_count+'건으로 작성';
+   try{localStorage.setItem(cacheKey,JSON.stringify({report:d.report,status:statusBox.textContent}));}catch(e){}
   }catch(e){statusBox.textContent=e.message;}
   finally{monthButton.disabled=false;}
  }

@@ -1,4 +1,4 @@
-// 별표한 기사에만 직접 분류를 제공합니다.
+// 중요 기사에만 직접 분류를 제공합니다.
 function impactOf(a){return a.starred&&['기회','위협'].includes(a.impact_override)?a.impact_override:'';}
 
 function impactControls(a){

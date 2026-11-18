@@ -128,6 +128,7 @@ select:hover{border-color:var(--ink-2)}
 .check-label input{width:14px;height:14px;margin:0;accent-color:var(--red)}
 .toolbar .check-label{font-size:14px}
 .check-label:has(input:checked){background:var(--red);border-color:var(--red);color:white}
+.check-label.important-filter:has(input:checked){background:var(--red-soft);color:var(--ink-2)}
 
 /* ===== 뉴스 구역 (카테고리별) ===== */
 /* 카테고리로 이동했을 때 제목이 위에 붙은 두 줄(제목줄 + 카테고리 줄)에 가려지지 않게 그만큼 띄웁니다 */
@@ -168,6 +169,8 @@ select:hover{border-color:var(--ink-2)}
 .item-preview{margin:4px 0 0;font-size:13px;color:var(--ink-2)}
 .star{border:0;background:transparent;font-size:20px;line-height:1;cursor:pointer;color:var(--gray-1);padding:2px}
 .star:hover,.star.on{color:var(--red)}
+.star-symbol{font-family:Arial,sans-serif;font-size:20px;font-weight:400;line-height:1}
+.star.on .star-symbol,.important-star{color:var(--red)}
 .hidden-item{opacity:.5}
 
 /* "자세히"를 누르면 펼쳐지는 부분 */
@@ -178,7 +181,9 @@ select:hover{border-color:var(--ink-2)}
 .item-more[open] summary::before{content:"▾ "}
 .item-more summary:hover{color:var(--red)}
 .item-detail{display:flex;flex-direction:column;gap:10px;margin-top:10px;padding:16px;background:#f8f8f8;border:1px solid var(--line-2)}
-.detail-text{margin:0;font-size:14px;color:var(--ink-2);white-space:pre-line}
+.detail-text{margin:0;font-size:14px;color:var(--ink-2);white-space:pre-line;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:5;line-clamp:5;overflow:hidden;line-height:1.7;max-height:8.5em}
+.detail-text[hidden],.detail-message[hidden]{display:none}
+.detail-message{margin:0;font-size:12px}
 .tags{display:flex;gap:5px;flex-wrap:wrap}
 .tag{font-size:11px;border-radius:var(--radius);padding:1px 8px;background:var(--k10);color:var(--ink-2)}
 .same-news{font-size:13px}

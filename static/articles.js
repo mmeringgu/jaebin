@@ -36,17 +36,21 @@ function highlight(value){
 // 자세히를 눌렀을 때 이미 보이는 제목·첫 줄을 다시 보여주지 않기 위해서입니다.
 const PREVIEW_LENGTH=90; // 목록에 보여줄 글자 수 (두 줄 정도)
 function splitText(a){
- let body=String(a.summary||'').trim();
- // 기사 앞부분이 제목이나 부제목으로 시작하면 그 부분은 뺍니다. (이미 위에 보이므로)
- if(body.indexOf(a.title)===0)body=body.slice(a.title.length).trim();
- if(a.subtitle&&body.indexOf(a.subtitle)===0)body=body.slice(a.subtitle.length).trim();
- // 부제목이 있으면 목록에는 부제목, 자세히에는 본문 앞부분 전체
+ function clean(value){
+  let text=String(value||'').trim();
+  if(text.indexOf(a.title)===0)text=text.slice(a.title.length).trim();
+  if(a.subtitle&&text.indexOf(a.subtitle)===0)text=text.slice(a.subtitle.length).trim();
+  return text;
+ }
+ const summary=clean(a.summary),body=clean(a.detail_text||a.summary);
  if(a.subtitle)return {preview:a.subtitle,rest:body};
- if(body.length<=PREVIEW_LENGTH)return {preview:body,rest:''};
- // 단어 중간에서 자르지 않도록 90자 안쪽의 마지막 띄어쓰기에서 자릅니다.
- let cut=body.lastIndexOf(' ',PREVIEW_LENGTH);
- if(cut<40)cut=PREVIEW_LENGTH;
- return {preview:body.slice(0,cut)+' …',rest:'… '+body.slice(cut).trim()};
+ let cut=summary.length;
+ if(cut>PREVIEW_LENGTH){cut=summary.lastIndexOf(' ',PREVIEW_LENGTH);if(cut<40)cut=PREVIEW_LENGTH;}
+ const lead=summary.slice(0,cut).replace(/[…]+$/,'').trimEnd();
+ const preview=lead+(cut<summary.length?' …':'');
+ // 검색 설명과 원문이 다른 경우는 임의로 자르지 않고 원문을 보여줍니다.
+ const rest=body.indexOf(lead)===0?body.slice(lead.length).replace(/^[\s…]+/,''):body;
+ return {preview:preview,rest:rest};
 }
 // 기사 한 줄을 만듭니다. (신문 브리핑형)
 // 한 줄에는 제목·매체·날짜·미리보기만 보이고,
@@ -58,7 +62,8 @@ function card(a,others){
 
  const originalTitle=a.original_title?'<p class="original-title"><strong>원제</strong> '+esc(a.original_title)+'</p>':'';
 
- const star='<button type="button" class="star'+(a.starred?' on':'')+'" data-star="'+a.id+'" aria-label="중요 기사 표시" aria-pressed="'+(a.starred?'true':'false')+'">'+(a.starred?'★':'☆')+'</button>';
+ const starLabel=a.starred?'중요 해제':'중요 기사';
+ const star='<button type="button" class="star'+(a.starred?' on':'')+'" data-star="'+a.id+'" aria-label="'+starLabel+'" title="'+starLabel+'" aria-pressed="'+(a.starred?'true':'false')+'"><span class="star-symbol" aria-hidden="true">'+(a.starred?'★':'☆')+'</span></button>';
  const hideButton='<button type="button" class="text-button" data-hide="'+a.id+'">'+(a.hidden?'다시 보이기':'이 기사 숨기기')+'</button>';
 
  // 같은 소식을 다룬 다른 매체 기사 목록입니다.
@@ -67,7 +72,7 @@ function card(a,others){
   sameChip='<span class="chip">외 '+others.length+'개 매체</span>';
   sameNews='<div class="same-news"><strong>같은 소식을 다룬 기사</strong><ul>'+others.map(function(o){return '<li><a href="'+esc(o.url)+'" target="_blank" rel="noopener noreferrer">'+esc(o.title)+'</a> <span class="muted">'+esc(o.source)+' · '+esc(o.date)+'</span></li>';}).join('')+'</ul></div>';
  }
- // 별표한 기사에만 직접 선택한 분류와 선택 버튼을 표시합니다.
+ // 중요 기사에만 직접 선택한 분류와 선택 버튼을 표시합니다.
  const impactChip=impactControls(a);
 
  // 미리보기: 부제목이 있으면 부제목, 없으면 기사 앞부분 90자 정도
@@ -79,9 +84,10 @@ function card(a,others){
    '<div class="item-title"><a href="'+esc(a.url)+'" target="_blank" rel="noopener noreferrer">'+highlight(a.title)+'</a>'+impactChip+'</div>'+
    '<div class="item-meta"><span class="entity">'+highlight(a.entity)+'</span><span>'+esc(a.source)+'</span><span>'+esc(a.date.slice(5).replace('-','/'))+'</span>'+(a.manual?'<span class="chip">직접 추가</span>':'')+sameChip+'</div>'+
    (text.preview?'<p class="item-preview">'+highlight(text.preview)+'</p>':'')+
-   '<details class="item-more"><summary>자세히</summary><div class="item-detail">'+
+   '<details class="item-more" data-article-detail="'+a.id+'"><summary>자세히</summary><div class="item-detail">'+
     originalTitle+
-    (text.rest?'<p class="detail-text">'+highlight(text.rest)+'</p>':'')+
+    '<p class="detail-text"'+(text.rest?'':' hidden')+'>'+highlight(text.rest)+'</p>'+
+    '<p class="detail-message muted"'+(a.detail_loaded&&!text.rest?'':' hidden')+'>확인된 본문은 위에 모두 표시했습니다. 더 읽으려면 원문 링크를 이용해 주세요.</p>'+
     tags+track+sameNews+
     // 원문 링크는 "원문 보기" 대신 주소(URL) 자체를 보여줍니다. 길면 CSS가 끝을 "…"로 자릅니다.
     '<div class="detail-foot"><a class="source" href="'+esc(a.url)+'" target="_blank" rel="noopener noreferrer" title="'+esc(a.url)+'">🔗 '+esc(a.url)+'</a>'+hideButton+'</div>'+
@@ -116,7 +122,7 @@ function matchesPeriod(a,period){
  return a.date>=kstDate(days);
 }
 // 정렬
-// - 관련도순(기본): ⭐ 표시한 기사 먼저 → 맞은 키워드가 많은 기사 → 최신 기사
+// - 관련도순(기본): 중요 기사 먼저 → 맞은 키워드가 많은 기사 → 최신 기사
 // - 최신순: 날짜가 최근인 기사 먼저
 function sortRows(rows,sort){
  return rows.sort(function(a,b){
@@ -218,7 +224,7 @@ async function postJson(path,data){
  if(!r.ok){let m='저장하지 못했습니다.';try{m=(await r.json()).error||m;}catch(e){}throw new Error(m);}
  try{return await r.json();}catch(e){throw new Error('저장 결과를 확인하지 못했습니다. 새로고침해 주세요.');}
 }
-// 별표 저장: 저장하는 동안 버튼을 잠가서 여러 번 눌리지 않게 합니다.
+// 중요 표시 저장: 저장하는 동안 버튼을 잠가서 여러 번 눌리지 않게 합니다.
 async function saveStar(id,starred,button){
  if(button)button.disabled=true;
  try{await postJson('/api/article-star',{id:id,starred:starred});articles.forEach(function(a){if(a.id===id){a.starred=starred?1:0;if(!starred)a.impact_override='';}});render();}
@@ -233,7 +239,7 @@ async function saveHidden(id,hidden){
  }
  catch(e){showNotice(e.message);}
 }
-// 기사별 별표·영향 직접 분류·숨김·페이지 이동을 처리합니다.
+// 기사별 중요 표시·영향 직접 분류·숨김·페이지 이동을 처리합니다.
 document.getElementById('sections').addEventListener('click',function(event){
  const starButton=event.target.closest('button[data-star]');
  if(starButton){const id=Number(starButton.getAttribute('data-star'));const now=articles.find(function(a){return a.id===id;});saveStar(id,!(now&&now.starred),starButton);return;}

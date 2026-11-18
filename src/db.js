@@ -17,7 +17,7 @@ export async function run(db, sql, args = []) {
   return db.prepare(sql).bind(...args).run();
 }
 
-// 예전 D1에는 없는 칸(⭐, 메모, 브리핑 날짜, 숨김, 보관)을 추가합니다.
+// 예전 D1에는 없는 칸(★, 메모, 브리핑 날짜, 숨김, 보관)을 추가합니다.
 // 이미 있으면 오류가 나므로 그냥 넘어갑니다. Worker가 켜질 때 한 번만 실행됩니다.
 let columnsChecked = false;
 export async function addMissingColumns(db) {

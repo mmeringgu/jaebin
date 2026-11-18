@@ -1,6 +1,7 @@
 // 캐논 공식 뉴스는 실제 목록의 제목·날짜와 기사 첫 문단을 읽습니다.
 import { articleUrl, fetchPage, normalizedDate, text } from "./crawler.js";
 import { keywordMatch, selectionLevel } from "./rules.js";
+import { detailExcerpt } from "./article-excerpt.js";
 
 export function canonDate(value) {
   const clean = text(value || "");
@@ -67,7 +68,7 @@ export async function parseCanonCandidates(page, source) {
   return [...unique.values()];
 }
 
-export async function canonArticleDetails(page, source, url, dateHint = null) {
+export async function canonArticleDetails(page, source, url, dateHint = null, title = "") {
   let metaDate = "";
   let description = "";
   let paragraph = null;
@@ -87,14 +88,16 @@ export async function canonArticleDetails(page, source, url, dateHint = null) {
     },
   }).onDocument({ text(chunk) { if (paragraph) paragraph.text += chunk.text + (chunk.lastInTextNode ? " " : ""); } });
   await scan(page, rewriter);
-  const first = paragraphs.find((value) => value.length >= 40 && (value.match(/[\p{L}\p{N}]/gu) || []).length >= 20) || text(description);
+  const detail = detailExcerpt(paragraphs, title) || detailExcerpt([text(description)], title);
+  const first = detail.split("\n\n")[0] || "";
   const path = new URL(url).pathname;
   const pathDate = path.match(/(20\d{2})-?(\d{2})-?(\d{2})/)?.slice(1).join("-");
   const date = dateHint || canonDate(pathDate) || canonDate(metaDate);
-  if (!date || first.length < 30) throw new Error("캐논 공식 기사의 발행일 또는 첫 문단을 확인하지 못했습니다.");
-  return { date, body: first.slice(0, 20000), excerpt: { format: "excerpt", subtitle: "", first_paragraph: first.slice(0, 1000), language: source.language } };
+  if (!date || detail.length < 30) throw new Error("캐논 공식 기사의 발행일 또는 첫 문단을 확인하지 못했습니다.");
+  return { date, body: paragraphs.join("\n\n").slice(0, 20000) || first.slice(0, 20000), excerpt: {
+    format: "excerpt", subtitle: "", first_paragraph: first.slice(0, 1000), detail_text: detail, language: source.language } };
 }
 
-export async function readCanonArticle(url, source, dateHint) {
-  return canonArticleDetails(await fetchPage(url, source), source, url, dateHint);
+export async function readCanonArticle(url, source, dateHint, title = "") {
+  return canonArticleDetails(await fetchPage(url, source), source, url, dateHint, title);
 }

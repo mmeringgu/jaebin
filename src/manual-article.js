@@ -1,6 +1,7 @@
 import { text, normalizedDate } from "./crawler.js";
 import { originalArticleTitle } from "./article-title.js";
 import { keywordMatch } from "./rules.js";
+import { detailExcerpt, genericDetailExcerpt } from "./article-excerpt.js";
 
 export const MANUAL_CATEGORIES = ["company", "policy", "hospital", "conference", "competitor"];
 const error = (message, status = 400) => Object.assign(new Error(message), { status });
@@ -48,6 +49,7 @@ export function manualMetadata(page, url) {
   const source = plain(meta.get("og:site_name") || article.publisher?.name) || new URL(url).hostname.replace(/^www\./, "");
   const groups = keywordMatch(title, { status: "사용", categories: MANUAL_CATEGORIES });
   return { url, title: title.slice(0, 300), source: source.slice(0, 120), date: date || "", summary,
+    detail_text: detailExcerpt(String(article.articleBody || "").split(/\n/), title),
     category: groups[0]?.category || "" };
 }
 
@@ -83,7 +85,9 @@ export async function fetchManualArticle(value) {
       const charset = response.headers.get("Content-Type")?.match(/charset\s*=\s*["']?([\w-]+)/i)?.[1] || "utf-8";
       let page;
       try { page = new TextDecoder(charset).decode(bytes); } catch { page = new TextDecoder().decode(bytes); }
-      return manualMetadata(page, url);
+      const article = manualMetadata(page, url);
+      if (!article.detail_text && typeof HTMLRewriter !== "undefined") article.detail_text = await genericDetailExcerpt(page, article.title);
+      return article;
     }
     throw error("기사 주소의 이동이 너무 많습니다.", 422);
   } catch (e) {

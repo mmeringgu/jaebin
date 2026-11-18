@@ -103,6 +103,11 @@ async function handleApi(request, env, path, ctx) {
     return json({ storage: "D1", count: rows.length, limit: 500, articles: rows,
       title_refresh_pending: titleState.pending > 0, title_refresh_failed: titleState.failed });
   }
+  if (method === "GET" && path === "/api/article-detail") {
+    const value = new URL(request.url).searchParams.get("id");
+    if (!/^[1-9]\d*$/.test(value || "")) throw httpError(400, "기사 번호를 확인해 주세요.");
+    return json(await service.articleDetail(env, Number(value)));
+  }
   if (method === "GET" && path === "/api/excluded-articles") {
     const rows = await service.excludedArticles(env, titleOptions);
     return json({ articles: rows, count: rows.length });

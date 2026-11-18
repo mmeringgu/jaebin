@@ -53,7 +53,7 @@ function isSameNews(m,a,pieces){
 // (예전에는 묶음의 첫 기사하고만 비교해서, 제목이 조금 다른 매체 기사가 따로 나오곤 했습니다)
 function groupSameNews(rows){
  const groups=[];
- // 화면 정렬(관련도·별표)과 관계없이 최신 기사를 대표로 선택합니다.
+ // 화면 정렬(관련도·중요 표시)과 관계없이 최신 기사를 대표로 선택합니다.
  rows.slice().sort(compareNewest).forEach(function(a){
   const pieces=titlePieces(a.title);
   const matching=groups.filter(function(g){

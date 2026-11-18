@@ -42,8 +42,9 @@ test("월간 버튼만 있는 화면에서 생성·버튼 복구가 정상 동�
   const listeners = {};
   const monthButton = { disabled: false, addEventListener(type, handler) { listeners[type] = handler; } };
   const status = { textContent: "" };
-  const output = { replaceChildren() {} };
-  const elements = { "report-month-button": monthButton, "report-status": status, "report-output": output };
+  const output = { replaceChildren() {}, hasChildNodes() { return false; } };
+  const intro = { hidden: false };
+  const elements = { "report-month-button": monthButton, "report-status": status, "report-output": output, "report-description": intro };
   const script = readFileSync(new URL("../static/report.js", import.meta.url), "utf8");
   runInNewContext(script, {
     document: { getElementById(id) { assert.ok(elements[id], id); return elements[id]; } },
@@ -57,10 +58,46 @@ test("월간 버튼만 있는 화면에서 생성·버튼 복구가 정상 동�
   await listeners.click();
   assert.equal(monthButton.disabled, false);
   assert.match(status.textContent, /기사 2건/);
+  assert.equal(intro.hidden, true);
   const html = readFileSync(new URL("../static/index.html", import.meta.url), "utf8");
   assert.deepEqual([...html.matchAll(/data-tab="([^"]+)"/g)].map((match) => match[1]), ["news", "report", "stats", "admin"]);
   assert.deepEqual([...html.matchAll(/data-panel="([^"]+)"/g)].map((match) => match[1]), ["news", "report", "stats", "admin"]);
   assert.doesNotMatch(html, /주간 리포트|id="report-button"/);
   assert.match(html, /data-tab="report">📝 월간 요약/);
   assert.match(html, /data-tab="stats">📊 업계 동향/);
+});
+
+test("생성 후 설명을 숨기며 재생성 실패·브라우저 재조회에도 기존 결과를 유지합니다", async () => {
+  const cache = new Map();let fail = false;
+  const script = readFileSync(new URL("../static/report.js", import.meta.url), "utf8");
+  function screen() {
+    const node = () => ({ children: [], hidden: false, textContent: "",
+      append(child) { this.children.push(child); }, replaceChildren() { this.children = []; },
+      hasChildNodes() { return this.children.length > 0; },
+      addEventListener(name, handler) { this[name] = handler; },
+    });
+    const elements = Object.fromEntries(["report-month-button", "report-status", "report-output", "report-description"].map((id) => [id, node()]));
+    runInNewContext(script, {
+      document: { getElementById: (id) => elements[id], createElement: node },
+      localStorage: { getItem: (key) => cache.get(key), setItem: (key, value) => cache.set(key, value) },
+      async fetch() { return Response.json(fail ? { error: "생성 실패" } : {
+        since: "2026-10-20", until: "2026-11-18", article_count: 1,
+        report: { sections: [{ title: "이번 달 핵심 동향", items: [{ text: "생성된 동향", sources: [] }] },
+          { title: "비즈니스 기회", format: "table", empty_message: "선택된 기사가 없습니다.", items: [] }] },
+      }, { status: fail ? 503 : 200 }); },
+    });
+    return elements;
+  }
+  const first = screen();assert.equal(first["report-description"].hidden, false);
+  await first["report-month-button"].click();
+  assert.equal(first["report-description"].hidden, true);
+  const rendered = first["report-output"].children;
+  assert.equal(rendered[3].textContent, "선택된 기사가 없습니다.");
+  fail = true;await first["report-month-button"].click();
+  assert.equal(first["report-output"].children, rendered);
+  assert.equal(first["report-description"].hidden, true);
+  assert.match(first["report-status"].textContent, /생성 실패/);
+  const restored = screen();assert.equal(restored["report-description"].hidden, true);
+  assert.equal(restored["report-output"].children[1].children[0].children[0].textContent, "생성된 동향");
+  assert.match(restored["report-status"].textContent, /저장된 요약/);
 });

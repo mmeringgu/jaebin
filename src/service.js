@@ -1,10 +1,11 @@
 // 기사 수집·저장·예약 수집의 전체 흐름입니다. (예전 app/service.py)
 import { monthlyReport } from "./ai_summary.js";
 import { buildBriefing, sendBriefing } from "./briefing.js";
-import { loadCandidates, readArticle, normalizedDate } from "./crawler.js";
+import { loadCandidates, readArticle, normalizedDate, fetchPage, articleDetails } from "./crawler.js";
 import { cleanArticleTitle } from "./article-title.js";
 import { articleSourceName } from "./article-source.js";
 import { MANUAL_CATEGORIES, manualArticleUrl, fetchManualArticle } from "./manual-article.js";
+import { detailExcerpt, genericDetailExcerpt } from "./article-excerpt.js";
 import { resolveArticleTitles } from "./title-resolver.js";
 import { translatedTitle, translateExcerptTitle, warmArticleTranslations } from "./title-translation.js";
 import { selectReportArticles } from "./report.js";
@@ -130,7 +131,7 @@ function findPending(env, source, articleId = null) {
     [source.id, source.name, articleId, articleId, CURRENT_VERSION]);
 }
 
-// 후보 기사 하나의 본문을 읽고, AI 요약을 붙여 게시합니다.
+// 후보 기사 하나의 본문을 읽어 게시합니다.
 export async function readBody(env, source, articleId = null) {
   const db = env.DB;
   const candidate = await findPending(env, source, articleId);
@@ -156,6 +157,9 @@ export async function readBody(env, source, articleId = null) {
       detail = await readArticle(candidate.url, source, candidate.title, candidate.published_date);
     }
     if (!detail.date || !detail.excerpt.first_paragraph) throw new Error("발행일 또는 첫 문단을 확인하지 못했습니다.");
+    if (!detail.excerpt.detail_text && source.kind !== "bing" && detail.body?.length > detail.excerpt.first_paragraph.length + 30) {
+      detail.excerpt.detail_text = detailExcerpt(detail.body.split(/\n/), candidate.title);
+    }
 
     const assessment = assessArticle(candidate.title, source, detail.excerpt);
     if (!assessment.selected) {
@@ -272,6 +276,7 @@ export async function articles(env, titleOptions = {}) {
       original_title: translatedTitle(excerpt, row.title) ? row.title : "",
       url: row.url, subtitle: excerpt.subtitle || "",
       summary: excerpt.first_paragraph, tags: articleTags(groups), track: null,
+      detail_text: excerpt.detail_text || "", detail_loaded: Boolean(excerpt.detail_text),
       is_sample: 0, content_type: "excerpt",
       starred: row.starred, memo: row.memo,
       manual,
@@ -293,6 +298,36 @@ export async function excludedArticles(env, titleOptions = {}) {
 // 숨기지 않은 기사만 돌려줍니다. (CSV·브리핑·월간 리포트용)
 export async function visibleArticles(env) {
   return (await articles(env)).filter((a) => !a.hidden);
+}
+
+export async function articleDetail(env, id) {
+  if (!Number.isInteger(id) || id <= 0) throw Object.assign(new Error("기사 번호를 확인해 주세요."), { status: 400 });
+  const row = await first(env.DB, "SELECT * FROM articles WHERE id=? AND review_status='published' AND archived=0 AND is_sample=0", [id]);
+  if (!row) throw Object.assign(new Error("기사를 찾을 수 없습니다."), { status: 404 });
+  const excerpt = parseExcerpt(row.summary);
+  if (excerpt.detail_text) return { text: excerpt.detail_text };
+  const cached = await first(env.DB, "SELECT body_text FROM news_candidates WHERE url=?", [row.url]);
+  let detail = cached?.body_text?.length > (excerpt.first_paragraph || "").length + 30 ? detailExcerpt(cached.body_text.split(/\n/), row.title) : "";
+  if (!detail) {
+    try {
+      const known = SOURCES.find((s) => s.kind !== "bing" && hostOf(s.url) === hostOf(row.url));
+      if (known?.kind === "canon_official") {
+        detail = (await readArticle(row.url, known, row.title, row.published_date)).excerpt.detail_text;
+      } else if (known) {
+        const page = await fetchPage(row.url, known);
+        try { detail = (await articleDetails(page, known, row.title)).excerpt.detail_text; }
+        catch { detail = await genericDetailExcerpt(page, row.title); }
+      } else {
+        detail = (await fetchManualArticle(row.url)).detail_text;
+      }
+    } catch {
+      throw Object.assign(new Error("추가 본문을 가져오지 못했습니다. 원문 링크에서 확인해 주세요."), { status: 422 });
+    }
+  }
+  if (!detail) throw Object.assign(new Error("추가 본문을 확인하지 못했습니다. 원문 링크에서 확인해 주세요."), { status: 422 });
+  const next = { ...excerpt, detail_text: detail };
+  await run(env.DB, "UPDATE articles SET summary=? WHERE id=? AND summary=?", [JSON.stringify(next), id, row.summary]);
+  return { text: detail };
 }
 
 export async function previewManualArticle(env, url) {
@@ -318,7 +353,8 @@ export async function addManualArticle(env, payload) {
     throw Object.assign(new Error("제목(8~300자), 출처, 발행일, 분야, 첫 문단(8~1,600자)을 확인해 주세요."), { status: 400 });
   }
   const groups = keywordMatch(title, { status: "사용", categories: [payload.category] });
-  const excerpt = { format: "excerpt", first_paragraph: summary, manual: true, manual_category: payload.category };
+  const excerpt = { format: "excerpt", first_paragraph: summary, manual: true, manual_category: payload.category,
+    ...(typeof payload.detail_text === "string" && payload.detail_text ? { detail_text: detailExcerpt(payload.detail_text.split(/\n/), title) } : {}) };
   const inserted = await first(env.DB, `INSERT INTO articles(category,entity,published_date,source,title,url,summary,tags_json,review_status)
     VALUES(?,?,?,?,?,?,?,?,'published') ON CONFLICT(url) DO NOTHING RETURNING id`,
   [payload.category, groups[0]?.mainMatches[0] || "", date, source, title, url, JSON.stringify(excerpt), JSON.stringify(articleTags(groups))]);
@@ -338,7 +374,7 @@ export async function setHidden(env, articleId, hidden) {
   await run(env.DB, "UPDATE articles SET hidden=? WHERE id=?", [hidden ? 1 : 0, articleId]);
 }
 
-// 별표한 기사만 직접 분류할 수 있습니다. 빈 값은 선택 해제입니다.
+// 중요 기사만 직접 분류할 수 있습니다. 빈 값은 선택 해제입니다.
 export async function setImpact(env, articleId, impact) {
   if (!Number.isInteger(articleId) || articleId <= 0 || !["", "기회", "위협"].includes(impact)) {
     throw Object.assign(new Error("기사 번호와 기회·위협 분류를 확인해 주세요."), { status: 400 });
@@ -347,11 +383,11 @@ export async function setImpact(env, articleId, impact) {
   if (!row) {
     const exists = await first(env.DB, "SELECT id FROM articles WHERE id=?", [articleId]);
     if (!exists) throw Object.assign(new Error("기사를 찾을 수 없습니다."), { status: 404 });
-    throw Object.assign(new Error("별표한 기사만 기회·위협을 선택할 수 있습니다."), { status: 409 });
+    throw Object.assign(new Error("중요 기사만 기회·위협을 선택할 수 있습니다."), { status: 409 });
   }
 }
 
-// 오래된 기사를 보관함(archived)으로 옮겨 화면을 가볍게 합니다. ⭐나 메모가 있는 기사는 그대로 둡니다.
+// 오래된 기사를 보관함(archived)으로 옮겨 화면을 가볍게 합니다. ★나 메모가 있는 기사는 그대로 둡니다.
 export async function archiveOldArticles(env) {
   const days = integer(env, "ARCHIVE_DAYS", 90, 7, 3650);
   const cutoff = addDays(koreaNow().day, -days);
@@ -361,7 +397,7 @@ export async function archiveOldArticles(env) {
 
 // ───────────────────────── 월간 리포트 · 브리핑 ─────────────────────────
 
-// 별표 기사를 우선하고 중복 보도가 많은 다른 소식도 활용해 리포트를 만듭니다.
+// 중요 기사를 우선하고 중복 보도가 많은 다른 소식도 활용해 리포트를 만듭니다.
 // 최근 30일 기사를 최대 60건 활용합니다.
 export async function makeReport(env, day) {
   const days = 30;
