@@ -2650,6 +2650,17 @@ async function readArticle(url, source2, title, dateHint = null) {
   return articleDetails(await fetchPage(url, source2), source2, title);
 }
 
+// src/article-source.js
+function articleSourceName(name, url) {
+  const cleaned = String(name || "").normalize("NFKC").replace(/\s*\(빙\s*검색\)\s*$/u, "").trim();
+  if (cleaned && !/^빙\s*(?:뉴스\s*)?검색/u.test(cleaned)) return cleaned;
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return "출처 미확인";
+  }
+}
+
 // src/title-resolver.js
 var source = SOURCE_BY_ID.S018;
 var rankedSource = SOURCE_BY_ID.S005;
@@ -3152,7 +3163,7 @@ async function readBody(env, source2, articleId = null) {
       { ...detail.excerpt, source_id: source2.id, config_version: config_default.version, match_level: selectionLevel(groups) },
       detail.excerpt.language || source2.language || ""
     );
-    const sourceName = excerpt.media ? excerpt.media + " (빙 검색)" : source2.name;
+    const sourceName = articleSourceName(excerpt.media || source2.name, candidate.url);
     await db.batch([
       // review_status를 'published'(게시)로 꼭 적어 줍니다. 예전 D1은 비워 두면 'draft'(임시)가 되어 화면에 안 나옵니다.
       db.prepare(`INSERT INTO articles(category,entity,published_date,source,title,url,summary,tags_json,review_status)
@@ -3196,7 +3207,14 @@ async function candidates(env, sourceId = null, titleOptions = {}) {
     delete chosen.groups;
     delete row.body_text;
     const ko = translatedTitle(excerpt, row.title);
-    result.push({ ...row, title: ko || row.title, original_title: ko ? row.title : "", selection: chosen, excerpt });
+    result.push({
+      ...row,
+      source_name: articleSourceName(excerpt.media || row.source_name, row.url),
+      title: ko || row.title,
+      original_title: ko ? row.title : "",
+      selection: chosen,
+      excerpt
+    });
   }
   return result;
 }
@@ -3228,7 +3246,7 @@ async function articles(env, titleOptions = {}) {
       match_level: selectionLevel(groups),
       entity: groups[0]?.mainMatches[0] || row.entity || "",
       date: row.published_date,
-      source: row.source,
+      source: articleSourceName(excerpt.media || row.source, row.url),
       domestic_media: globalThis.NewsRules.isDomesticMedia({ url: row.url, source: row.source, source_kind: sources[0]?.kind }),
       title: translatedTitle(excerpt, row.title) || row.title,
       original_title: translatedTitle(excerpt, row.title) ? row.title : "",

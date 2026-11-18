@@ -3,6 +3,7 @@ import { summarize, monthlyReport, trendInsight, withoutImpact } from "./ai_summ
 import { buildBriefing, sendBriefing } from "./briefing.js";
 import { loadCandidates, readArticle } from "./crawler.js";
 import { cleanArticleTitle } from "./article-title.js";
+import { articleSourceName } from "./article-source.js";
 import { resolveArticleTitles } from "./title-resolver.js";
 import { translatedTitle, translateExcerptTitle, warmArticleTranslations } from "./title-translation.js";
 import { selectReportArticles } from "./report.js";
@@ -166,7 +167,7 @@ export async function readBody(env, source, articleId = null) {
       { ...detail.excerpt, source_id: source.id, config_version: CONFIG.version, match_level: selectionLevel(groups) },
       detail.excerpt.language || source.language || "");
     // 빙 뉴스 검색 기사는 "빙 검색" 대신 실제 매체 이름(예: 조선일보)을 출처로 보여줍니다.
-    const sourceName = excerpt.media ? excerpt.media + " (빙 검색)" : source.name;
+    const sourceName = articleSourceName(excerpt.media || source.name, candidate.url);
     // 아직 AI 인사이트가 없는 기사만 GPT에 인사이트를 요청합니다.
     // 기사별 AI 인사이트 생성은 사용 여부를 결정할 때까지 보류합니다.
 
@@ -221,7 +222,8 @@ export async function candidates(env, sourceId = null, titleOptions = {}) {
     delete chosen.groups;
     delete row.body_text; // 본문은 길어서 화면에 보내지 않습니다.
     const ko = translatedTitle(excerpt, row.title);
-    result.push({ ...row, title: ko || row.title, original_title: ko ? row.title : "", selection: chosen, excerpt });
+    result.push({ ...row, source_name: articleSourceName(excerpt.media || row.source_name, row.url),
+      title: ko || row.title, original_title: ko ? row.title : "", selection: chosen, excerpt });
   }
   return result;
 }
@@ -254,7 +256,8 @@ export async function articles(env, titleOptions = {}) {
 
     result.push({
       id: row.id, category: groups[0]?.category || row.category, match_level: selectionLevel(groups),
-      entity: groups[0]?.mainMatches[0] || row.entity || "", date: row.published_date, source: row.source,
+      entity: groups[0]?.mainMatches[0] || row.entity || "", date: row.published_date,
+      source: articleSourceName(excerpt.media || row.source, row.url),
       domestic_media: globalThis.NewsRules.isDomesticMedia({ url: row.url, source: row.source, source_kind: sources[0]?.kind }),
       title: translatedTitle(excerpt, row.title) || row.title,
       original_title: translatedTitle(excerpt, row.title) ? row.title : "",
