@@ -13,7 +13,7 @@ function setup(articles = []) {
     if (!nodes.has(id)) nodes.set(id, { value: "", checked: false, innerHTML: "", addEventListener() {} });
     return nodes.get(id);
   };
-  const api = runInNewContext(read("stats") + "\n({topicExposureRows,mediaExposureRows,exposureComparisons,exposureTable,companyTrend,companyShare,statsArticles,renderStats,COMPANIES});", {
+  const api = runInNewContext(read("stats") + "\n({topicExposureRows,mediaExposureRows,exposureComparisons,exposureTable,companyTrend,companyShare,statsArticles,renderStats,competitorMovementRows,competitorMovements,COMPANIES});", {
     document: { getElementById: get }, articles, matchesTopic, NewsRules,
     kstDate: (days) => new Date(Date.UTC(2026, 10, 17 - days)).toISOString().slice(0, 10),
     esc: (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"),
@@ -80,7 +80,7 @@ test("노출 관리에 비교를 표시하고 합계·캐논 점유율 열을 �
   assert.equal((html.match(/company-comparison/g) || []).length, 1);
   const comparisons = api.exposureComparisons([article("캐논메디칼 GE헬스케어 CT 협력")]);
   assert.doesNotMatch(comparisons, /캐논 점유율|언급 합계/);
-  assert.match(comparisons, /국내 언론 기사만/);
+  assert.doesNotMatch(comparisons, /exposure-note/);
   assert.match(comparisons, />캐논<\/th>/);
 });
 
@@ -141,4 +141,36 @@ test("비교할 기사가 없으면 빈 상태를 안내합니다", () => {
   assert.match(html, /조건에 맞는 분야별 회사 언급 기사가 없습니다/);
   assert.match(html, /조건에 맞는 국내 매체별 회사 언급 기사가 없습니다/);
   assert.doesNotMatch(html, /NaN|Infinity/);
+});
+
+test("경쟁사 움직임은 최신 30일의 회수 이외 소식을 회사별로 묶고 출처를 보존합니다", () => {
+  const api = setup();
+  const rows = [
+    article("지멘스 MRI 신제품 출시", { id: 1, entity: "지멘스", url: "https://example.com/1" }),
+    article("지멘스 MRI 신제품 출시", { id: 2, entity: "지멘스", source: "다른 매체", url: "https://example.com/2" }),
+    article("GE헬스케어 CT 공급 계약", { id: 3, entity: "GE헬스케어", url: "https://example.com/3" }),
+    article("지멘스 MRI 제품 회수", { entity: "지멘스" }),
+    article("필립스 MRI 출시", { entity: "필립스", hidden: true }),
+    article("캐논메디칼 CT 공급", { category: "company" }),
+    article("삼성메디슨 초음파 출시", { entity: "삼성메디슨", date: "2026-10-18" }),
+  ];
+  const result = api.competitorMovementRows(rows);
+  assert.equal(result.length, 2);
+  const siemens = result.find((row) => row.company === "지멘스");
+  assert.equal(siemens.a.id, 2);assert.equal(siemens.others.length, 1);
+  const html = api.competitorMovements(rows);
+  assert.match(html, /경쟁사 움직임/);assert.match(html, /추가 출처 1건/);
+  assert.match(html, /https:\/\/example.com\/1/);assert.match(html, /https:\/\/example.com\/2/);
+  assert.doesNotMatch(html, /제품 회수|필립스|캐논메디칼|삼성메디슨/);
+});
+
+test("업계 동향 이동 바는 뉴스와 같은 디자인이며 경쟁사 움직임이 회수 현황보다 앞에 있습니다", () => {
+  const html = readFileSync(new URL("../static/index.html", import.meta.url), "utf8");
+  const nav = html.match(/<nav class="summary-bar" id="industry-summary-bar"[^>]*>([\s\S]*?)<\/nav>/)[1];
+  assert.deepEqual([...nav.matchAll(/href="#([^"]+)"/g)].map((m) => m[1]), ["industry-competitor", "industry-policy", "industry-hospital"]);
+  assert.deepEqual([...nav.matchAll(/<\/span>([^<]+)<\/a>/g)].map((m) => m[1]), ["경쟁사", "정책", "병원"]);
+  assert.ok(html.indexOf('id="stats-movements"') < html.indexOf('id="stats-competitor"'));
+  for (const id of ["industry-competitor", "industry-policy", "industry-hospital"]) assert.ok(html.includes(`id="${id}"`));
+  const api = setup([article("지멘스 MRI 신제품 출시", { entity: "지멘스" })]);
+  assert.match(api.get("stats-movements").innerHTML, /지멘스 MRI 신제품 출시/);
 });

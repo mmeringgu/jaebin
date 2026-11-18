@@ -4,16 +4,9 @@ function reportSources(item){
  item.sources.forEach(function(source){
   if(!/^https?:\/\//i.test(source.url))return;
   const link=document.createElement('a');link.href=source.url;link.target='_blank';link.rel='noopener noreferrer';
-  link.textContent=source.source||'원문 기사';link.title=source.title;sources.append(link);
+  link.textContent=(source.source||'원문 기사')+(source.date?' · '+source.date:'');link.title=source.title;sources.append(link);
  });
  return sources;
-}
-function validReport(report){
- return report&&Array.isArray(report.sections)&&report.sections.every(function(s){
-  return typeof s.title==='string'&&Array.isArray(s.items)&&s.items.every(function(i){
-   return typeof i.text==='string'&&Array.isArray(i.sources)&&i.sources.every(function(source){return source&&typeof source.url==='string';});
-  });
- });
 }
 function reportTable(section){
  const scroll=document.createElement('div');scroll.className='table-scroll';
@@ -58,38 +51,23 @@ function renderReport(report,output){
   output.append(list);
  });
 }
-(function(){
- // 월간 요약: 최근 30일 기사를 바탕으로 생성합니다.
- const monthButton=document.getElementById('report-month-button');
- const statusBox=document.getElementById('report-status');
- const output=document.getElementById('report-output');
- const intro=document.getElementById('report-description');
- const cacheKey='smd-monthly-report-v2';
- intro.hidden=output.hasChildNodes();
- // 같은 브라우저에서 다시 열어도 생성한 결과와 설명 숨김 상태를 유지합니다.
- try{
-  const saved=JSON.parse(localStorage.getItem(cacheKey)||'null');
-  if(saved&&typeof saved.status==='string'&&validReport(saved.report)&&saved.report.sections.length){
-   renderReport(saved.report,output);intro.hidden=true;
-   statusBox.textContent=saved.status+' · 저장된 요약';
-  }
- }catch(e){/* 저장된 결과가 없거나 형식이 다르면 새로 생성할 수 있습니다. */}
-
- async function makeReport(){
-  monthButton.disabled=true;
-  statusBox.textContent='월간 요약을 만드는 중입니다… (최대 2분 정도 걸릴 수 있어요)';
-  try{
-   const r=await fetch('/api/monthly-report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})});
-   let d;try{d=await r.json();}catch(e){throw new Error('월간 요약 응답을 확인하지 못했습니다. 시간이 오래 걸렸을 수 있으니 잠시 후 다시 눌러 주세요.');}
-   if(!r.ok)throw new Error(d.error||'월간 요약을 만들지 못했습니다.');
-   if(!validReport(d.report))throw new Error('월간 요약 형식을 확인하지 못했습니다. 다시 시도해 주세요.');
-   renderReport(d.report,output);
-   intro.hidden=true;
-   statusBox.textContent=d.since+' ~ '+d.until+' · 기사 '+d.article_count+'건으로 작성';
-   try{localStorage.setItem(cacheKey,JSON.stringify({report:d.report,status:statusBox.textContent}));}catch(e){}
-  }catch(e){statusBox.textContent=e.message;}
-  finally{monthButton.disabled=false;}
- }
- monthButton.addEventListener('click',makeReport);
-
-})();
+// 월간 요약은 생성 요청 없이 중요 기사에서 바로 계산합니다.
+function importantReport(list){
+ const since=kstDate(29),until=kstDate(0);
+ const important=list.filter(function(a){return a.starred&&!a.hidden&&a.date>=since&&a.date<=until;}).slice().sort(NewsRules.compareNewest);
+ const categories={company:'캐논 뉴스',policy:'정책',hospital:'병원',conference:'학회',competitor:'경쟁사'};
+ function item(a){return {target:a.entity||categories[a.category]||'중요 기사',text:a.title,
+  impact:['기회','위협'].includes(a.impact_override)?a.impact_override:'',
+  sources:[{title:a.title,url:a.url,source:a.source,date:a.date}]};}
+ return {since:since,until:until,count:important.length,sections:[
+  {title:'이번 달 핵심 동향',format:'table',empty_message:'최근 30일의 중요 기사가 없습니다.',items:important.map(item)},
+  {title:'비즈니스 기회',format:'table',empty_message:'선택된 기사가 없습니다.',items:important.filter(function(a){return a.impact_override==='기회';}).map(item)},
+  {title:'위협·리스크',format:'table',empty_message:'선택된 기사가 없습니다.',items:important.filter(function(a){return a.impact_override==='위협';}).map(item)}
+ ]};
+}
+function renderMonthlySummary(){
+ const report=importantReport(articles);
+ renderReport(report,document.getElementById('report-output'));
+ document.getElementById('report-status').textContent=report.since+' ~ '+report.until+' · 중요 기사 '+report.count+'건';
+}
+(function(){renderMonthlySummary();})();

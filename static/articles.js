@@ -151,6 +151,7 @@ function render(){
  });
  // 업계 동향 탭은 필터와 상관없이 전체 기사로 다시 계산합니다. (stats.js)
  if(typeof renderStats==='function')renderStats();
+ if(typeof renderMonthlySummary==='function')renderMonthlySummary();
  // 카테고리가 다르게 분류된 중복 기사도 한 번만 표시합니다.
  const allGroups=groupSameNews(matches);
  renderBriefing(allGroups.map(function(g){return g.main;}));

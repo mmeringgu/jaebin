@@ -210,6 +210,12 @@ select:hover{border-color:var(--ink-2)}
 /* ===== 업계 동향·월간 요약·관리 탭의 구역 제목 =====
    슬라이드의 "H2-TITLE"처럼 빨간 얇은 글씨 + 넓은 글자 간격 */
 .section{scroll-margin-top:120px;margin:32px 0}
+.industry-section{scroll-margin-top:calc(var(--header-height,104px) + 76px)}
+.competitor-sections{display:grid;gap:16px}
+.movement-table th,.movement-table td{vertical-align:top}
+.movement-table td:nth-child(2){min-width:220px}
+.movement-table td:nth-child(3){white-space:nowrap}
+.movement-table details{font-size:12px;margin-top:5px}
 .section-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--gray-1)}
 .section-head h2{font-size:18px;font-weight:300;letter-spacing:3px;margin:0;color:var(--red)}
 
@@ -314,6 +320,7 @@ select:hover{border-color:var(--ink-2)}
 /* ===== 수집 관리 (예약 기록, 정보원 상태, 수집 후보 목록) ===== */
 .management-group{background:white;border:1px solid var(--line);border-radius:var(--radius)}
 .management-group>summary{cursor:pointer;padding:18px 20px;font-size:18px;font-weight:400;color:var(--red);letter-spacing:2px}
+.management-group>summary .basis{display:inline-block;margin-left:8px;letter-spacing:0;vertical-align:middle}
 .management-group[open]>summary{border-bottom:1px solid var(--line)}
 .management-content{padding:0 20px}
 .management-content>.section{margin:24px 0}

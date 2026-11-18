@@ -181,16 +181,42 @@ function exposureTable(rows,label){
  return '<div class="exposure-scroll" tabindex="0" role="region" aria-label="'+esc(label)+'별 회사 언급 비교"><table class="trend-table exposure-table">'+head+'<tbody>'+body+'</tbody></table></div>';
 }
 function exposureComparisons(list){
- const basis='최근 30일 · 국내 언론 기사만 · 전체 분야';
- const note='<p class="muted exposure-note">'+esc(basis)+' · 여러 회사를 언급한 기사는 회사별로 각각 집계합니다. 회사 열은 표에 표시된 언급 수가 많은 순서입니다.</p>';
  const topics=topicExposureRows(list),media=mediaExposureRows(list);
  const hasTopics=topics.some(function(row){return row.counts.some(function(n){return n>0;});});
- return '<div class="exposure-comparisons"><div class="stat-box"><h3>분야별 회사 비교</h3>'+note+
-  '<p class="muted exposure-note">한 기사가 여러 분야에 해당하면 각 분야에 포함됩니다.</p>'+
+ return '<div class="exposure-comparisons"><div class="stat-box"><h3>분야별 회사 비교</h3>'+
   (hasTopics?exposureTable(topics,'분야'):'<p class="muted">조건에 맞는 분야별 회사 언급 기사가 없습니다.</p>')+'</div>'+
-  '<div class="stat-box"><h3>매체별 노출 비교</h3>'+note+
-  '<p class="muted exposure-note">같은 국내 언론사의 빙 검색 결과는 합산합니다. 경쟁사 기사 수가 많은 매체부터 표시하며, 한 기사가 여러 경쟁사를 언급해도 정렬 기준에서는 한 건으로 셉니다.</p>'+
+  '<div class="stat-box"><h3>매체별 노출 비교</h3>'+
   (media.length?exposureTable(media,'매체'):'<p class="muted">조건에 맞는 국내 매체별 회사 언급 기사가 없습니다.</p>')+'</div></div>';
+}
+// 경쟁사 움직임은 최근 30일 기사에서 회사별 같은 소식을 묶어 최신 3건씩 표시합니다.
+function competitorMovementRows(list){
+ const since=kstDate(29),today=kstDate(0),companies=new Map();
+ list.filter(function(a){return !a.hidden&&a.category==='competitor'&&a.date>=since&&a.date<=today
+  &&!RECALL_WORDS.some(function(word){return a.title.toLowerCase().includes(word);});}).forEach(function(a){
+  const entity=String(a.entity||'').normalize('NFKC').toLowerCase();
+  const company=COMPANIES.find(function(c){
+   if(c.mine)return false;
+   const words=c.words.concat(c.tagWords||[]);
+   return entity?words.some(function(w){return entity===w||entity.includes(w);}):c.words.some(function(w){return a.title.toLowerCase().includes(w);});
+  });
+  const name=company?company.name:a.entity||'경쟁사';
+  if(!companies.has(name))companies.set(name,[]);companies.get(name).push(a);
+ });
+ const rows=[];
+ companies.forEach(function(items,name){
+  const groups=NewsRules.groupSameNews(items).sort(function(a,b){return NewsRules.compareNewest(a.main,b.main);});
+  groups.slice(0,3).forEach(function(group){rows.push({company:name,a:group.main,others:group.others});});
+ });
+ return rows.sort(function(a,b){return NewsRules.compareNewest(a.a,b.a);});
+}
+function competitorMovements(list){
+ const rows=competitorMovementRows(list);
+ const body=rows.length?'<div class="table-scroll"><table class="trend-table movement-table"><thead><tr><th>회사</th><th>주요 변화</th><th>보도일</th><th>출처</th></tr></thead><tbody>'+rows.map(function(row){
+  const a=row.a;
+  const others=row.others.length?'<details><summary>추가 출처 '+row.others.length+'건</summary>'+row.others.map(function(other){return '<div>'+linkOf(other)+' · '+esc(other.source)+'</div>';}).join('')+'</details>':'';
+  return '<tr><th scope="row">'+esc(row.company)+'</th><td>'+linkOf(a)+others+'</td><td>'+esc(shortDate(a.date))+'</td><td>'+esc(a.source)+'</td></tr>';
+ }).join('')+'</tbody></table></div>':'<p class="muted">최근 30일의 경쟁사 움직임 기사가 없습니다.</p>';
+ return '<div class="stat-box wide"><h3>경쟁사 움직임</h3>'+body+'</div>';
 }
 // 회수·판매중지 현황: 경쟁사 이름과 회수·판매중지 단어가 함께 나온 기사
 function recallList(list){
@@ -373,6 +399,7 @@ function renderStats(){
  const list=statsArticles();
  document.getElementById('stats-company').innerHTML='<div class="stat-grid company-comparison">'+companyTrend(list)+companyShare(list)+'</div>'+exposureComparisons(list);
  document.getElementById('stats-competitor').innerHTML=recallList(list);
+ document.getElementById('stats-movements').innerHTML=competitorMovements(list);
  document.getElementById('stats-hospital').innerHTML='<div class="stat-grid">'+newHospitals(list)+'</div>';
  const statuses=policyStatus(list);
  document.getElementById('stats-policy').innerHTML='<div class="stat-grid">'+policyBoard(statuses)+policyChanges(statuses)+policySchedule(list,statuses)+'</div>';

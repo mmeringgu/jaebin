@@ -38,66 +38,46 @@ test("월간 API는 최근 30일 기사로 생성하고 주간 API는 제공하�
   assert.equal(calls, 1);
 });
 
-test("월간 버튼만 있는 화면에서 생성·버튼 복구가 정상 동작합니다", async () => {
-  const listeners = {};
-  const monthButton = { disabled: false, addEventListener(type, handler) { listeners[type] = handler; } };
-  const status = { textContent: "" };
-  const output = { replaceChildren() {}, hasChildNodes() { return false; } };
-  const intro = { hidden: false };
-  const elements = { "report-month-button": monthButton, "report-status": status, "report-output": output, "report-description": intro };
-  const script = readFileSync(new URL("../static/report.js", import.meta.url), "utf8");
-  runInNewContext(script, {
-    document: { getElementById(id) { assert.ok(elements[id], id); return elements[id]; } },
-    async fetch(path, options) {
-      assert.equal(path, "/api/monthly-report");
-      assert.deepEqual(JSON.parse(options.body), {});
-      assert.equal(monthButton.disabled, true);
-      return { ok: true, async json() { return { report: { sections: [] }, since: "2026-10-18", until: "2026-11-16", article_count: 2 }; } };
-    },
-  });
-  await listeners.click();
-  assert.equal(monthButton.disabled, false);
-  assert.match(status.textContent, /기사 2건/);
-  assert.equal(intro.hidden, true);
-  const html = readFileSync(new URL("../static/index.html", import.meta.url), "utf8");
-  assert.deepEqual([...html.matchAll(/data-tab="([^"]+)"/g)].map((match) => match[1]), ["news", "report", "stats", "admin"]);
-  assert.deepEqual([...html.matchAll(/data-panel="([^"]+)"/g)].map((match) => match[1]), ["news", "report", "stats", "admin"]);
-  assert.doesNotMatch(html, /주간 리포트|id="report-button"/);
-  assert.match(html, /data-tab="report">📝 월간 요약/);
-  assert.match(html, /data-tab="stats">📊 업계 동향/);
+const article = (id, changes = {}) => ({ id, title: '중요 기사 제목 '+id, entity: '대상'+id, category: 'policy', date: '2026-11-18',
+ source: '매체', url: 'https://example.com/'+id, starred: 1, hidden: false, ...changes });
+function screen(rows){
+ const nodes=new Map();
+ const node=(tag)=>({tag,children:[],textContent:'',attributes:{},append(child){this.children.push(child);},replaceChildren(){this.children=[];},setAttribute(key,value){this.attributes[key]=value;}});
+ const get=(id)=>{if(!nodes.has(id))nodes.set(id,node('div'));return nodes.get(id);};
+ const script=readFileSync(new URL('../static/report.js',import.meta.url),'utf8');
+ const shared=readFileSync(new URL('../static/news-rules.js',import.meta.url),'utf8');
+ const api=runInNewContext(shared+'\n'+script+'\n({importantReport,renderMonthlySummary});',{
+  articles:rows,document:{getElementById:get,createElement:node},
+  kstDate:(days)=>new Date(Date.UTC(2026,10,18-days)).toISOString().slice(0,10),
+  fetch(){assert.fail('월간 요약은 생성 API를 호출하지 않아야 합니다.');},
+ });
+ return {...api,get};
+}
+
+test('월간 요약은 최근 30일 중요 기사만 세 영역 표에 즉시 표시합니다',()=>{
+ const rows=[article(1,{impact_override:'기회'}),article(2,{impact_override:'위협',date:'2026-10-20'}),
+  article(3,{starred:0,impact_override:'기회'}),article(4,{hidden:true}),article(5,{date:'2026-10-19'}),article(6,{date:'2026-11-19'})];
+ const ui=screen(rows),report=ui.importantReport(rows);
+ assert.equal(report.count,2);
+ assert.deepEqual(JSON.parse(JSON.stringify(report.sections.map((s)=>s.items.length))),[2,1,1]);
+ assert.ok(report.sections.every((s)=>s.format==='table'));
+ assert.equal(report.sections[1].items[0].impact,'기회');assert.equal(report.sections[2].items[0].impact,'위협');
+ assert.equal(report.sections.some((s)=>s.title==='경쟁사 움직임'),false);
+ assert.match(ui.get('report-status').textContent,/중요 기사 2건/);
+ rows[0].starred=0;rows[1].hidden=true;ui.renderMonthlySummary();
+ assert.match(ui.get('report-status').textContent,/중요 기사 0건/);
+ assert.match(ui.get('report-output').children[1].textContent,/중요 기사가 없습니다/);
 });
 
-test("생성 후 설명을 숨기며 재생성 실패·브라우저 재조회에도 기존 결과를 유지합니다", async () => {
-  const cache = new Map();let fail = false;
-  const script = readFileSync(new URL("../static/report.js", import.meta.url), "utf8");
-  function screen() {
-    const node = () => ({ children: [], hidden: false, textContent: "",
-      append(child) { this.children.push(child); }, replaceChildren() { this.children = []; },
-      hasChildNodes() { return this.children.length > 0; },
-      addEventListener(name, handler) { this[name] = handler; },
-    });
-    const elements = Object.fromEntries(["report-month-button", "report-status", "report-output", "report-description"].map((id) => [id, node()]));
-    runInNewContext(script, {
-      document: { getElementById: (id) => elements[id], createElement: node },
-      localStorage: { getItem: (key) => cache.get(key), setItem: (key, value) => cache.set(key, value) },
-      async fetch() { return Response.json(fail ? { error: "생성 실패" } : {
-        since: "2026-10-20", until: "2026-11-18", article_count: 1,
-        report: { sections: [{ title: "이번 달 핵심 동향", items: [{ text: "생성된 동향", sources: [] }] },
-          { title: "비즈니스 기회", format: "table", empty_message: "선택된 기사가 없습니다.", items: [] }] },
-      }, { status: fail ? 503 : 200 }); },
-    });
-    return elements;
-  }
-  const first = screen();assert.equal(first["report-description"].hidden, false);
-  await first["report-month-button"].click();
-  assert.equal(first["report-description"].hidden, true);
-  const rendered = first["report-output"].children;
-  assert.equal(rendered[3].textContent, "선택된 기사가 없습니다.");
-  fail = true;await first["report-month-button"].click();
-  assert.equal(first["report-output"].children, rendered);
-  assert.equal(first["report-description"].hidden, true);
-  assert.match(first["report-status"].textContent, /생성 실패/);
-  const restored = screen();assert.equal(restored["report-description"].hidden, true);
-  assert.equal(restored["report-output"].children[1].children[0].children[0].textContent, "생성된 동향");
-  assert.match(restored["report-status"].textContent, /저장된 요약/);
+test('기회·위협 선택 변경을 재생성 없이 반영하며 생성 버튼과 설명을 제거합니다',()=>{
+ const rows=[article(1)],ui=screen(rows);
+ assert.equal(ui.importantReport(rows).sections[1].items.length,0);
+ rows[0].impact_override='기회';ui.renderMonthlySummary();
+ const table=ui.get('report-output').children[3].children[0];
+ const symbol=table.children[1].children[0].children[2].children[0];
+ assert.equal(symbol.textContent,'▲');assert.equal(symbol.className,'report-positive');
+ const html=readFileSync(new URL('../static/index.html',import.meta.url),'utf8');
+ assert.doesNotMatch(html,/id="report-month-button"|id="report-description"/);
+ const articles=readFileSync(new URL('../static/articles.js',import.meta.url),'utf8');
+ assert.match(articles,/typeof renderMonthlySummary==='function'/);
 });
