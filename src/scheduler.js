@@ -65,7 +65,7 @@ function annotate(row) {
   if (category === "hospital" && conference.test(row.title || "")) category = "conference";
   let entity = row.entity || "";
   if (category === "competitor") {
-    entity = CONFIG.rules.find((r) => r.category === "competitor" && r.main.some((word) => hasWord(row.title || "", word)))?.id || entity || row.source_id;
+    entity = source?.rule_id || CONFIG.rules.find((r) => r.category === "competitor" && r.main.some((word) => hasWord(row.title || "", word)))?.id || entity || row.source_id;
   }
   const title = row.title || "";
   const signature = [...new Set(title.normalize("NFKC").match(/\d+(?:[.,]\d+)*/g) || [])].sort().join("|");

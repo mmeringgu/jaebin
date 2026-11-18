@@ -95,6 +95,9 @@ export async function collectSource(env, source, scheduled = false) {
       if (a.description) {
         snippet = JSON.stringify({ format: "excerpt", subtitle: "", first_paragraph: a.description, media: a.media, language: source.language || "ko", match_level: a.matchLevel, config_version: "" });
       }
+      if (a.excerpt?.first_paragraph) {
+        snippet = JSON.stringify({ ...a.excerpt, match_level: a.matchLevel, config_version: "" });
+      }
       statements.push(db.prepare(`INSERT INTO news_candidates(source_id,source_name,title,url,suggested_category,matched_keyword_groups_json,snippet,published_date,body_text)
         VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(url) DO UPDATE SET
         source_id=excluded.source_id,source_name=excluded.source_name,title=excluded.title,
@@ -102,7 +105,7 @@ export async function collectSource(env, source, scheduled = false) {
         snippet=CASE WHEN news_candidates.fetch_status='success' THEN news_candidates.snippet ELSE excluded.snippet END,
         processing_status='pending',fetch_status=CASE WHEN news_candidates.fetch_status='error' OR news_candidates.title<>excluded.title THEN 'pending' ELSE news_candidates.fetch_status END,
         last_collected_at=CURRENT_TIMESTAMP,expires_at=datetime('now','+7 days')`)
-        .bind(source.id, source.name, a.title, a.url, a.category, JSON.stringify(a.groups), snippet, a.date || null, a.description || ""));
+        .bind(source.id, source.name, a.title, a.url, a.category, JSON.stringify(a.groups), snippet, a.date || null, a.body || a.description || ""));
     }
     const selected = statements.length;
     statements.push(db.prepare("UPDATE collection_runs SET finished_at=CURRENT_TIMESTAMP,run_status='success',found_count=?,saved_count=? WHERE id=?").bind(items.length, saved, runRow.id));
@@ -157,6 +160,8 @@ export async function readBody(env, source, articleId = null) {
       detail = await readArticle(candidate.url, source, candidate.title, candidate.published_date);
     }
     if (!detail.date || !detail.excerpt.first_paragraph) throw new Error("발행일 또는 첫 문단을 확인하지 못했습니다.");
+    // 공식 RSS에서 깨진 특수문자·상표 표기는 검증된 원문 제목으로 복원합니다.
+    if (source.kind === "competitor_official" && detail.title) candidate.title = cleanArticleTitle(detail.title, source);
     if (!detail.excerpt.detail_text && source.kind !== "bing" && detail.body?.length > detail.excerpt.first_paragraph.length + 30) {
       detail.excerpt.detail_text = detailExcerpt(detail.body.split(/\n/), candidate.title);
     }
@@ -186,9 +191,9 @@ export async function readBody(env, source, articleId = null) {
         tags_json=excluded.tags_json,is_sample=0,updated_at=CURRENT_TIMESTAMP
         WHERE CASE WHEN json_valid(articles.summary) THEN json_extract(articles.summary,'$.manual') ELSE 0 END IS NOT 1`)
         .bind(groups[0].category, groups[0].mainMatches[0], detail.date, sourceName, candidate.title, candidate.url, JSON.stringify(excerpt), JSON.stringify(articleTags(groups))),
-      db.prepare(`UPDATE news_candidates SET published_date=?,body_text=?,snippet=?,fetch_status='success',
+      db.prepare(`UPDATE news_candidates SET title=?,published_date=?,body_text=?,snippet=?,fetch_status='success',
         fetch_error='',body_fetched_at=CURRENT_TIMESTAMP,suggested_category=?,matched_keyword_groups_json=? WHERE id=?`)
-        .bind(detail.date, detail.body, JSON.stringify(excerpt), groups[0].category, JSON.stringify(groups.map((g) => g.id)), candidate.id),
+        .bind(candidate.title, detail.date, detail.body, JSON.stringify(excerpt), groups[0].category, JSON.stringify(groups.map((g) => g.id)), candidate.id),
     ]);
   } catch (e) {
     console.warn("기사 읽기 실패:", candidate.url, e.message);
@@ -311,7 +316,7 @@ export async function articleDetail(env, id) {
   if (!detail) {
     try {
       const known = SOURCES.find((s) => s.kind !== "bing" && hostOf(s.url) === hostOf(row.url));
-      if (known?.kind === "canon_official") {
+      if (["canon_official", "competitor_official"].includes(known?.kind)) {
         detail = (await readArticle(row.url, known, row.title, row.published_date)).excerpt.detail_text;
       } else if (known) {
         const page = await fetchPage(row.url, known);

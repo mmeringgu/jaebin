@@ -17,7 +17,7 @@ const year = day.slice(0, 4);
 const englishDate = new Date(day + "T00:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
 
 test("공식 3곳과 일본어·영문 검색 3곳이 모두 예약 수집에 포함됩니다", () => {
-  assert.ok(CONFIG.auto_order.length <= 40);
+  assert.ok(CONFIG.auto_order.length <= 43);
   assert.equal(new Set(CONFIG.sources.map((source) => source.id)).size, CONFIG.sources.length);
   for (const id of ids) {
     assert.ok(SOURCE_BY_ID[id]);

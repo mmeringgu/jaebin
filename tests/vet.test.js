@@ -55,7 +55,7 @@ test("Vet 검색은 메디컬센터 표기와 전문 매체를 포함하며 최�
     assert.equal(parseBingRss(rss(21), source).length, 1);
     assert.equal(parseBingRss(rss(40), source).length, 0);
   }
-  assert.equal(CONFIG.auto_order.length, 40);
+  assert.equal(CONFIG.auto_order.length, 43);
 });
 
 test("첫 문단에서 장비 도입을 확인한 Vet 기사는 수집·게시·분야 필터까지 유지됩니다", async (t) => {

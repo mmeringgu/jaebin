@@ -1,5 +1,5 @@
 {
-  "version": "2026-11-18-vet-imaging",
+  "version": "2026-11-18-competitor-global",
   "automation": {
     "daily_targets": { "company": 30, "policy": 45, "competitor": 45, "hospital": 30, "conference": 10 },
     "canon_source_order": ["S030", "S029", "S028", "B014", "B015", "B013", "B001"],
@@ -557,6 +557,25 @@
       "status": "사용", "categories": ["company"], "language": "ja",
       "url": "https://global.canon/", "listingUrl": "https://global.canon/ja/news/",
       "kind": "canon_official", "canon_variant": "hq", "company_context": "Canon"
+    },
+    {
+      "id": "S031", "name": "GE HealthCare 글로벌 공식", "label": "GE 글로벌 공식 · 영어",
+      "status": "사용", "categories": ["competitor"], "language": "en",
+      "url": "https://www.gehealthcare.com/",
+      "listingUrl": "https://www.gehealthcare.com/content/gehealthcare/global/en/about/newsroom/feed.xml",
+      "kind": "competitor_official", "official_variant": "ge", "company_context": "GE HealthCare", "rule_id": "K007"
+    },
+    {
+      "id": "S032", "name": "Siemens Healthineers 글로벌 공식", "label": "지멘스 글로벌 공식 · 영어",
+      "status": "사용", "categories": ["competitor"], "language": "en",
+      "url": "https://www.siemens-healthineers.com/", "listingUrl": "https://www.siemens-healthineers.com/press/releases",
+      "kind": "competitor_official", "official_variant": "siemens", "company_context": "Siemens Healthineers", "rule_id": "K006"
+    },
+    {
+      "id": "S033", "name": "Philips 글로벌 공식", "label": "필립스 글로벌 공식 · 영어",
+      "status": "사용", "categories": ["competitor"], "language": "en",
+      "url": "https://www.philips.com/", "listingUrl": "https://www.philips.com/a-w/about/news-and-insights.html",
+      "kind": "competitor_official", "official_variant": "philips", "company_context": "Philips Healthcare", "rule_id": "K008"
     },
     {
       "id": "B013", "name": "빙 뉴스 검색: 캐논 의료 일본어", "label": "빙 검색 · 캐논 의료 일본 뉴스",
@@ -1133,6 +1152,9 @@
     "B013",
     "B014",
     "B015",
+    "S031",
+    "S032",
+    "S033",
     "S015",
     "S004",
     "S007",

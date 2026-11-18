@@ -47,6 +47,10 @@ export function keywordMatch(title, source, excerpt = {}) {
     // 회사명이 생략된 공식 발표 제목은 검증된 공식 출처의 회사 맥락으로 판정합니다.
     let ruleTitle = source.kind === "canon_official" && source.company_context && rule.category === "company"
       ? source.company_context + " " + title : title;
+    if (source.kind === "competitor_official") {
+      if (rule.id !== source.rule_id) continue;
+      ruleTitle = source.company_context + " " + title;
+    }
     // 화면의 Vet 필터와 같은 판정으로 수의 영상 기사만 새 규칙에 포함합니다.
     if (rule.topic === "Vet") {
       const lead = [excerpt.subtitle, excerpt.first_paragraph].filter(Boolean).join(" ").slice(0, 600);

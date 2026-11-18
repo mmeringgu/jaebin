@@ -6,6 +6,7 @@
 import { hostOf, keywordMatch, selectionLevel } from "./rules.js";
 import { cleanArticleTitle } from "./article-title.js";
 import { parseCanonCandidates, readCanonArticle } from "./canon.js";
+import { loadCompetitorOfficial, readCompetitorOfficial } from "./competitor-official.js";
 import { detailExcerpt } from "./article-excerpt.js";
 
 // ───────────────────────── 글자 정리 ─────────────────────────
@@ -76,6 +77,10 @@ export function articleUrl(href, source, allowAlternate = false) {
     if (source.canon_variant === "jp") valid = /^\/about\/(?:pressrelease\/20\d{2}\/20\d{2}-\d{2}-\d{2}(?:-\d+)?|[^/]*\d{8}[^/]*)\/?$/.test(p);
     else if (source.canon_variant === "global") valid = /^\/news\/pressrelease\/20\d{2}\/20\d{2}-\d{2}-\d{2}(?:-\d+)?\/?$/.test(p);
     else if (source.canon_variant === "hq") valid = /^\/ja\/news\/20\d{2}\/\d{8}(?:-\d+)?\.html$/.test(p);
+  } else if (k === "competitor_official") {
+    if (source.official_variant === "ge") valid = /^\/en\/about\/newsroom\/press-releases\/[a-z0-9-]+\/?$/i.test(p);
+    else if (source.official_variant === "siemens") valid = /^\/press\/releases\/[a-z0-9-]+\/?$/i.test(p);
+    else if (source.official_variant === "philips") valid = /^\/a-w\/about\/news\/archive\/(?:standard|corpcomms)\/news\/(?:press|articles)\/20\d{2}\/[a-z0-9-]+\.html$/i.test(p);
   } else if (k === "bosa") {
     valid = p === "/news/articleView.html" && /^\d+$/.test(value("idxno"));
     keys = ["idxno"];
@@ -175,7 +180,7 @@ export async function fetchPage(url, source, maxSize = 750000, jsonResponse = fa
       // 보통은 HTML, 빙 뉴스 검색은 RSS(XML), 메디게이트 날짜 목록은 JSON 형식이어야 합니다.
       let expected = "text/html";
       if (jsonResponse) expected = "json";
-      if (source.kind === "bing") expected = "xml";
+      if (source.kind === "bing" || (source.kind === "competitor_official" && source.official_variant === "ge" && url === source.listingUrl)) expected = "xml";
       if (!contentType.toLowerCase().includes(expected)) {
         await response.body?.cancel();
         throw new Error("응답 형식이 맞지 않습니다.");
@@ -392,6 +397,7 @@ export function parseBingRss(page, source) {
 
 // 정보원 목록 페이지를 가져와 기사 후보를 만듭니다.
 export async function loadCandidates(source) {
+  if (source.kind === "competitor_official") return loadCompetitorOfficial(source);
   if (source.kind === "canon_official") return parseCanonCandidates(await fetchPage(source.listingUrl, source), source);
   // 빙 뉴스 검색은 HTML이 아니라 RSS라서 따로 읽습니다. 키워드에 맞는 기사가 없으면 빈 목록입니다.
   if (source.kind === "bing") return parseBingRss(await fetchPage(source.listingUrl, source), source);
@@ -722,5 +728,6 @@ function dateFromJson(jsonScripts) {
 export async function readArticle(url, source, title, dateHint = null) {
   if (!articleUrl(url, source, true)) throw new Error("등록된 기사 주소가 아닙니다.");
   if (source.kind === "canon_official") return readCanonArticle(url, source, dateHint, title);
+  if (source.kind === "competitor_official") return readCompetitorOfficial(url, source, dateHint, title);
   return articleDetails(await fetchPage(url, source), source, title);
 }

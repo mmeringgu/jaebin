@@ -30,7 +30,11 @@ export function assessArticle(title, source, excerpt = {}) {
   if (category === "company" || category === "competitor") {
     if (/산업용|산업재|자동화|전력기기|반도체|ASML|카메라|프린터|화장품|기미|에어로스페이스|항공|데이터센터/i.test(title) && !/의료기기|의료사업|의료 사업|헬시니어스|healthineers/i.test(title) && !titleImaging) return reject("의료 사업과 관계없는 산업·소비재 기사입니다.");
     const medicalName = groups.some((g) => (g.exact_names || []).some((word) => hasWord(title, word)))
-      || groups.some((g) => g.id === "K001") || source.kind === "canon_official";
+      || groups.some((g) => g.id === "K001") || source.kind === "canon_official"
+      || (source.kind === "competitor_official" && ["ge", "siemens", "philips"].includes(source.official_variant));
+    if (source.kind === "competitor_official" && source.official_variant === "philips"
+      && /toothbrush|shaver|grooming|hair\s*care|coffee|kitchen|air\s*purifier|sonicare|consumer\s*(?:care|products)|personal\s*health/i.test(title)
+      && !titleImaging) return reject("의료 사업과 관계없는 필립스 소비재 기사입니다.");
     const businessSubject = /사업|자회사|분사|분리|인수|합병|실적|매출|영업이익|공급|출시|제품|허가|조직|대표|책임자|협력|협약|투자|생산|공장|개발|business|launch|supply|approval|research|partnership|発売|供給|承認|開発|導入/i.test(title);
     if (!medicalName && !titleMedical && !(businessSubject && medical(firstSentence))) return reject("회사명 외에 의료 사업과 연결되는 근거가 부족합니다.");
     reason = "의료 사업의 제품·공급·투자·조직·실적 또는 관련 활동";
