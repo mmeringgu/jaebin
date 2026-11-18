@@ -188,7 +188,7 @@ function exposureComparisons(list){
   '<div class="stat-box"><h3>매체별 노출 비교</h3>'+
   (media.length?exposureTable(media,'매체'):'<p class="muted">조건에 맞는 국내 매체별 회사 언급 기사가 없습니다.</p>')+'</div></div>';
 }
-// 최근 30일 경쟁사 소식을 회사별로 묶고 중복 보도는 같은 행의 출처로 표시합니다.
+// 최근 30일 경쟁사 소식은 회사별로 중복을 제거해 대표 기사만 표시합니다.
 function competitorMovementRows(list){
  const since=kstDate(29),today=kstDate(0),companies=new Map();
  list.filter(function(a){return !a.hidden&&a.category==='competitor'&&a.date>=since&&a.date<=today
@@ -204,7 +204,13 @@ function competitorMovementRows(list){
  });
  const rows=[];
  companies.forEach(function(items,name){
-  const groups=NewsRules.groupSameNews(items).sort(function(a,b){return NewsRules.compareNewest(a.main,b.main);});
+  const urls=new Set(),headlines=new Set();
+  const unique=items.slice().sort(NewsRules.compareNewest).filter(function(a){
+   const headline=movementHeadline({company:name,a:a}).normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}.]/gu,'');
+   if(urls.has(a.url)||headlines.has(headline))return false;
+   urls.add(a.url);headlines.add(headline);return true;
+  });
+  const groups=NewsRules.groupSameNews(unique).sort(function(a,b){return NewsRules.compareNewest(a.main,b.main);});
   groups.forEach(function(group){rows.push({company:name,a:group.main,others:group.others});});
  });
  return rows.sort(function(a,b){return NewsRules.compareNewest(a.a,b.a);});
@@ -230,13 +236,8 @@ function movementHeadline(row){
 function movementStory(row){
  const a=row.a,headline=movementHeadline(row);
  const link=/^https?:\/\//i.test(a.url)?'<a class="movement-title" href="'+esc(a.url)+'" target="_blank" rel="noopener noreferrer" title="'+esc(a.title)+'">'+esc(headline)+'</a>':'<span class="movement-title">'+esc(headline)+'</span>';
- const sources=[a].concat(row.others).filter(function(other){return /^https?:\/\//i.test(other.url);});
- const links=sources.map(function(other,index){
-  const label=index?'+'+index:other.source||'원문';
-  const title=index?'추가 출처 '+row.others.length+'건 · '+other.source:other.source||'원문 기사';
-  return '<a href="'+esc(other.url)+'" target="_blank" rel="noopener noreferrer" title="'+esc(title)+'" aria-label="'+esc(title)+'">'+esc(label)+'</a>';
- }).join(' ');
- return '<li class="movement-story">'+link+'<time datetime="'+esc(a.date)+'">'+esc(shortDate(a.date))+'</time><span class="movement-row-sources">'+links+'</span></li>';
+ const source=/^https?:\/\//i.test(a.url)?'<a href="'+esc(a.url)+'" target="_blank" rel="noopener noreferrer">'+esc(a.source||'원문')+'</a>':'';
+ return '<li class="movement-story">'+link+'<time datetime="'+esc(a.date)+'">'+esc(shortDate(a.date))+'</time><span class="movement-row-sources">'+source+'</span></li>';
 }
 function competitorMovements(list){
  const companies=new Map();
@@ -247,7 +248,7 @@ function competitorMovements(list){
  // rows가 최신순이므로 카드도 해당 회사의 최신 소식 순으로 배치됩니다.
  const cards=Array.from(companies,function(entry){
   const name=entry[0],rows=entry[1];
-  return '<article class="movement-card"><header class="movement-company"><h4>'+esc(name)+'</h4><span>최근 소식 '+rows.length+'건</span></header>'+
+  return '<article class="movement-card"><header class="movement-company"><h4>'+esc(name)+'</h4></header>'+
    '<ul class="movement-stories">'+rows.map(movementStory).join('')+'</ul></article>';
  });
  const body=cards.length?'<div class="movement-grid">'+cards.join('')+'</div>':'<p class="muted">최근 30일의 경쟁사 움직임 기사가 없습니다.</p>';

@@ -143,7 +143,7 @@ test("비교할 기사가 없으면 빈 상태를 안내합니다", () => {
   assert.doesNotMatch(html, /NaN|Infinity/);
 });
 
-test("경쟁사 움직임은 최신 30일의 회수 이외 소식을 회사별로 묶고 출처를 보존합니다", () => {
+test("경쟁사 움직임은 같은 뉴스의 최신 대표 기사와 출처 하나만 표시합니다", () => {
   const api = setup();
   const rows = [
     article("지멘스 MRI 신제품 출시", { id: 1, entity: "지멘스", url: "https://example.com/1" }),
@@ -157,10 +157,10 @@ test("경쟁사 움직임은 최신 30일의 회수 이외 소식을 회사별�
   const result = api.competitorMovementRows(rows);
   assert.equal(result.length, 2);
   const siemens = result.find((row) => row.company === "지멘스");
-  assert.equal(siemens.a.id, 2);assert.equal(siemens.others.length, 1);
+  assert.equal(siemens.a.id, 2);
   const html = api.competitorMovements(rows);
-  assert.match(html, /경쟁사 움직임/);assert.match(html, /추가 출처 1건/);
-  assert.match(html, /https:\/\/example.com\/1/);assert.match(html, /https:\/\/example.com\/2/);
+  assert.match(html, /경쟁사 움직임/);assert.doesNotMatch(html, /추가 출처|최근 소식|\+1/);
+  assert.doesNotMatch(html, /https:\/\/example.com\/1/);assert.match(html, /https:\/\/example.com\/2/);
   assert.doesNotMatch(html, /제품 회수|필립스|캐논메디칼|삼성메디슨/);
 });
 
@@ -190,7 +190,7 @@ test("경쟁사 카드는 최신 회사부터 표시하고 회사별 모든 소�
   assert.equal((html.match(/<article class="movement-card">/g) || []).length, 2);
   assert.equal((html.match(/class="movement-story"/g) || []).length, 5);
   assert.ok(html.indexOf('<h4>GE</h4>') < html.indexOf('<h4>지멘스</h4>'));
-  assert.match(html, /최근 소식 4건/);
+  assert.doesNotMatch(html, /최근 소식 \d+건/);
   assert.match(html, />CT 100대 공급 계약<|>CT 100대 공급 계약<\/a>/);
   assert.match(html, /이사회 대표 선임/);
   assert.match(html, /<time datetime="2026-11-16">11\/16<\/time>/);
@@ -211,4 +211,18 @@ test("카드 제목은 원문 사실과 전체 제목을 보존하며 HTML과 �
   assert.match(html, />new MRI system launches worldwide<\/a>/);
   assert.doesNotMatch(html, /<img|href="javascript:/);
   assert.match(html, /MRI 3.0T 출시/);
+});
+
+test("동일 URL과 회사명·공백·문장부호만 다른 늦은 중복 보도는 카드 한 줄로 표시합니다", () => {
+  const api = setup();
+  const rows = [
+    article("지멘스, MRI 장비 공급 계약 체결", { id: 1, entity: "지멘스", date: "2026-11-05", url: "https://example.com/old" }),
+    article("Siemens Healthineers: MRI 장비 공급계약 체결", { id: 2, entity: "지멘스", date: "2026-11-17", url: "https://example.com/new" }),
+    article("원문 제목이 교정된 MRI 장비 기사", { id: 3, entity: "지멘스", date: "2026-11-16", url: "https://example.com/new" }),
+  ];
+  const result = api.competitorMovementRows(rows);
+  assert.equal(result.length, 1);assert.equal(result[0].a.id, 2);
+  const html = api.competitorMovements(rows);
+  assert.equal((html.match(/class="movement-story"/g)||[]).length, 1);
+  assert.doesNotMatch(html, /추가 출처|최근 소식|example.com\/old|\+1/);
 });
