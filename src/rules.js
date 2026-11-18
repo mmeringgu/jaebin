@@ -9,6 +9,9 @@ export function hasWord(text, word) {
   // 일본어 제목의 전각 영문(ＣＡＮＯＮ·ＣＴ·ＭＲＩ)도 같은 단어로 판정합니다.
   const lowerText = text.normalize("NFKC").toLowerCase();
   const lowerWord = word.normalize("NFKC").toLowerCase();
+  // 모든 MRI 메인·보조·필수 키워드에서 같은 이름 변형을 사용합니다.
+  // 짧은 MR만으로 일반 기사를 새로 수집하지는 않습니다.
+  if (lowerWord === "mri") return globalThis.NewsRules.isMri(lowerText, false);
   // 캐논데일처럼 다른 이름의 일부인 경우는 제외하고 메디컬·메디칼 붙임 표기만 허용합니다.
   if (lowerWord === "캐논") return /캐논(?=메디[컬칼]|$|[^\p{L}\p{N}_])/u.test(lowerText);
   // 기관명·직종이 지명이나 다른 단어 일부에 섞인 경우는 제외합니다.

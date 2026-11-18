@@ -18,18 +18,25 @@ function isDomesticMedia(a){
  return host.endsWith('.kr')&&!/\.(?:go|ac|or|re)\.kr$/.test(host)&&!/공식|보도자료|병원|의료원|협회|학회|공단|진흥원|로이터|블룸버그|야후|Reuters|Bloomberg/i.test(name)&&/뉴스|신문|일보|투데이|데일리|타임[스즈]|저널|프레스|미디어|방송|^KBS$|^MBC$|^SBS$|^YTN$|^KNN$/i.test(name);
 }
 // 수의 맥락과 영상진단 맥락이 제목에 함께 있어야 Vet 분야로 봅니다.
+// MRI의 한글·영문 이름과 띄어쓰기 변형을 수집·선별·화면에서 함께 판정합니다.
+function isMri(value,includeMr=true){
+ const text=String(value||'').normalize('NFKC');
+ if(/자기\s*공명|磁気\s*共鳴|(?:^|[^a-z0-9])(?:MRI|magnetic[\s-]+resonance)(?=$|[^a-z0-9])/i.test(text))return true;
+ return includeMr&&/(?:^|[^a-z0-9])MR(?=$|[^a-z0-9])/i.test(text);
+}
 function isVeterinaryImaging(title,context=''){
  const text=String(title||'').normalize('NFKC');
  // '필수의료' 안의 '수의'는 수의학 맥락이 아닙니다. 실제 동물·수의 표현은 따로 판정합니다.
  const veterinary=/(?<!필)수의(?!\s*계약)|동물|반려견|반려묘|강아지|고양이|(?:^|[^a-z0-9])(?:veterinary|veterinarian|vet|animal|canine|feline)(?=$|[^a-z0-9])/i.test(text);
  const imaging=/수의\s*영상|초음파|영상\s*(?:진단|판독|분석|검사|의학|장비)|진단\s*영상|엑스(?:레이|선)|방사선\s*(?:촬영|검사|진단)|자기공명|컴퓨터단층|전산화단층|(?:^|[^a-z0-9])(?:CT|MRI?|CBCT|PET|XR|x[- ]?ray|x[- ]?선|ultrasound|radiology|radiography)(?=$|[^a-z0-9])/i;
- if(veterinary&&imaging.test(text))return true;
+ const hasImaging=function(value){return isMri(value)||imaging.test(value);};
+ if(veterinary&&hasImaging(text))return true;
  const lead=String(context||'').normalize('NFKC').slice(0,600);
  // 제목에서 빠진 정보는 실제 장비 도입·운영을 설명하는 첫 부분으로만 보완합니다.
  if(/예를\s*들|예컨대|비교하면|비교할\s*때/.test(lead))return false;
  const institution=/동물\s*(?:병원|의료\s*센터|메디[컬칼]\s*센터)|수의(?:대|과대학)/i.test(lead);
  const adoption=/도입|설치|교체|증설|확충|가동|운영|보유|장비/.test(text+' '+lead);
- return (imaging.test(text)||imaging.test(lead))&&adoption&&(veterinary||institution);
+ return (hasImaging(text)||hasImaging(lead))&&adoption&&(veterinary||institution);
 }
 function compareNewest(a,b){
  return b.date.localeCompare(a.date)||String(b.saved_at||'').localeCompare(String(a.saved_at||''))||Number(b.id||0)-Number(a.id||0);
@@ -92,5 +99,5 @@ function monthlyArticles(rows,since,until){
   return {...chosen,duplicate_count:members.length};
  }).sort(compareNewest);
 }
-root.NewsRules=Object.freeze({compareNewest,titlePieces,similarity,groupSameNews,monthlyArticles,isVeterinaryImaging,isDomesticMedia});
+root.NewsRules=Object.freeze({compareNewest,titlePieces,similarity,groupSameNews,monthlyArticles,isMri,isVeterinaryImaging,isDomesticMedia});
 })(globalThis);

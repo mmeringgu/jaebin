@@ -1,5 +1,5 @@
 {
-  "version": "2026-11-18-competitor-global",
+  "version": "2026-11-18-mri-keywords",
   "automation": {
     "daily_targets": { "company": 30, "policy": 45, "competitor": 45, "hospital": 30, "conference": 10 },
     "canon_source_order": ["S030", "S029", "S028", "B014", "B015", "B013", "B001"],
@@ -437,8 +437,8 @@
     },
     {
       "id": "B006",
-      "name": "빙 뉴스 검색: 특수의료장비",
-      "label": "빙 검색 · 특수의료장비",
+      "name": "빙 뉴스 검색: 특수의료장비·MRI",
+      "label": "빙 검색 · 특수의료장비·MRI",
       "status": "사용",
       "categories": [
         "company",
@@ -447,7 +447,7 @@
         "competitor"
       ],
       "url": "https://www.bing.com/",
-      "listingUrl": "https://www.bing.com/news/search?q=%ED%8A%B9%EC%88%98%EC%9D%98%EB%A3%8C%EC%9E%A5%EB%B9%84&format=rss&setlang=ko&cc=KR&qft=sortbydate%3D%221%22",
+      "listingUrl": "https://www.bing.com/news/search?q=%28%ED%8A%B9%EC%88%98%EC%9D%98%EB%A3%8C%EC%9E%A5%EB%B9%84+OR+MRI+OR+%22%EC%9E%90%EA%B8%B0%EA%B3%B5%EB%AA%85%EC%98%81%EC%83%81%22+OR+%22%EC%9E%90%EA%B8%B0%EA%B3%B5%EB%AA%85%EC%9E%A5%EC%B9%98%22+OR+%22%EC%9E%90%EA%B8%B0%EA%B3%B5%EB%AA%85%EC%B4%AC%EC%98%81%22+OR+%22%EC%9E%90%EA%B8%B0%EA%B3%B5%EB%AA%85%EA%B2%80%EC%82%AC%22+OR+%22%EC%9E%90%EA%B8%B0+%EA%B3%B5%EB%AA%85%22+OR+%22magnetic+resonance%22%29&format=rss&setlang=ko&cc=KR&qft=sortbydate%3D%221%22",
       "kind": "bing"
     },
     {
@@ -528,7 +528,7 @@
       "status": "사용",
       "categories": ["company", "policy", "hospital", "competitor"],
       "url": "https://www.bing.com/",
-      "listingUrl": "https://www.bing.com/news/search?q=%28%EC%88%98%EC%9D%98+OR+%EB%8F%99%EB%AC%BC%EC%9D%98%EB%A3%8C%EC%84%BC%ED%84%B0+OR+%22%EB%8F%99%EB%AC%BC+%EC%9D%98%EB%A3%8C%EC%84%BC%ED%84%B0%22+OR+%EB%8F%99%EB%AC%BC%EB%A9%94%EB%94%94%EC%BB%AC%EC%84%BC%ED%84%B0+OR+%22%EB%8F%99%EB%AC%BC+%EB%A9%94%EB%94%94%EC%BB%AC%EC%84%BC%ED%84%B0%22+OR+%EB%8F%99%EB%AC%BC%EB%A9%94%EB%94%94%EC%B9%BC%EC%84%BC%ED%84%B0+OR+%EB%8F%99%EB%AC%BC%EB%B3%91%EC%9B%90+OR+%22%EB%8F%99%EB%AC%BC+%EB%B3%91%EC%9B%90%22+OR+%EC%88%98%EC%9D%98%EB%8C%80+OR+%EC%88%98%EC%9D%98%EA%B3%BC%EB%8C%80%ED%95%99+OR+%EB%B0%98%EB%A0%A4%EB%8F%99%EB%AC%BC%29+%28CT+OR+MRI+OR+%EC%B4%88%EC%9D%8C%ED%8C%8C%29&format=rss&setlang=ko&cc=KR&qft=sortbydate%3D%221%22",
+      "listingUrl": "https://www.bing.com/news/search?q=%28%EC%88%98%EC%9D%98+OR+%EB%8F%99%EB%AC%BC%EC%9D%98%EB%A3%8C%EC%84%BC%ED%84%B0+OR+%22%EB%8F%99%EB%AC%BC+%EC%9D%98%EB%A3%8C%EC%84%BC%ED%84%B0%22+OR+%EB%8F%99%EB%AC%BC%EB%A9%94%EB%94%94%EC%BB%AC%EC%84%BC%ED%84%B0+OR+%22%EB%8F%99%EB%AC%BC+%EB%A9%94%EB%94%94%EC%BB%AC%EC%84%BC%ED%84%B0%22+OR+%EB%8F%99%EB%AC%BC%EB%A9%94%EB%94%94%EC%B9%BC%EC%84%BC%ED%84%B0+OR+%EB%8F%99%EB%AC%BC%EB%B3%91%EC%9B%90+OR+%22%EB%8F%99%EB%AC%BC+%EB%B3%91%EC%9B%90%22+OR+%EC%88%98%EC%9D%98%EB%8C%80+OR+%EC%88%98%EC%9D%98%EA%B3%BC%EB%8C%80%ED%95%99+OR+%EB%B0%98%EB%A0%A4%EB%8F%99%EB%AC%BC%29+%28CT+OR+MRI+OR+%22%EC%9E%90%EA%B8%B0%EA%B3%B5%EB%AA%85%EC%98%81%EC%83%81%22+OR+%22%EC%9E%90%EA%B8%B0%EA%B3%B5%EB%AA%85%EC%9E%A5%EC%B9%98%22+OR+%22%EC%9E%90%EA%B8%B0%EA%B3%B5%EB%AA%85%EC%B4%AC%EC%98%81%22+OR+%22%EC%9E%90%EA%B8%B0%EA%B3%B5%EB%AA%85%EA%B2%80%EC%82%AC%22+OR+%22%EC%9E%90%EA%B8%B0+%EA%B3%B5%EB%AA%85%22+OR+%EC%B4%88%EC%9D%8C%ED%8C%8C%29&format=rss&setlang=ko&cc=KR&qft=sortbydate%3D%221%22",
       "kind": "bing",
       "lookback_days": 30
     },
@@ -536,7 +536,7 @@
       "id": "B016", "name": "빙 뉴스 검색: 수의 전문 매체 영상장비", "label": "빙 검색 · Vet 전문 매체",
       "status": "사용", "categories": ["company", "policy", "hospital", "competitor"],
       "url": "https://www.bing.com/",
-      "listingUrl": "https://www.bing.com/news/search?q=%28site%3Adailyvet.co.kr+OR+site%3Adailygaewon.com%29+%28CT+OR+MRI+OR+%EC%B4%88%EC%9D%8C%ED%8C%8C+OR+%EC%98%81%EC%83%81%EC%A7%84%EB%8B%A8%29&format=rss&setlang=ko&cc=KR&qft=sortbydate%3D%221%22",
+      "listingUrl": "https://www.bing.com/news/search?q=%28site%3Adailyvet.co.kr+OR+site%3Adailygaewon.com%29+%28CT+OR+MRI+OR+%22%EC%9E%90%EA%B8%B0%EA%B3%B5%EB%AA%85%EC%98%81%EC%83%81%22+OR+%22%EC%9E%90%EA%B8%B0%EA%B3%B5%EB%AA%85%EC%9E%A5%EC%B9%98%22+OR+%22%EC%9E%90%EA%B8%B0%EA%B3%B5%EB%AA%85%EC%B4%AC%EC%98%81%22+OR+%22%EC%9E%90%EA%B8%B0%EA%B3%B5%EB%AA%85%EA%B2%80%EC%82%AC%22+OR+%22%EC%9E%90%EA%B8%B0+%EA%B3%B5%EB%AA%85%22+OR+%EC%B4%88%EC%9D%8C%ED%8C%8C+OR+%EC%98%81%EC%83%81%EC%A7%84%EB%8B%A8%29&format=rss&setlang=ko&cc=KR&qft=sortbydate%3D%221%22",
       "kind": "bing", "lookback_days": 30
     },
     {
@@ -580,7 +580,7 @@
     {
       "id": "B013", "name": "빙 뉴스 검색: 캐논 의료 일본어", "label": "빙 검색 · 캐논 의료 일본 뉴스",
       "status": "사용", "categories": ["company"], "language": "ja", "lookback_days": 30, "url": "https://www.bing.com/",
-      "listingUrl": "https://www.bing.com/news/search?q=%22キヤノンメディカル%22+OR+%22キャノンメディカル%22+OR+((キヤノン+OR+キャノン)+(医療+OR+CT+OR+MRI+OR+超音波))&format=rss&setlang=ja&cc=JP&qft=sortbydate%3D%221%22",
+      "listingUrl": "https://www.bing.com/news/search?q=%22%E3%82%AD%E3%83%A4%E3%83%8E%E3%83%B3%E3%83%A1%E3%83%87%E3%82%A3%E3%82%AB%E3%83%AB%22+OR+%22%E3%82%AD%E3%83%A3%E3%83%8E%E3%83%B3%E3%83%A1%E3%83%87%E3%82%A3%E3%82%AB%E3%83%AB%22+OR+%28%28%E3%82%AD%E3%83%A4%E3%83%8E%E3%83%B3+OR+%E3%82%AD%E3%83%A3%E3%83%8E%E3%83%B3%29+%28%E5%8C%BB%E7%99%82+OR+CT+OR+MRI+OR+%E7%A3%81%E6%B0%97%E5%85%B1%E9%B3%B4+OR+%E8%B6%85%E9%9F%B3%E6%B3%A2%29%29&format=rss&setlang=ja&cc=JP&qft=sortbydate%3D%221%22",
       "kind": "bing"
     },
     {
@@ -592,7 +592,7 @@
     {
       "id": "B015", "name": "빙 뉴스 검색: Canon 본사 의료 영어", "label": "빙 검색 · Canon 본사 해외 의료사업",
       "status": "사용", "categories": ["company"], "language": "en", "lookback_days": 30, "url": "https://www.bing.com/",
-      "listingUrl": "https://www.bing.com/news/search?q=Canon+(medical+OR+healthcare+OR+CT+OR+MRI+OR+ultrasound)&format=rss&setlang=en&cc=GB&qft=sortbydate%3D%221%22",
+      "listingUrl": "https://www.bing.com/news/search?q=Canon+%28medical+OR+healthcare+OR+CT+OR+MRI+OR+%22magnetic+resonance%22+OR+ultrasound%29&format=rss&setlang=en&cc=GB&qft=sortbydate%3D%221%22",
       "kind": "bing"
     }
   ],

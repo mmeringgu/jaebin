@@ -1,7 +1,7 @@
 // 뉴스·통계·내보내기·리포트에서 함께 사용하는 업무 관련성 기준입니다.
 import { keywordMatch, selectionLevel, hasWord } from "./rules.js";
 
-const imaging = (text) => /영상\s*(?:의학|진단|판독|분석|검사|장비|센터)|의료영상|초음파|핵의학|조영술|엑스(?:레이|선)|자기공명|컴퓨터단층|전산화단층|画像診断|超音波|磁気共鳴|(?:^|[^a-z0-9])(?:CT|MRI?|PET|CBCT|Angio|X[- ]?ray|ultrasound|radiology|angiography|diagnostic imaging)(?=$|[^a-z0-9])/i.test(text);
+const imaging = (text) => globalThis.NewsRules.isMri(text) || /영상\s*(?:의학|진단|판독|분석|검사|장비|센터)|의료영상|초음파|핵의학|조영술|엑스(?:레이|선)|자기공명|컴퓨터단층|전산화단층|画像診断|超音波|磁気共鳴|(?:^|[^a-z0-9])(?:CT|MRI?|PET|CBCT|Angio|X[- ]?ray|ultrasound|radiology|angiography|diagnostic imaging)(?=$|[^a-z0-9])/i.test(text);
 const medical = (text) => imaging(text) || /의료|메디칼|메디컬|헬스케어|헬시니어스|병원|의학|호흡기|인공호흡|환자감시|医療|メディカル|医用|病院|medical|health\s*care|healthineers|clinical/i.test(text);
 const policyChange = /인하|인상|개편|개정|개선|조정|지원|보상|예산|재정|투입|지정|전환|육성|설치|기준|허가|인증|법안|법률|규제|시행|적용|신설|제도|수가|급여|상대가치|환산지수/;
 const hospitalChange = /개원|개소|증설|증축|신축|착공|준공|확충|확장\s*(?:이전|개소)|부채|적자|흑자|구조조정|투자|인수|(?<!종)합병(?!원)/;

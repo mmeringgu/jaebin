@@ -106,7 +106,7 @@ function matchesTopic(a,topic){
  const text=[a.title].concat(a.tags||[]).join(' ');
  if(topic==='AI')return /(?:\bAI\b|인공지능|人工知能)/i.test(text);
  if(topic==='CT')return /(?:\bCT\b|CT(?=[가-힣])|컴퓨터단층|전산화단층|コンピュータ断層)/i.test(text);
- if(topic==='MRI')return /(?:\bMRI?\b|MRI?(?=[가-힣])|자기공명|磁気共鳴)/i.test(text);
+ if(topic==='MRI')return NewsRules.isMri(text);
  // UL: 초음파(Ultrasound) 장비
  if(topic==='UL')return /초음파|超音波|ultrasound/i.test(text);
  // VL/XR: 혈관조영(Angiography) 장비, 엑스레이 장비
