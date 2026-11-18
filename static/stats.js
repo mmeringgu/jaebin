@@ -386,4 +386,3 @@ document.getElementById('stats-company').addEventListener('click',function(event
 });
 // 기사를 이미 불러왔다면 바로 그립니다.
 if(articles.length)renderStats();
-// (예전 "트렌드: AI 인사이트" 부분은 월간 요약 탭과 내용이 겹쳐서 지웠습니다. 2026-11-10)

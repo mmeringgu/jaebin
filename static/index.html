@@ -38,7 +38,6 @@
   <div class="toolbar-row">
    <select id="topic" aria-label="분야 필터"><option value="">전체 분야</option><option>AI</option><option>CT</option><option>MRI</option><option>UL</option><option>VL/XR</option><option>Vet</option></select>
    <select id="period" aria-label="기간 필터"><option value="">전체 기간</option><option value="today">오늘</option><option value="7">최근 7일</option></select>
-   <select id="impact" aria-label="기회·위협 필터"><option value="">모든 영향</option><option value="both">기회·위협만</option><option value="기회">🟢 기회만</option><option value="위협">🔴 위협만</option></select>
    <select id="sort" aria-label="정렬"><option value="relevance">관련도순</option><option value="new">최신순</option></select>
    <label class="check-label"><input type="checkbox" id="only-star"> ⭐만 보기</label>
    <label class="check-label"><input type="checkbox" id="show-hidden"> 숨긴 기사 보기</label>
@@ -50,7 +49,7 @@
 
  <!-- 탭 2: 월간 요약 -->
  <div data-panel="report" hidden>
- <section class="section" id="report"><div class="section-head"><h2>월간 요약</h2></div><div class="controls"><button class="button primary" id="report-month-button">월간 요약 만들기</button></div><p class="desc">최근 30일 기사를 바탕으로 AI가 핵심 동향·기회·위협·경쟁사 움직임을 정리합니다. 1~2분 정도 걸립니다.</p><p id="report-status" class="status" role="status" aria-live="polite"></p><div id="report-output" class="report-output"></div></section>
+ <section class="section" id="report"><div class="section-head"><h2>월간 요약</h2></div><div class="controls"><button class="button primary" id="report-month-button">월간 요약 만들기</button></div><p class="desc">최근 30일 기사를 바탕으로 AI가 핵심 동향·경쟁사 움직임을 정리합니다. 1~2분 정도 걸립니다.</p><p id="report-status" class="status" role="status" aria-live="polite"></p><div id="report-output" class="report-output"></div></section>
  </div>
 
  <!-- 탭 3: 업계 동향 (내용은 stats.js가 채웁니다) -->
@@ -63,16 +62,26 @@
  <!-- 탭 4: 관리 -->
  <div data-panel="admin" hidden>
  <details class="section management-group" id="collection-management"><summary>수집 관리</summary><div class="management-content">
- <section class="section" id="admin"><div class="section-head"><h2>자동 수집 현황</h2><button class="button" id="auto-refresh">상태 확인</button></div><p class="desc">목표: 하루 처리 횟수 중 분야별로 나눠 둔 몫 · 대기: 아직 읽지 않은 기사 · 중복 후순위: 다른 매체가 이미 보도한 같은 소식이라 나중에 읽을 기사</p><div id="auto-status" class="status status-pills" role="status">상태 확인 중…</div><p id="auto-schedule-note" class="muted"></p><div id="auto-distribution" class="quota-grid"></div></section>
+ <section class="section" id="admin"><div class="section-head"><h2>자동 수집 현황</h2><button class="button" id="auto-refresh">상태 확인</button></div><div id="auto-status" class="status status-pills" role="status">상태 확인 중…</div><p id="auto-schedule-note" class="muted"></p></section>
 
  <!-- 정보원 상태: 어느 매체가 며칠째 새 기사가 없는지 보여줍니다 -->
  <details class="section collection-details" id="source-collection-details"><summary>정보원별 수집</summary><p class="desc">최근 7일 목록 수집 기록입니다. 문제가 있는 정보원이 위에 나옵니다. ‘지금 수집’을 누르면 해당 정보원의 목록과 기사 원문을 확인합니다.</p><div class="controls"><button class="button" id="source-status-refresh">새로고침</button></div><p id="collect-result" class="status" role="status" aria-live="polite"></p><div id="source-status" class="source-table-wrap"></div></details>
 
- <details class="section collection-details" id="collection-details"><summary>후보 기사와 분류 이유</summary><p class="desc">정보원을 선택하면 단일 선별 기준에 따른 후보 기사와 포함·제외 이유를 볼 수 있습니다.</p><div class="controls"><select id="collect-source" aria-label="후보 기사를 볼 정보원"></select><label class="check-label"><input type="checkbox" id="show-other"> 제외 후보도 보기</label></div><p id="selection-count" class="muted"></p><div id="candidate-list"></div></details>
 
- <details class="section collection-details" id="excluded-articles-details"><summary>제외 기사 검토</summary><p class="desc">기존 저장 기사 중 현재 선별 기준에서 제외된 기사입니다. 저장된 데이터는 그대로 유지됩니다. 아래 목록은 최근 기사 최대 500건 범위입니다.</p><div class="controls"><button class="button" id="excluded-refresh">새로고침</button></div><p id="excluded-status" class="status" role="status"></p><div id="excluded-list"></div></details>
 
- <details class="section collection-details"><summary>자동 수집 이력·시험 실행</summary><p class="desc">‘다음 작업 1회 실행’은 자동 수집 순서의 다음 작업 하나를 실제로 실행합니다.</p><div class="controls"><button class="button" id="auto-test">다음 작업 1회 실행</button></div><p id="auto-result" class="status" role="status"></p><div id="auto-history"></div></details>
+ <details class="section collection-details" id="manual-article-details"><summary>기사 직접 추가</summary>
+ <p class="desc">자동 수집에서 빠진 기사의 URL을 입력하고 정보를 확인한 뒤 추가합니다.</p>
+ <form id="manual-article-form">
+ <div class="controls manual-url"><label for="manual-url">기사 URL</label><input id="manual-url" type="url" required maxlength="2048" placeholder="https://…"><button type="button" class="button" id="manual-preview">기사 확인</button></div>
+ <fieldset id="manual-fields" class="manual-fields" hidden disabled>
+ <label>제목<input id="manual-title" required minlength="8" maxlength="300"></label>
+ <div class="manual-columns"><label>출처<input id="manual-source" required maxlength="120"></label><label>발행일<input id="manual-date" type="date" required></label><label>분야<select id="manual-category" required><option value="">분야 선택</option><option value="company">캐논 뉴스</option><option value="policy">정책</option><option value="hospital">병원</option><option value="conference">학회</option><option value="competitor">경쟁사</option></select></label></div>
+ <label>첫 문단<textarea id="manual-summary" rows="3" required minlength="8" maxlength="1600"></textarea></label>
+ <p class="muted">확인되지 않은 정보는 원문을 보고 보완해 주세요. 직접 추가한 기사는 자동 선별과 별도로 유지됩니다.</p>
+ <button type="submit" class="button primary" id="manual-save">뉴스에 추가</button>
+ </fieldset></form><p id="manual-status" class="status" role="status" aria-live="polite"></p></details>
+
+ <details class="section collection-details"><summary>상세 점검</summary><div id="auto-distribution" class="quota-grid"></div><p class="muted">분야별 원문 처리 횟수와 배정 기준입니다. 대기 기사 중 같은 소식은 후순위로 처리합니다.</p><p class="desc">‘다음 작업 1회 실행’은 자동 수집 순서의 다음 작업 하나를 실제로 실행합니다.</p><div class="controls"><button class="button" id="auto-test">다음 작업 1회 실행</button></div><p id="auto-result" class="status" role="status"></p><div id="auto-history"></div></details>
  </div></details>
 
  <details class="section management-group" id="exposure-management"><summary>노출 관리</summary><div class="management-content">
@@ -86,4 +95,4 @@
 </main>
 <button type="button" id="back-to-top" class="back-to-top" aria-label="맨 위로 이동" title="맨 위로 이동" hidden><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
 <script defer src="/back-to-top.js"></script>
-<script defer src="/news-rules.js"></script><script defer src="/impact.js"></script><script defer src="/articles.js"></script><script defer src="/stats.js"></script><script defer src="/automation.js"></script><script defer src="/collect.js"></script><script defer src="/excluded.js"></script><script defer src="/report.js"></script><script defer src="/source-status.js"></script></body></html>
+<script defer src="/news-rules.js"></script><script defer src="/impact.js"></script><script defer src="/articles.js"></script><script defer src="/stats.js"></script><script defer src="/automation.js"></script><script defer src="/collect.js"></script><script defer src="/manual-article.js"></script><script defer src="/report.js"></script><script defer src="/source-status.js"></script></body></html>

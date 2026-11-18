@@ -153,12 +153,10 @@ select:hover{border-color:var(--ink-2)}
 .item-meta{display:flex;gap:4px 10px;align-items:center;flex-wrap:wrap;color:var(--muted);font-size:12px;margin-top:4px}
 .entity{font-weight:600;color:var(--cat,var(--red))}
 .chip{font-size:11px;border:1px solid var(--line);border-radius:var(--radius);padding:0 7px;color:var(--ink-2)}
-.ai-chip{border-color:var(--k10);color:var(--k80);background:var(--k10);font-weight:600}
 /* 기회 = Feijoa(연두), 위협 = 캐논 레드 */
 .impact-good{border-color:var(--feijoa);color:#2f6b25;background:#eef8eb;font-weight:600}
 .impact-bad{border-color:#f0b8b8;color:var(--red);background:var(--red-soft);font-weight:600}
 .impact-controls{display:inline-flex;align-items:center;vertical-align:middle;flex-wrap:wrap;gap:6px;margin-left:6px;font-size:12px;font-weight:400}
-.impact-prompt{font-size:11px}
 .impact-choices{display:inline-flex;align-items:center;flex-wrap:wrap;gap:5px}
 .impact-choice{font:inherit;font-size:12px;padding:3px 8px;border:1px solid var(--line);border-radius:6px;background:#fff;cursor:pointer;white-space:nowrap}
 .impact-choice:hover,.impact-choice[aria-pressed="true"]{border-color:var(--red);background:var(--red-soft)}
@@ -181,12 +179,6 @@ select:hover{border-color:var(--ink-2)}
 .item-more summary:hover{color:var(--red)}
 .item-detail{display:flex;flex-direction:column;gap:10px;margin-top:10px;padding:16px;background:#f8f8f8;border:1px solid var(--line-2)}
 .detail-text{margin:0;font-size:14px;color:var(--ink-2);white-space:pre-line}
-/* AI 인사이트 상자: 흰 바탕 + 캐논 레드 왼쪽 선, 머리글은 빨간 글자 */
-.ai-summary{background:white;border:1px solid var(--line);border-left:3px solid var(--red);padding:12px 16px;font-size:14px}
-.ai-summary strong{display:inline-block;font-size:11px;color:var(--red);font-weight:600;letter-spacing:2px}
-.ai-summary p{margin:6px 0 0;white-space:pre-line}
-.small-button[data-summary]{align-self:flex-start}
-.ai-summary .text-button{margin-top:6px}
 .tags{display:flex;gap:5px;flex-wrap:wrap}
 .tag{font-size:11px;border-radius:var(--radius);padding:1px 8px;background:var(--k10);color:var(--ink-2)}
 .same-news{font-size:13px}
@@ -249,12 +241,6 @@ select:hover{border-color:var(--ink-2)}
 .steps li.done{background:var(--k10);color:var(--ink-2)}
 .steps li.current{background:var(--red);color:white;font-weight:600}
 .policy-table td{vertical-align:middle}
-/* AI 인사이트 결과 */
-.trend-summary{margin:12px 0 0;padding:14px 16px;border-left:3px solid var(--red);background:#f8f8f8;font-size:14px}
-.trend-sub{font-size:12px;font-weight:600;color:var(--k90);margin:16px 0 6px}
-.issue-list{margin:0;padding-left:20px;font-size:13px}
-.issue-list>li{margin-bottom:8px}
-.issue-list ul{margin:4px 0 0;padding-left:16px}
 .stat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
 .stat-box{background:white;border:1px solid var(--line);border-radius:var(--radius);padding:22px 24px}
 .stat-box.wide{grid-column:1/-1}
@@ -310,6 +296,15 @@ select:hover{border-color:var(--ink-2)}
 .report-output li{margin-bottom:12px}
 .report-sources{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;margin-top:3px}
 .report-sources a{color:var(--red);text-underline-offset:3px}
+.report-table{width:100%;border-collapse:collapse;font-size:13px;line-height:1.6}
+.report-table th,.report-table td{padding:12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.report-table thead th{background:var(--k10);font-size:12px;color:var(--ink-2);white-space:nowrap}
+.report-table tbody th{min-width:100px;max-width:170px;font-weight:600}
+.report-change{min-width:180px}
+.report-table .report-impact{text-align:center;width:52px;vertical-align:middle}
+.report-positive{color:var(--red);font-size:20px;line-height:1}
+.report-negative{color:#2563eb;font-size:20px;line-height:1}
+.report-table .report-sources{margin-top:0;min-width:90px}
 
 /* ===== 수집 관리 (예약 기록, 정보원 상태, 수집 후보 목록) ===== */
 .management-group{background:white;border:1px solid var(--line);border-radius:var(--radius)}
@@ -318,6 +313,13 @@ select:hover{border-color:var(--ink-2)}
 .management-content{padding:0 20px}
 .management-content>.section{margin:24px 0}
 .quota-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:12px}
+.manual-url{align-items:center}
+.manual-url input{flex:1;min-width:180px}
+.manual-fields{border:0;padding:0;margin:16px 0 0}
+.manual-fields label{display:flex;flex-direction:column;gap:5px;margin-bottom:12px;font-size:13px}
+.manual-fields input,.manual-fields select,.manual-fields textarea,.manual-url input{padding:9px;border:1px solid var(--line);background:#fff;border-radius:var(--radius);width:100%;box-sizing:border-box}
+.manual-columns{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.manual-fields textarea{resize:vertical}
 .quota-card{border:1px solid var(--line);padding:12px;font-size:13px}
 .quota-card strong{color:var(--red);font-weight:600}
 .quota-card p{margin:6px 0}

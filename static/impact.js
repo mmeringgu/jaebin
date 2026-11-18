@@ -1,15 +1,14 @@
-// 제목 자동 판단과 수동 분류 전용입니다. AI 인사이트는 판단에 사용하지 않습니다.
-function guessImpact(a){return NewsRules.guessImpact(a);}
-function impactOf(a){return NewsRules.impactOf(a);}
+// 별표한 기사에만 직접 분류를 제공합니다.
+function impactOf(a){return a.starred&&['기회','위협'].includes(a.impact_override)?a.impact_override:'';}
 
 function impactControls(a){
+ if(!a.starred)return '';
  const impact=impactOf(a);
  const choices='<span class="impact-choices" role="group" aria-label="기사 영향 직접 분류">'+['기회','위협'].map(function(value){
   return '<button type="button" class="impact-choice" data-impact="'+a.id+'" data-impact-value="'+value+'" aria-pressed="'+(a.impact_override===value)+'">'+(value==='기회'?'🟢':'🔴')+' '+value+'</button>';
  }).join('')+(a.impact_override?'<button type="button" class="text-button" data-impact="'+a.id+'" data-impact-value="">선택 해제</button>':'')+'</span>';
- // 아직 분류되지 않은 기사도 '분류' 접힘 메뉴 안에 버튼을 넣어 제목 줄을 깔끔하게 둡니다.
- if(!impact)return '<span class="impact-controls"><details class="impact-edit"><summary aria-label="기사 영향 직접 분류">분류</summary>'+choices+'</details></span>';
- const origin=a.impact_override?'직접 분류':'제목 기준 추정';
+ if(!impact)return '<span class="impact-controls">'+choices+'</span>';
+ const origin='직접 분류';
  return '<span class="impact-controls"><span class="chip '+(impact==='기회'?'impact-good':'impact-bad')+'" title="'+origin+'">'+(impact==='기회'?'🟢':'🔴')+' '+impact+'</span><details class="impact-edit"><summary aria-label="기사 영향 분류 변경">변경</summary>'+choices+'</details></span>';
 }
 

@@ -62,7 +62,6 @@ test("정보원 행에서 수집하면 선택한 정보원으로 처리하고 �
   ui.get("source-status").click({ target: { closest: () => button } });
   await flush();
   assert.equal(ui.get("auto-test").disabled, true);
-  assert.equal(ui.get("collect-source").disabled, true);
   // 수집 중 같은 행을 다시 눌러도 중복 요청하지 않습니다.
   ui.get("source-status").click({ target: { closest: () => button } });
   release();
@@ -73,8 +72,8 @@ test("정보원 행에서 수집하면 선택한 정보원으로 처리하고 �
   assert.match(ui.get("collect-result").textContent, /라포르시안 · 새 기사 1건 · 확인 1건/);
   assert.match(ui.get("collect-result").textContent, /완료/);
   assert.equal(ui.get("auto-test").disabled, false);
-  assert.equal(ui.get("collect-source").disabled, false);
   assert.equal(ui.articleRefreshes(), 1);
+  assert.equal(calls.some((c) => c.path.startsWith("/api/candidates")), false);
   for (const path of ["/api/source-status", "/api/automation-status"]) assert.equal(calls.filter((c) => c.path === path).length, 2);
 });
 
@@ -86,7 +85,6 @@ test("목록 수집 실패 시 원문 처리를 중단하고 버튼을 복구합
   assert.match(ui.get("collect-result").textContent, /목록 연결 실패/);
   assert.equal(calls.some((c) => c.path === "/api/read-body"), false);
   assert.equal(ui.get("auto-test").disabled, false);
-  assert.equal(ui.get("collect-source").disabled, false);
 });
 
 test("10분 재수집 제한이면 저장된 후보를 처리하며 다음 작업 실행도 실제 API에 연결됩니다", async () => {

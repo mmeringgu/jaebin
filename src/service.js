@@ -1,9 +1,10 @@
 // 기사 수집·저장·예약 수집의 전체 흐름입니다. (예전 app/service.py)
-import { summarize, monthlyReport, trendInsight, withoutImpact } from "./ai_summary.js";
+import { monthlyReport } from "./ai_summary.js";
 import { buildBriefing, sendBriefing } from "./briefing.js";
-import { loadCandidates, readArticle } from "./crawler.js";
+import { loadCandidates, readArticle, normalizedDate } from "./crawler.js";
 import { cleanArticleTitle } from "./article-title.js";
 import { articleSourceName } from "./article-source.js";
+import { MANUAL_CATEGORIES, manualArticleUrl, fetchManualArticle } from "./manual-article.js";
 import { resolveArticleTitles } from "./title-resolver.js";
 import { translatedTitle, translateExcerptTitle, warmArticleTranslations } from "./title-translation.js";
 import { selectReportArticles } from "./report.js";
@@ -17,7 +18,10 @@ import { addDays, automationSettings, CONFIG, integer, koreaNow, SOURCE_BY_ID, S
 export function parseExcerpt(value) {
   try {
     const result = JSON.parse(value);
-    if (result && result.format === "excerpt") return result;
+    if (result && result.format === "excerpt") {
+      delete result.ai_summary;
+      return result;
+    }
   } catch {
     // 형식이 맞지 않으면 아래 빈 값을 씁니다.
   }
@@ -168,8 +172,6 @@ export async function readBody(env, source, articleId = null) {
       detail.excerpt.language || source.language || "");
     // 빙 뉴스 검색 기사는 "빙 검색" 대신 실제 매체 이름(예: 조선일보)을 출처로 보여줍니다.
     const sourceName = articleSourceName(excerpt.media || source.name, candidate.url);
-    // 아직 AI 인사이트가 없는 기사만 GPT에 인사이트를 요청합니다.
-    // 기사별 AI 인사이트 생성은 사용 여부를 결정할 때까지 보류합니다.
 
     // 기사 게시와 후보 갱신을 한 번에 처리합니다.
     await db.batch([
@@ -177,7 +179,8 @@ export async function readBody(env, source, articleId = null) {
       db.prepare(`INSERT INTO articles(category,entity,published_date,source,title,url,summary,tags_json,review_status)
         VALUES(?,?,?,?,?,?,?,?,'published') ON CONFLICT(url) DO UPDATE SET category=excluded.category,entity=excluded.entity,
         published_date=excluded.published_date,source=excluded.source,title=excluded.title,summary=excluded.summary,
-        tags_json=excluded.tags_json,is_sample=0,updated_at=CURRENT_TIMESTAMP`)
+        tags_json=excluded.tags_json,is_sample=0,updated_at=CURRENT_TIMESTAMP
+        WHERE CASE WHEN json_valid(articles.summary) THEN json_extract(articles.summary,'$.manual') ELSE 0 END IS NOT 1`)
         .bind(groups[0].category, groups[0].mainMatches[0], detail.date, sourceName, candidate.title, candidate.url, JSON.stringify(excerpt), JSON.stringify(articleTags(groups))),
       db.prepare(`UPDATE news_candidates SET published_date=?,body_text=?,snippet=?,fetch_status='success',
         fetch_error='',body_fetched_at=CURRENT_TIMESTAMP,suggested_category=?,matched_keyword_groups_json=? WHERE id=?`)
@@ -221,6 +224,7 @@ export async function candidates(env, sourceId = null, titleOptions = {}) {
     const chosen = assessArticle(row.title, current, excerpt);
     delete chosen.groups;
     delete row.body_text; // 본문은 길어서 화면에 보내지 않습니다.
+    delete row.snippet; // 화면에는 정리한 excerpt만 보냅니다.
     const ko = translatedTitle(excerpt, row.title);
     result.push({ ...row, source_name: articleSourceName(excerpt.media || row.source_name, row.url),
       title: ko || row.title, original_title: ko ? row.title : "", selection: chosen, excerpt });
@@ -245,7 +249,12 @@ export async function articles(env, titleOptions = {}) {
     const sources = SOURCES.filter((s) => s.id === excerpt.source_id || (hostOf(row.url) === hostOf(s.url) && s.name === row.source));
     sources.sort((a, b) => (a.id === excerpt.source_id ? 0 : 1) - (b.id === excerpt.source_id ? 0 : 1));
     let assessment;
-    for (const s of sources) {
+    const manual = excerpt.manual === true && MANUAL_CATEGORIES.includes(excerpt.manual_category);
+    if (manual) {
+      const groups = keywordMatch(row.title, { status: "사용", categories: [excerpt.manual_category] });
+      assessment = { selected: true, groups, reasons: ["관리자가 직접 추가한 기사입니다."] };
+    }
+    for (const s of manual ? [] : sources) {
       const chosen = assessArticle(row.title, s, excerpt);
       if (!assessment) assessment = chosen;
       if (chosen.selected) { assessment = chosen; break; }
@@ -255,17 +264,18 @@ export async function articles(env, titleOptions = {}) {
     if (assessment.selected) translationRows.push(row);
 
     result.push({
-      id: row.id, category: groups[0]?.category || row.category, match_level: selectionLevel(groups),
+      id: row.id, category: manual ? excerpt.manual_category : groups[0]?.category || row.category, match_level: manual ? "full" : selectionLevel(groups),
       entity: groups[0]?.mainMatches[0] || row.entity || "", date: row.published_date,
       source: articleSourceName(excerpt.media || row.source, row.url),
       domestic_media: globalThis.NewsRules.isDomesticMedia({ url: row.url, source: row.source, source_kind: sources[0]?.kind }),
       title: translatedTitle(excerpt, row.title) || row.title,
       original_title: translatedTitle(excerpt, row.title) ? row.title : "",
       url: row.url, subtitle: excerpt.subtitle || "",
-      summary: excerpt.first_paragraph, ai_summary: withoutImpact(excerpt.ai_summary || ""), tags: articleTags(groups), track: null,
+      summary: excerpt.first_paragraph, tags: articleTags(groups), track: null,
       is_sample: 0, content_type: "excerpt",
       starred: row.starred, memo: row.memo,
-      impact_override: row.impact_override || "",
+      manual,
+      impact_override: row.starred ? row.impact_override || "" : "",
       hidden: row.hidden === 1, saved_at: row.created_at,
       selection: { selected: assessment.selected, reasons: assessment.reasons },
     });
@@ -285,8 +295,39 @@ export async function visibleArticles(env) {
   return (await articles(env)).filter((a) => !a.hidden);
 }
 
+export async function previewManualArticle(env, url) {
+  const normalized = manualArticleUrl(url);
+  if (await first(env.DB, "SELECT id FROM articles WHERE url=?", [normalized])) {
+    throw Object.assign(new Error("이미 저장된 기사입니다."), { status: 409 });
+  }
+  const article = await fetchManualArticle(normalized);
+  if (article.url !== normalized && await first(env.DB, "SELECT id FROM articles WHERE url=?", [article.url])) {
+    throw Object.assign(new Error("이미 저장된 기사입니다."), { status: 409 });
+  }
+  return article;
+}
+
+export async function addManualArticle(env, payload) {
+  const url = manualArticleUrl(payload.url);
+  const title = typeof payload.title === "string" ? cleanArticleTitle(payload.title, { url }) : "";
+  const source = typeof payload.source === "string" ? articleSourceName(payload.source, url) : "";
+  const summary = typeof payload.summary === "string" ? payload.summary.trim() : "";
+  const date = typeof payload.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(payload.date) ? normalizedDate(payload.date) : null;
+  if (title.length < 8 || title.length > 300 || !source || source.length > 120 || summary.length < 8 || summary.length > 1600
+    || !date || date > koreaNow().day || !MANUAL_CATEGORIES.includes(payload.category)) {
+    throw Object.assign(new Error("제목(8~300자), 출처, 발행일, 분야, 첫 문단(8~1,600자)을 확인해 주세요."), { status: 400 });
+  }
+  const groups = keywordMatch(title, { status: "사용", categories: [payload.category] });
+  const excerpt = { format: "excerpt", first_paragraph: summary, manual: true, manual_category: payload.category };
+  const inserted = await first(env.DB, `INSERT INTO articles(category,entity,published_date,source,title,url,summary,tags_json,review_status)
+    VALUES(?,?,?,?,?,?,?,?,'published') ON CONFLICT(url) DO NOTHING RETURNING id`,
+  [payload.category, groups[0]?.mainMatches[0] || "", date, source, title, url, JSON.stringify(excerpt), JSON.stringify(articleTags(groups))]);
+  if (!inserted) throw Object.assign(new Error("이미 저장된 기사입니다."), { status: 409 });
+  return { id: inserted.id, title, url };
+}
+
 export async function setStar(env, articleId, starred) {
-  await run(env.DB, "UPDATE articles SET starred=? WHERE id=?", [starred ? 1 : 0, articleId]);
+  await run(env.DB, "UPDATE articles SET starred=?,impact_override=CASE WHEN ?=1 AND starred=1 THEN impact_override ELSE '' END WHERE id=?", [starred ? 1 : 0, starred ? 1 : 0, articleId]);
 }
 
 export async function setMemo(env, articleId, memo) {
@@ -297,29 +338,17 @@ export async function setHidden(env, articleId, hidden) {
   await run(env.DB, "UPDATE articles SET hidden=? WHERE id=?", [hidden ? 1 : 0, articleId]);
 }
 
-// 수동 분류는 재수집·AI 인사이트와 독립적으로 보관합니다. 빈 값은 자동 판단으로 되돌립니다.
+// 별표한 기사만 직접 분류할 수 있습니다. 빈 값은 선택 해제입니다.
 export async function setImpact(env, articleId, impact) {
   if (!Number.isInteger(articleId) || articleId <= 0 || !["", "기회", "위협"].includes(impact)) {
     throw Object.assign(new Error("기사 번호와 기회·위협 분류를 확인해 주세요."), { status: 400 });
   }
-  const row = await first(env.DB, "UPDATE articles SET impact_override=? WHERE id=? RETURNING id", [impact, articleId]);
-  if (!row) throw Object.assign(new Error("기사를 찾을 수 없습니다."), { status: 404 });
-}
-
-// 기사의 AI 인사이트를 (다시) 만들어 저장합니다. 예전 요약이 있으면 덮어씁니다. 실패하면 빈 글자를 돌려줍니다.
-export async function remakeSummary(env, articleId) {
-  const row = await first(env.DB, "SELECT title,url,summary FROM articles WHERE id=?", [articleId]);
-  if (!row) return "";
-  const excerpt = parseExcerpt(row.summary);
-  // 원문 본문이 아직 남아 있으면 본문을, 없으면(7일 지나 지워진 경우) 부제목과 첫 문단을 보냅니다.
-  const candidate = await first(env.DB, "SELECT body_text FROM news_candidates WHERE url=?", [row.url]);
-  const body = candidate && candidate.body_text ? candidate.body_text : (excerpt.subtitle || "") + "\n" + excerpt.first_paragraph;
-  const aiSummary = await summarize(env, row.title, body);
-  if (aiSummary) {
-    excerpt.ai_summary = aiSummary;
-    await run(env.DB, "UPDATE articles SET summary=? WHERE id=?", [JSON.stringify(excerpt), articleId]);
+  const row = await first(env.DB, "UPDATE articles SET impact_override=? WHERE id=? AND starred=1 RETURNING id", [impact, articleId]);
+  if (!row) {
+    const exists = await first(env.DB, "SELECT id FROM articles WHERE id=?", [articleId]);
+    if (!exists) throw Object.assign(new Error("기사를 찾을 수 없습니다."), { status: 404 });
+    throw Object.assign(new Error("별표한 기사만 기회·위협을 선택할 수 있습니다."), { status: 409 });
   }
-  return aiSummary;
 }
 
 // 오래된 기사를 보관함(archived)으로 옮겨 화면을 가볍게 합니다. ⭐나 메모가 있는 기사는 그대로 둡니다.
@@ -346,17 +375,6 @@ export async function makeReport(env, day) {
   const report = await monthlyReport(env, chosen);
   if (!report) return { error: "리포트를 만들지 못했습니다. OPENAI_API_KEY 설정과 인터넷 연결을 확인해 주세요." };
   return { report, article_count: chosen.length, since, until: day };
-}
-
-// 통계 탭 "AI 인사이트": 최근 7일 기사로 이번 주 핵심 이슈 3가지와 한 문단 요약을 만듭니다.
-export async function makeTrendInsight(env, day) {
-  const since = addDays(day, -6);
-  // 공통 선별을 통과한 기사 중 비용을 줄이기 위해 40건까지 보냅니다.
-  const chosen = (await visibleArticles(env)).filter((a) => a.date >= since).slice(0, 40);
-  if (chosen.length === 0) return { error: "최근 7일 동안 분석할 기사가 없습니다." };
-  const insight = await trendInsight(env, chosen);
-  if (!insight) return { error: "AI 인사이트를 만들지 못했습니다. OPENAI_API_KEY 설정과 인터넷 연결을 확인해 주세요." };
-  return { ...insight, article_count: chosen.length, since, until: day };
 }
 
 // 오늘 아직 브리핑을 안 보냈다면 웹훅으로 보냅니다. 보냈으면 true.
@@ -405,6 +423,8 @@ export async function automationStatus(env) {
   const state = schedulerState({ ...data, sources, day, hour, maxBodies: settings.maxBodies });
   const active = sources.map((s) => s.id);
   const recent = jobs.slice(-8).reverse().map((j) => ({ ...j, source: SOURCE_BY_ID[j.source_id]?.label || j.source_id }));
+  const posted = await first(env.DB, `SELECT COUNT(*) AS n FROM articles WHERE review_status='published' AND is_sample=0
+    AND created_at>=datetime(?,'-9 hours') AND created_at<datetime(?,'-9 hours')`, [day, addDays(day, 1)]);
   return {
     setupRequired: false, settings, day, paused: control.pause_day === day,
     last_tick: control.last_tick, last_message: control.last_message, source_count: sources.length,
@@ -412,6 +432,7 @@ export async function automationStatus(env) {
     lists_done: new Set(jobs.filter((j) => j.kind === "list" && active.includes(j.source_id)).map((j) => j.source_id)).size,
     lists_run: jobs.filter((j) => j.kind === "list").length, lists_due: state.due.length,
     bodies_done: jobs.filter((j) => j.kind === "body").length,
+    published_today: posted?.n || 0,
     failed: jobs.filter((j) => j.status === "error" || j.status === "aborted").length,
     categories: state.categories, pending_count: state.queue.length, reserved_slots: state.reserved,
     reserve_release_hour: CONFIG.automation.reserve_release_hour,

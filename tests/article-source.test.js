@@ -36,10 +36,11 @@ test("기존 기사와 제외 검토 API의 출처를 정리하고 월간 요약
 test("수집 후보는 검색 정보원 이름 대신 실제 매체명 또는 사이트를 표시합니다", async () => {
   const source = SOURCE_BY_ID.B001;
   const rows = [
-    { id: 1, source_id: source.id, source_name: source.name, title: "캐논메디칼 MRI 장비 출시", url, snippet: excerpt({ media: "후생신보" }) },
+    { id: 1, source_id: source.id, source_name: source.name, title: "캐논메디칼 MRI 장비 출시", url, snippet: excerpt({ media: "후생신보", ai_summary: "과거 내용" }) },
     { id: 2, source_id: source.id, source_name: source.name, title: "캐논메디칼 MRI 장비 공급", url: "https://www.other.com/2", snippet: excerpt() },
   ];
   const result = await candidates(database(rows), source.id);
   assert.equal(result[0].source_name, "후생신보");
   assert.equal(result[1].source_name, "other.com");
+  assert.doesNotMatch(JSON.stringify(result), /ai_summary|과거 내용/);
 });

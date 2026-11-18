@@ -25,33 +25,6 @@ function isVeterinaryImaging(title){
  const imaging=/수의\s*영상|초음파|영상\s*(?:진단|판독|분석|검사|의학|장비)|진단\s*영상|엑스(?:레이|선)|방사선\s*(?:촬영|검사|진단)|자기공명|컴퓨터단층|전산화단층|(?:^|[^a-z0-9])(?:CT|MRI?|CBCT|PET|XR|x[- ]?ray|x[- ]?선|ultrasound|radiology|radiography)(?=$|[^a-z0-9])/i.test(text);
  return veterinary&&imaging;
 }
-function guessImpact(a){
- const title=a.title||'';
- if(/검토|추진|논의|계획|예정|가능성|전망|우려|취소|중단|철회|보류|실패|무산|않|못|아니|아닌|없|여부|반대|해제|오보|부인/.test(title))return '';
- const device=/(?:\bCT\b|\bMRI\b|CT(?=[가-힣])|MRI(?=[가-힣])|초음파|엑스레이|엑스선|X-ray|혈관조영|영상진단장비|의료영상장비)/i.test(title);
- if(a.category==='company'||a.category==='competitor'){
-  if(!device||/협력|협약|MOU|공동|제휴/i.test(title))return '';
-  const growth=/출시|판매\s*허가|품목\s*허가|공급\s*계약|수주|납품|설치|도입/.test(title);
-  const setback=/리콜|판매\s*중지|판매\s*금지|제품\s*회수/.test(title);
-  if(growth===setback)return '';
-  return (a.category==='company'?growth:setback)?'기회':'위협';
- }
- if(a.category==='hospital'){
-  if(!/병원|의료원|검진센터|의대/.test(title)||/폐쇄|폐원|축소|감축/.test(title))return '';
-  return /개원|개소|신설\s*확정|증설|증축|신축|착공|준공|확충/.test(title)||(device&&/도입|설치|구매/.test(title))?'기회':'';
- }
- if(a.category==='policy'&&device){
-  const good=/수가(?:를|가|는)?\s*(?:\d+(?:\.\d+)?%?\s*)?인상/.test(title);
-  const bad=/(?:수가|급여(?:\s*대상)?)(?:를|가|는)?\s*(?:\d+(?:\.\d+)?%?\s*)?(?:인하|삭감|축소|폐지)/.test(title);
-  if(good!==bad)return good?'기회':'위협';
- }
- return '';
-}
-
-function impactOf(a){
- return ['기회','위협'].includes(a.impact_override)?a.impact_override:guessImpact(a);
-}
-
 function compareNewest(a,b){
  return b.date.localeCompare(a.date)||String(b.saved_at||'').localeCompare(String(a.saved_at||''))||Number(b.id||0)-Number(a.id||0);
 }
@@ -101,5 +74,5 @@ function groupSameNews(rows){
  return groups;
 }
 
-root.NewsRules=Object.freeze({guessImpact,impactOf,compareNewest,titlePieces,similarity,groupSameNews,isVeterinaryImaging,isDomesticMedia});
+root.NewsRules=Object.freeze({compareNewest,titlePieces,similarity,groupSameNews,isVeterinaryImaging,isDomesticMedia});
 })(globalThis);

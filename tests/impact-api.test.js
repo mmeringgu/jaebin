@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import worker from "../src/index.js";
 import { articles, setImpact, readBody } from "../src/service.js";
 
-test("기존 DB 전환·수동 분류 저장·재조회·재수집·해제와 AI 생성 보류를 확인합니다", async () => {
+test("기존 DB 전환·수동 분류 저장·재조회·재수집·별표 해제와 인사이트 API 제거를 확인합니다", async () => {
   const sqlite = new DatabaseSync(":memory:");
   sqlite.exec(readFileSync(new URL("../schema.sql", import.meta.url), "utf8"));
   // 기존 데이터베이스처럼 새 분류 칸이 없는 상태부터 확인합니다.
@@ -33,11 +33,17 @@ test("기존 DB 전환·수동 분류 저장·재조회·재수집·해제와 AI
       "청년의사", "캐논메디칼 MRI 출시", "https://www.docdocdoc.co.kr/news/articleView.html?idxno=1",
       JSON.stringify({ format: "excerpt", first_paragraph: "기사 본문입니다.", source_id: "S012", ai_summary: "영향: 위협\n인사이트: 설명" }),
     );
+    assert.equal((await request("/api/article-impact", { id: 1, impact: "위협" })).status, 409);
+    // 예전 일반 기사에 남아 있는 분류도 새 별표에 자동으로 적용하지 않습니다.
+    sqlite.prepare("UPDATE articles SET impact_override='위협' WHERE id=1").run();
+    assert.equal((await articles(env))[0].impact_override, "");
+    assert.equal((await request("/api/article-star", { id: 1, starred: true })).status, 200);
+    assert.equal((await articles(env))[0].impact_override, "");
     assert.equal((await request("/api/article-impact", { id: 1, impact: "위협" })).status, 200);
     assert.equal(sqlite.prepare("SELECT impact_override FROM articles WHERE id=1").get().impact_override, "위협");
     const visible = await articles(env);
     assert.equal(visible[0].impact_override, "위협");
-    assert.equal(visible[0].ai_summary, "인사이트: 설명");
+    assert.equal("ai_summary" in visible[0], false);
     // 실제 기사 재게시 경로가 수동 분류를 덮어쓰지 않는지 확인합니다.
     sqlite.prepare("INSERT INTO news_candidates(id,source_id,source_name,title,url,published_date,snippet,body_text) VALUES(1,'S012',?,?,?,?,?,?)").run(
       "청년의사", "캐논메디칼 MRI 출시", "https://www.docdocdoc.co.kr/news/articleView.html?idxno=1", "2026-11-11",
@@ -50,11 +56,19 @@ test("기존 DB 전환·수동 분류 저장·재조회·재수집·해제와 AI
       assert.equal((await request("/api/article-impact", payload)).status, 400);
     }
     assert.equal((await request("/api/article-impact", { id: 999, impact: "기회" })).status, 404);
-    assert.equal((await request("/api/article-summary", { id: 1 })).status, 409);
+    assert.equal((await request("/api/article-summary", { id: 1 })).status, 404);
+    assert.equal((await request("/api/trend-insight", {})).status, 404);
     assert.equal((await request("/api/article-impact", { id: 1, impact: "" })).status, 200);
     assert.equal((await articles(env))[0].impact_override, "");
     await setImpact(env, 1, "기회");
     assert.equal((await articles(env))[0].impact_override, "기회");
+    assert.equal((await request("/api/article-star", { id: 1, starred: false })).status, 200);
+    assert.equal(sqlite.prepare("SELECT impact_override FROM articles WHERE id=1").get().impact_override, "");
+    assert.equal((await request("/api/article-impact", { id: 1, impact: "기회" })).status, 409);
+    assert.equal((await request("/api/article-star", { id: 1, starred: true })).status, 200);
+    assert.equal((await articles(env))[0].impact_override, "");
+    const csv = await worker.fetch(new Request("http://localhost/api/export.csv"), env);
+    assert.doesNotMatch(await csv.text(), /AI 인사이트|인사이트: 설명/);
   } finally {
     sqlite.close();
   }

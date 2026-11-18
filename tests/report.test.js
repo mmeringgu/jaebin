@@ -34,16 +34,16 @@ test("별표가 상한보다 많아도 다른 소식을 포함하고 중복 소�
   assert.equal(selected.find((a) => !a.starred).duplicate_count, 2);
 });
 
-test("화면과 같은 기회·위협 규칙 및 수동 분류를 사용하고 이전 AI 판단은 무시합니다", () => {
+test("월간 요약용 기사에는 기회·위협 판정 값을 추가하지 않습니다", () => {
   const selected = selectReportArticles([
     article(1, "캐논메디칼 MRI 출시", { category: "company", impact_override: "위협" }),
     article(2, "제도 연구", { ai_summary: "영향: 기회" }),
   ], 30);
-  assert.equal(selected.find((a) => a.id === 1).impact, "위협");
-  assert.equal(selected.find((a) => a.id === 2).impact, "");
+  assert.equal("impact" in selected.find((a) => a.id === 1), false);
+  assert.equal("impact" in selected.find((a) => a.id === 2), false);
 });
 
-test("기회·위협과 경쟁사 출처를 검증하고 실제 원문 링크만 연결합니다", () => {
+test("기회·위협 항목은 제외하고 동향과 경쟁사 출처의 원문 링크를 검증합니다", () => {
   const rows = [
     { ...article(1, "기회 기사"), impact: "기회", competitors: [] },
     { ...article(2, "지멘스 기사"), impact: "위협", competitors: ["지멘스 헬시니어스"] },
@@ -57,10 +57,11 @@ test("기회·위협과 경쟁사 출처를 검증하고 실제 원문 링크만
   }), rows);
   assert.equal(report.sections[0].items.length, 3);
   assert.equal(report.sections[1].items.length, 1);
-  assert.equal(report.sections[2].items.length, 1);
-  assert.equal(report.sections[3].items.length, 1);
-  assert.equal(report.sections[1].items[0].sources[0].url, rows[0].url);
-  assert.equal(report.sections[3].items[0].text, "지멘스 헬시니어스: 변화");
+  assert.equal(report.sections.length, 2);
+  assert.equal(report.sections[0].items[0].sources[0].url, rows[0].url);
+  assert.equal(report.sections[1].format, "table");
+  assert.equal(report.sections[1].items[0].target, "지멘스 헬시니어스");
+  assert.equal(report.sections[1].items[0].text, "변화");
   assert.equal(normalizeReport("invalid", rows), null);
 });
 
@@ -68,17 +69,70 @@ test("새 경쟁사 기사가 없으면 경쟁사 움직임 항목을 만들지 
   const rows = [{ ...article(1, "병원 기사"), impact: "", competitors: [] }];
   const report = normalizeReport(JSON.stringify({ trends: [{ text: "병원 동향", sources: [1] }],
     competitors: [{ name: "필립스", text: "특이사항 없음", sources: [1] }] }), rows);
-  assert.equal(report.sections.length, 3);
+  assert.equal(report.sections.length, 1);
   assert.equal(report.sections[0].title, "이번 달 핵심 동향");
 });
 
-test("리포트 생성 요청에 별표·중복 수·분류를 전달하고 출처 번호를 검증합니다", async () => {
+test("표의 영향은 근거 별표 기사의 직접 선택값만 사용하며 상반된 판단은 표시하지 않습니다", () => {
+  const rows = [
+    article(1, "지멘스 MRI 출시", { starred: true, impact_override: "기회", competitors: ["지멘스"] }),
+    article(2, "지멘스 공급 확대", { starred: true, impact_override: "위협", competitors: ["지멘스"] }),
+    article(3, "지멘스 신제품", { starred: false, impact_override: "기회", competitors: ["지멘스"] }),
+  ];
+  const make = (sources) => normalizeReport(JSON.stringify({
+    trends: [{ text: "동향", sources: [1] }],
+    competitors: [{ name: "지멘스", text: "MRI 출시", impact: "기회", sources }],
+  }), rows).sections[1].items[0];
+  assert.equal(make([1]).impact, "기회");
+  assert.equal(make([2]).impact, "위협");
+  assert.equal(make([1, 2]).impact, "");
+  assert.equal(make([3]).impact, "");
+});
+
+test("핵심 동향은 목록으로, 나머지는 네 열 표와 빨간 ▲·파란 ▼로 표시합니다", () => {
+  const script = readFileSync(new URL("../static/report.js", import.meta.url), "utf8");
+  const createElement = (tag) => ({ tag, children: [], attributes: {},
+    append(child) { this.children.push(child); }, replaceChildren() { this.children = []; },
+    setAttribute(name, value) { this.attributes[name] = value; },
+  });
+  const render = runInNewContext(script.slice(0, script.indexOf("(function(){")) + "\nrenderReport;", { document: { createElement } });
+  const output = createElement("div");
+  const source = { url: "https://example.com/original", source: "매체", title: "기사" };
+  render({ sections: [
+    { title: "이번 달 핵심 동향", items: [{ text: "동향", sources: [source] }] },
+    { title: "경쟁사 움직임", format: "table", items: [
+      { target: "A사", text: "신제품 출시", impact: "기회", sources: [source] },
+      { target: "B사", text: "공급 확대", impact: "위협", sources: [source] },
+      { target: "<img>", text: "<script>내용</script>", impact: "", sources: [{ ...source, url: "javascript:alert(1)" }] },
+    ] },
+  ] }, output);
+  assert.equal(output.children[1].tag, "ul");
+  const table = output.children[3].children[0];
+  assert.equal(table.tag, "table");
+  assert.deepEqual(table.children[0].children[0].children.map((cell) => cell.textContent), ["대상", "핵심 변화", "영향", "출처"]);
+  const rows = table.children[1].children;
+  assert.equal(rows[0].children[2].children[0].textContent, "▲");
+  assert.equal(rows[0].children[2].children[0].className, "report-positive");
+  assert.match(rows[0].children[2].children[0].attributes["aria-label"], /긍정 영향/);
+  assert.equal(rows[1].children[2].children[0].textContent, "▼");
+  assert.equal(rows[1].children[2].children[0].className, "report-negative");
+  assert.equal(rows[2].children[2].children.length, 0);
+  assert.equal(rows[2].children[0].textContent, "<img>");
+  assert.equal(rows[2].children[1].textContent, "<script>내용</script>");
+  assert.equal(rows[2].children[3].children[0].children.length, 0);
+  const css = readFileSync(new URL("../static/style.css", import.meta.url), "utf8");
+  assert.match(css, /\.report-positive\{color:var\(--red\)/);
+  assert.match(css, /\.report-negative\{color:#2563eb/);
+});
+
+test("리포트 생성 요청에는 별표·중복 수를 전달하고 기회·위협은 전달하지 않습니다", async () => {
   const rows = selectReportArticles([article(1, "지멘스 MRI 출시", { category: "competitor" })], 30);
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (_url, options) => {
     const body = JSON.parse(options.body);
     const input = JSON.parse(body.messages[1].content);
-    assert.equal(input.impact, "위협");
+    assert.equal("impact" in input, false);
+    assert.doesNotMatch(body.messages[0].content, /opportunities|risks/);
     assert.equal(input.duplicate_count, 1);
     assert.equal(input.competitors[0], "지멘스 헬시니어스");
     return Response.json({ choices: [{ message: { content: JSON.stringify({
@@ -88,7 +142,7 @@ test("리포트 생성 요청에 별표·중복 수·분류를 전달하고 출�
   };
   try {
     const report = await monthlyReport({ OPENAI_API_KEY: "test" }, rows);
-    assert.equal(report.sections[2].items[0].sources[0].url, rows[0].url);
+    assert.equal(report.sections[1].items[0].sources[0].url, rows[0].url);
   } finally { globalThis.fetch = originalFetch; }
 });
 

@@ -71,12 +71,10 @@ function csvCell(value) {
 async function exportCsv(env) {
   const names = {};
   for (const c of CONFIG.categories) names[c.id] = c.name;
-  const lines = [["발행일", "카테고리", "회사·기관", "출처", "제목", "AI 인사이트", "첫 문단", "키워드", "중요", "메모", "원문 링크"]];
+  const lines = [["발행일", "카테고리", "회사·기관", "출처", "제목", "첫 문단", "키워드", "중요", "메모", "원문 링크"]];
   for (const a of await service.visibleArticles(env)) {
-    // AI 인사이트의 "- " 줄머리는 엑셀에서 수식으로 읽히므로 "• "로 바꿉니다.
-    const aiSummary = a.ai_summary.split("\n").map((line) => (line.startsWith("- ") ? "• " + line.slice(2) : line)).join("\n");
     lines.push([a.date, names[a.category] || a.category, a.entity, a.source, a.title,
-      aiSummary, a.summary, a.tags.join(", "), a.starred ? "★" : "", a.memo, a.url].map(safeCell));
+      a.summary, a.tags.join(", "), a.starred ? "★" : "", a.memo, a.url].map(safeCell));
   }
   const csv = lines.map((row) => row.map(csvCell).join(",")).join("\r\n") + "\r\n";
   // 엑셀에서 한글이 깨지지 않도록 맨 앞에 BOM(﻿)을 붙입니다.
@@ -133,6 +131,14 @@ async function handleApi(request, env, path, ctx) {
     await service.setStar(env, payload.id, payload.starred);
     return json({ ok: true });
   }
+  if (method === "POST" && path === "/api/manual-article-preview") {
+    const payload = await readJson(request, env, 3000);
+    return json({ article: await service.previewManualArticle(env, payload.url) });
+  }
+  if (method === "POST" && path === "/api/manual-article") {
+    const payload = await readJson(request, env, 16000);
+    return json({ article: await service.addManualArticle(env, payload) }, 201);
+  }
   if (method === "POST" && path === "/api/article-memo") {
     const payload = await readJson(request, env, 3000);
     if (!Number.isInteger(payload.id) || typeof payload.memo !== "string") throw httpError(400, "기사 번호와 메모가 필요합니다.");
@@ -144,9 +150,6 @@ async function handleApi(request, env, path, ctx) {
     if (!Number.isInteger(payload.id) || typeof payload.hidden !== "boolean") throw httpError(400, "기사 번호와 숨김 여부가 필요합니다.");
     await service.setHidden(env, payload.id, payload.hidden);
     return json({ ok: true });
-  }
-  if (method === "POST" && path === "/api/article-summary") {
-    throw httpError(409, "기사별 AI 인사이트 생성은 현재 보류 중입니다.");
   }
   if (method === "POST" && path === "/api/article-impact") {
     const payload = await readJson(request, env);
@@ -160,13 +163,6 @@ async function handleApi(request, env, path, ctx) {
     return json(result);
   }
 
-  if (method === "POST" && path === "/api/trend-insight") {
-    // 통계 탭의 "AI 인사이트": 이번 주 핵심 이슈 3가지
-    await readJson(request, env);
-    const result = await service.makeTrendInsight(env, koreaNow().day);
-    if (result.error) throw httpError(503, result.error);
-    return json(result);
-  }
 
   // 수집 버튼들: 기사 수집, 본문 읽기, 예약 작업 1회 시험
   if (method === "POST" && ["/api/collect", "/api/read-body", "/api/automation-step"].includes(path)) {

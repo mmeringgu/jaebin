@@ -2,7 +2,7 @@ import "../static/news-rules.js";
 import { CONFIG } from "./settings.js";
 import { hasWord } from "./rules.js";
 
-const { groupSameNews, impactOf, compareNewest } = globalThis.NewsRules;
+const { groupSameNews, compareNewest } = globalThis.NewsRules;
 
 function competitorNames(title) {
   return CONFIG.rules.filter((rule) => rule.category === "competitor" && rule.status === "사용" &&
@@ -16,7 +16,7 @@ export function selectReportArticles(rows, maxCount) {
     const starred = members.filter((a) => a.starred).sort(compareNewest);
     const article = starred[0] || group.main;
     return { ...article, starred: starred.length > 0, duplicate_count: members.length,
-      impact: impactOf(article), competitors: competitorNames(article.title) };
+      competitors: competitorNames(article.title) };
   });
   const byCoverage = (a, b) => b.duplicate_count - a.duplicate_count || compareNewest(a, b);
   const starred = stories.filter((a) => a.starred).sort(byCoverage);
@@ -41,15 +41,16 @@ export function normalizeReport(raw, articles) {
     if (!ids.length || !ids.every((id) => Number.isInteger(id) && id >= 1 && id <= articles.length && allowed(articles[id - 1]))) return null;
     const sources = ids.map((id) => articles[id - 1]).filter((a) => /^https?:\/\//i.test(a.url));
     if (sources.length !== ids.length) return null;
-    return { text: item.text.replace(/\s+/g, " ").trim(), sources: sources.map((a) => ({ title: a.title, url: a.url, source: a.source, date: a.date })) };
+    const judgments = new Set(sources.filter((a) => a.starred && ["기회", "위협"].includes(a.impact_override)).map((a) => a.impact_override));
+    return { text: item.text.replace(/\s+/g, " ").trim(),
+      impact: judgments.size === 1 ? [...judgments][0] : "",
+      sources: sources.map((a) => ({ title: a.title, url: a.url, source: a.source, date: a.date })) };
   };
   const items = (rows, max, allowed) => (Array.isArray(rows) ? rows : []).map((row) => normalizeItem(row, allowed)).filter(Boolean).slice(0, max);
   const trends = items(value.trends, 3);
   if (!trends.length) return null;
   const sections = [
     { title: "이번 달 핵심 동향", items: trends },
-    { title: "비즈니스 기회", items: items(value.opportunities, 3, (a) => a.impact === "기회") },
-    { title: "위협·리스크", items: items(value.risks, 3, (a) => a.impact === "위협") },
   ];
   const seen = new Set();
   const competitors = (Array.isArray(value.competitors) ? value.competitors : []).flatMap((row) => {
@@ -57,8 +58,8 @@ export function normalizeReport(raw, articles) {
     const item = normalizeItem(row, (a) => a.competitors.includes(row.name));
     if (!item) return [];
     seen.add(row.name);
-    return [{ ...item, text: row.name + ": " + item.text }];
+    return [{ ...item, target: row.name }];
   });
-  if (competitors.length) sections.push({ title: "경쟁사 움직임", items: competitors });
+  if (competitors.length) sections.push({ title: "경쟁사 움직임", format: "table", items: competitors });
   return { sections };
 }

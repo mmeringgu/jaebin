@@ -12,15 +12,13 @@
   // 한 줄에 몰려 있던 상태를 작은 칸 여러 개로 나눠 보여줍니다.
   status.replaceChildren();
   function pill(text,bad){const span=document.createElement('span');span.textContent=text;if(bad)span.className='pill-bad';status.append(span);}
-  pill(d.settings.enabled?'자동 수집 켜짐':'자동 수집 꺼짐',!d.settings.enabled);
-  if(d.paused)pill('오늘 오류가 많아 중지됨',true);
-  pill('기사 읽기 '+d.bodies_done+' / '+d.settings.maxBodies+'회');
-  pill('목록 확인 '+d.lists_done+' / '+d.source_count+'곳');
-  pill('실패 '+d.failed+'회',d.failed>0);
-  pill('읽을 기사 대기 '+(d.pending_count||0)+'건');
-  pill('목록 확인 남은 곳 '+(d.lists_due||0)+'곳');
-  if(d.reserved_slots)pill('캐논 오후용 '+d.reserved_slots+'회 남겨둠 ('+d.reserve_release_hour+'시부터 다른 분야에 사용)');
-  document.getElementById('auto-schedule-note').textContent=d.last_message?'최근 메시지: '+d.last_message:'';
+  pill(d.paused?'자동 수집 중지':d.settings.enabled?'자동 수집 켜짐':'자동 수집 꺼짐',d.paused||!d.settings.enabled);
+  pill('오늘 게시 '+(d.published_today||0)+'건');
+  pill('원문 처리 '+d.bodies_done+' / '+d.settings.maxBodies+'회');
+  pill('처리 대기 '+(d.pending_count||0)+'건');
+  if(d.failed)pill('실패 '+d.failed+'회',true);
+  const last=d.last_tick?new Date(d.last_tick.replace(' ','T')+'Z'):null;
+  document.getElementById('auto-schedule-note').textContent=(last&&!Number.isNaN(last.getTime())?'마지막 실행 '+last.toLocaleString('ko-KR',{timeZone:'Asia/Seoul'}):'아직 자동 수집 실행 기록이 없습니다.')+(d.paused&&d.last_message?' · '+d.last_message:'');
   const distribution=document.getElementById('auto-distribution');distribution.replaceChildren();
   (d.categories||[]).forEach(function(c){
    const card=document.createElement('div');card.className='quota-card';

@@ -4,6 +4,7 @@ const categories=[{id:'company',name:'캐논 뉴스'},{id:'competitor',name:'경
 // 제목에 아래 단어가 있으면 "학회", 없으면 "병원"으로 보여줍니다.
 const CONFERENCE_WORDS=['학회','학술대회','학술회의','심포지엄','symposium','congress','conference'];
 function splitConference(a){
+ if(a.manual)return a;
  const title=a.title.toLowerCase();
  if(a.category==='hospital'&&CONFERENCE_WORDS.some(function(w){return title.includes(w);}))a.category='conference';
  return a;
@@ -12,6 +13,7 @@ function splitConference(a){
 // (새로 수집하는 기사는 src/config.json의 excluded_title_words로도 걸러집니다)
 const AWARD_WORDS=['학술상','논문상','저술상'];
 function isAwardNews(a){
+ if(a.manual)return false;
  return AWARD_WORDS.some(function(w){return a.title.includes(w);})||(a.title.includes('교수')&&a.title.includes('수상'));
 }
 let articles = [];
@@ -30,14 +32,6 @@ function highlight(value){
  }
  return result+esc(text.slice(start));
 }
-// 기존 AI 인사이트에서는 설명 한 줄만 보여 줍니다. 영향 판단은 impact.js가 담당합니다.
-function insightLine(a){
- const lines=String(a.ai_summary||'').split('\n').map(function(l){return l.trim();});
- const newLine=lines.find(function(l){return l.indexOf('인사이트:')===0;});
- if(newLine)return newLine.slice(5).trim();
- const oldLine=lines.find(function(l){return l.indexOf('- ')===0;});
- return oldLine?oldLine.slice(2).trim():'';
-}
 // 기사 앞부분을 "목록에 보이는 부분(preview)"과 "자세히에서 이어지는 부분(rest)"으로 나눕니다.
 // 자세히를 눌렀을 때 이미 보이는 제목·첫 줄을 다시 보여주지 않기 위해서입니다.
 const PREVIEW_LENGTH=90; // 목록에 보여줄 글자 수 (두 줄 정도)
@@ -54,24 +48,14 @@ function splitText(a){
  if(cut<40)cut=PREVIEW_LENGTH;
  return {preview:body.slice(0,cut)+' …',rest:'… '+body.slice(cut).trim()};
 }
-// 영향 필터: "both"는 기회와 위협을 함께 보여줍니다.
-function matchesImpact(a,impact){
- if(!impact)return true;
- const kind=impactOf(a);
- if(impact==='both')return kind==='기회'||kind==='위협';
- return kind===impact;
-}
 // 기사 한 줄을 만듭니다. (신문 브리핑형)
 // 한 줄에는 제목·매체·날짜·미리보기만 보이고,
-// "자세히"를 누르면 AI 인사이트(한 줄), 미리보기 뒤로 이어지는 기사 내용, 같은 소식, 숨기기가 펼쳐집니다.
+// "자세히"를 누르면 미리보기 뒤로 이어지는 기사 내용, 같은 소식, 숨기기가 펼쳐집니다.
 function card(a,others){
  // 정책 추적 예시 (데이터가 있을 때만)
  let track='';
  if(a.track){track='<details class="policy"><summary>정책 추적 예시 · '+esc(a.track.name)+'</summary><dl><dt>이전 기록</dt><dd>'+esc(a.track.before)+'</dd><dt>이번 기사에서 확인할 내용</dt><dd>'+esc(a.track.change)+'</dd><dt>다음 확인 사항</dt><dd>'+esc(a.track.next)+'</dd></dl><p class="policy-note">공식 자료 검증 및 자동 이력 비교 전의 화면 예시입니다.</p></details>';}
 
- // 기존 인사이트의 설명만 유지합니다. 생성·다시 만들기 버튼은 보류합니다.
- const insight=insightLine(a);
- const aiBox=insight?'<div class="ai-summary"><strong>AI 인사이트</strong><p>'+highlight(insight)+'</p></div>':'';
  const originalTitle=a.original_title?'<p class="original-title"><strong>원제</strong> '+esc(a.original_title)+'</p>':'';
 
  const star='<button type="button" class="star'+(a.starred?' on':'')+'" data-star="'+a.id+'" aria-label="중요 기사 표시" aria-pressed="'+(a.starred?'true':'false')+'">'+(a.starred?'★':'☆')+'</button>';
@@ -83,9 +67,8 @@ function card(a,others){
   sameChip='<span class="chip">외 '+others.length+'개 매체</span>';
   sameNews='<div class="same-news"><strong>같은 소식을 다룬 기사</strong><ul>'+others.map(function(o){return '<li><a href="'+esc(o.url)+'" target="_blank" rel="noopener noreferrer">'+esc(o.title)+'</a> <span class="muted">'+esc(o.source)+' · '+esc(o.date)+'</span></li>';}).join('')+'</ul></div>';
  }
- // 영향 배지: 기회는 초록, 위협은 빨강. 기사 제목 바로 옆에 붙입니다. (버튼을 누르지 않아도 자동으로 붙음)
+ // 별표한 기사에만 직접 선택한 분류와 선택 버튼을 표시합니다.
  const impactChip=impactControls(a);
- const aiChip=a.ai_summary?'<span class="chip ai-chip">AI 인사이트</span>':'';
 
  // 미리보기: 부제목이 있으면 부제목, 없으면 기사 앞부분 90자 정도
  const text=splitText(a);
@@ -94,10 +77,10 @@ function card(a,others){
  return '<article class="item'+(a.hidden?' hidden-item':'')+'">'+
   '<div class="item-body">'+
    '<div class="item-title"><a href="'+esc(a.url)+'" target="_blank" rel="noopener noreferrer">'+highlight(a.title)+'</a>'+impactChip+'</div>'+
-   '<div class="item-meta"><span class="entity">'+highlight(a.entity)+'</span><span>'+esc(a.source)+'</span><span>'+esc(a.date.slice(5).replace('-','/'))+'</span>'+aiChip+sameChip+'</div>'+
+   '<div class="item-meta"><span class="entity">'+highlight(a.entity)+'</span><span>'+esc(a.source)+'</span><span>'+esc(a.date.slice(5).replace('-','/'))+'</span>'+(a.manual?'<span class="chip">직접 추가</span>':'')+sameChip+'</div>'+
    (text.preview?'<p class="item-preview">'+highlight(text.preview)+'</p>':'')+
    '<details class="item-more"><summary>자세히</summary><div class="item-detail">'+
-    originalTitle+aiBox+
+    originalTitle+
     (text.rest?'<p class="detail-text">'+highlight(text.rest)+'</p>':'')+
     tags+track+sameNews+
     // 원문 링크는 "원문 보기" 대신 주소(URL) 자체를 보여줍니다. 길면 CSS가 끝을 "…"로 자릅니다.
@@ -152,14 +135,13 @@ function render(){
  const q=document.getElementById('search').value.trim().toLocaleLowerCase();
  const topic=document.getElementById('topic').value;
  const period=document.getElementById('period').value;
- const impact=document.getElementById('impact').value;
  const sort=document.getElementById('sort').value;
  const onlyStar=document.getElementById('only-star').checked;
  const showHidden=document.getElementById('show-hidden').checked;
  searchWord=q;
  const matches=articles.filter(function(a){
-  const text=[a.title,a.original_title,a.entity,a.source,a.summary,a.ai_summary].concat(a.tags).join(' ').toLocaleLowerCase();
-  return (!q||text.includes(q))&&matchesTopic(a,topic)&&matchesPeriod(a,period)&&matchesImpact(a,impact)&&(!onlyStar||a.starred)&&(!a.hidden||showHidden);
+  const text=[a.title,a.original_title,a.entity,a.source,a.summary].concat(a.tags).join(' ').toLocaleLowerCase();
+  return (!q||text.includes(q))&&matchesTopic(a,topic)&&matchesPeriod(a,period)&&(!onlyStar||a.starred)&&(!a.hidden||showHidden);
  });
  // 업계 동향 탭은 필터와 상관없이 전체 기사로 다시 계산합니다. (stats.js)
  if(typeof renderStats==='function')renderStats();
@@ -213,7 +195,7 @@ function renderBriefing(list){
 function changeFilters(){resetPages();render();}
 document.getElementById('search').addEventListener('input',changeFilters);
 document.getElementById('topic').addEventListener('change',changeFilters);
-['period','impact','sort','only-star','show-hidden'].forEach(function(id){document.getElementById(id).addEventListener('change',changeFilters);});
+['period','sort','only-star','show-hidden'].forEach(function(id){document.getElementById(id).addEventListener('change',changeFilters);});
 // 화면 아래에 알림을 잠깐 띄웁니다. (팝업 대신 사용)
 // undo를 넘기면 "되돌리기" 버튼이 함께 나옵니다.
 let noticeTimer=null;
@@ -239,7 +221,7 @@ async function postJson(path,data){
 // 별표 저장: 저장하는 동안 버튼을 잠가서 여러 번 눌리지 않게 합니다.
 async function saveStar(id,starred,button){
  if(button)button.disabled=true;
- try{await postJson('/api/article-star',{id:id,starred:starred});articles.forEach(function(a){if(a.id===id)a.starred=starred?1:0;});render();}
+ try{await postJson('/api/article-star',{id:id,starred:starred});articles.forEach(function(a){if(a.id===id){a.starred=starred?1:0;if(!starred)a.impact_override='';}});render();}
  catch(e){showNotice(e.message);if(button)button.disabled=false;}
 }
 // 숨기기 저장: 숨긴 뒤에는 "되돌리기"가 있는 알림을 보여줍니다.
