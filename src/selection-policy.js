@@ -10,7 +10,7 @@ const names = { company: "캐논 뉴스", competitor: "경쟁사", policy: "정�
 
 export function assessArticle(title, source, excerpt = {}) {
   title = String(title || "").normalize("NFKC");
-  const groups = keywordMatch(title, source);
+  const groups = keywordMatch(title, source, excerpt);
   const reject = (reason) => ({ selected: false, level: selectionLevel(groups), groups, reasons: [reason] });
   if (!groups.length) return reject("제목의 유효한 수집 키워드·정보원 조건과 일치하지 않습니다.");
   if (/채용|면접|기출문제|자기소개서|취업|경력직|구인|求人|recruitment|job vacancy/i.test(title)) return reject("채용·취업 준비 콘텐츠입니다.");
@@ -44,7 +44,7 @@ export function assessArticle(title, source, excerpt = {}) {
     if (/다짐|기념|홍보|유공|표창/.test(title)) return reject("정책 변화보다 기관 홍보·행사에 해당합니다.");
     reason = imagingTechnology ? "의료영상 AI 기술의 개발·공급·임상 적용" : "영상의료 제도·검사 수가 또는 의료체계·병원 지정 변화";
   } else {
-    const vet = globalThis.NewsRules.isVeterinaryImaging(title);
+    const vet = globalThis.NewsRules.isVeterinaryImaging(title, lead);
     const genuineOpening = hospitalChange.test(title) && !/개원가|개원의|주년|기념|신설\s*(?:요구|촉구)|수가\s*신설/.test(title);
     const imagingNews = (titleImaging || (leadImaging && /진단|판독|영상|장비|검사/.test(title))) && deviceChange.test(title);
     const institution = /[가-힣A-Za-z0-9]+(?:병원|의료원)|영상\s*센터|의대/.test(title);

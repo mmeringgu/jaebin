@@ -102,7 +102,7 @@ const currentPages={}; // 카테고리별로 지금 보고 있는 페이지 번�
 function resetPages(){categories.forEach(function(c){currentPages[c.id]=1;});}
 function matchesTopic(a,topic){
  if(!topic)return true;
- if(topic==='Vet')return NewsRules.isVeterinaryImaging(a.title);
+ if(topic==='Vet')return NewsRules.isVeterinaryImaging(a.title,[a.subtitle,a.summary].filter(Boolean).join(' '));
  const text=[a.title].concat(a.tags||[]).join(' ');
  if(topic==='AI')return /(?:\bAI\b|인공지능|人工知能)/i.test(text);
  if(topic==='CT')return /(?:\bCT\b|CT(?=[가-힣])|컴퓨터단층|전산화단층|コンピュータ断層)/i.test(text);

@@ -376,7 +376,7 @@ export function parseBingRss(page, source) {
     // 제목·주소·날짜·앞부분 문장 중 하나라도 없거나, 너무 오래된 기사는 건너뜁니다.
     if (title.length < 8 || !url || !date || !description || date < oldest) continue;
 
-    const groups = keywordMatch(title, source);
+    const groups = keywordMatch(title, source, { first_paragraph: description });
     if (groups.length === 0) continue;
     const level = selectionLevel(groups);
     items.push({

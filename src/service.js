@@ -139,7 +139,7 @@ export async function readBody(env, source, articleId = null) {
   candidate.title = cleanArticleTitle(candidate.title, source);
 
   // 키워드 설정이 바뀌어 더 이상 맞지 않는 기사는 제외합니다.
-  let groups = keywordMatch(candidate.title, source);
+  let groups = keywordMatch(candidate.title, source, parseExcerpt(candidate.snippet));
   if (groups.length === 0) {
     await run(db, "UPDATE news_candidates SET processing_status='excluded' WHERE id=?", [candidate.id]);
     return { skipped: true };

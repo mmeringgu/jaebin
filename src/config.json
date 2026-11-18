@@ -1,5 +1,5 @@
 {
-  "version": "2026-11-17-balanced-selection",
+  "version": "2026-11-18-vet-imaging",
   "automation": {
     "daily_targets": { "company": 30, "policy": 45, "competitor": 45, "hospital": 30, "conference": 10 },
     "canon_source_order": ["S030", "S029", "S028", "B014", "B015", "B013", "B001"],
@@ -517,8 +517,9 @@
       "status": "사용",
       "categories": ["company", "policy", "hospital", "competitor"],
       "url": "https://www.bing.com/",
-      "listingUrl": "https://www.bing.com/news/search?q=(수의+OR+동물의료센터+OR+%22동물+의료센터%22+OR+동물병원+OR+%22동물+병원%22+OR+수의대+OR+수의과대학+OR+반려동물)+(영상진단+OR+영상판독+OR+영상의학+OR+엑스레이)&format=rss&setlang=ko&cc=KR&qft=sortbydate%3D%221%22",
-      "kind": "bing"
+      "listingUrl": "https://www.bing.com/news/search?q=%28%EC%88%98%EC%9D%98+OR+%EB%8F%99%EB%AC%BC%EC%9D%98%EB%A3%8C%EC%84%BC%ED%84%B0+OR+%22%EB%8F%99%EB%AC%BC+%EC%9D%98%EB%A3%8C%EC%84%BC%ED%84%B0%22+OR+%EB%8F%99%EB%AC%BC%EB%A9%94%EB%94%94%EC%BB%AC%EC%84%BC%ED%84%B0+OR+%22%EB%8F%99%EB%AC%BC+%EB%A9%94%EB%94%94%EC%BB%AC%EC%84%BC%ED%84%B0%22+OR+%EB%8F%99%EB%AC%BC%EB%A9%94%EB%94%94%EC%B9%BC%EC%84%BC%ED%84%B0+OR+%EB%8F%99%EB%AC%BC%EB%B3%91%EC%9B%90+OR+%22%EB%8F%99%EB%AC%BC+%EB%B3%91%EC%9B%90%22+OR+%EC%88%98%EC%9D%98%EB%8C%80+OR+%EC%88%98%EC%9D%98%EA%B3%BC%EB%8C%80%ED%95%99+OR+%EB%B0%98%EB%A0%A4%EB%8F%99%EB%AC%BC%29+%28%EC%98%81%EC%83%81%EC%A7%84%EB%8B%A8+OR+%EC%98%81%EC%83%81%ED%8C%90%EB%8F%85+OR+%EC%98%81%EC%83%81%EC%9D%98%ED%95%99+OR+%EC%97%91%EC%8A%A4%EB%A0%88%EC%9D%B4+OR+%EB%B0%A9%EC%82%AC%EC%84%A0%29&format=rss&setlang=ko&cc=KR&qft=sortbydate%3D%221%22",
+      "kind": "bing",
+      "lookback_days": 30
     },
     {
       "id": "B012",
@@ -527,8 +528,16 @@
       "status": "사용",
       "categories": ["company", "policy", "hospital", "competitor"],
       "url": "https://www.bing.com/",
-      "listingUrl": "https://www.bing.com/news/search?q=(수의+OR+동물의료센터+OR+%22동물+의료센터%22+OR+동물병원+OR+%22동물+병원%22+OR+수의대+OR+수의과대학+OR+반려동물)+(CT+OR+MRI+OR+초음파)&format=rss&setlang=ko&cc=KR&qft=sortbydate%3D%221%22",
-      "kind": "bing"
+      "listingUrl": "https://www.bing.com/news/search?q=%28%EC%88%98%EC%9D%98+OR+%EB%8F%99%EB%AC%BC%EC%9D%98%EB%A3%8C%EC%84%BC%ED%84%B0+OR+%22%EB%8F%99%EB%AC%BC+%EC%9D%98%EB%A3%8C%EC%84%BC%ED%84%B0%22+OR+%EB%8F%99%EB%AC%BC%EB%A9%94%EB%94%94%EC%BB%AC%EC%84%BC%ED%84%B0+OR+%22%EB%8F%99%EB%AC%BC+%EB%A9%94%EB%94%94%EC%BB%AC%EC%84%BC%ED%84%B0%22+OR+%EB%8F%99%EB%AC%BC%EB%A9%94%EB%94%94%EC%B9%BC%EC%84%BC%ED%84%B0+OR+%EB%8F%99%EB%AC%BC%EB%B3%91%EC%9B%90+OR+%22%EB%8F%99%EB%AC%BC+%EB%B3%91%EC%9B%90%22+OR+%EC%88%98%EC%9D%98%EB%8C%80+OR+%EC%88%98%EC%9D%98%EA%B3%BC%EB%8C%80%ED%95%99+OR+%EB%B0%98%EB%A0%A4%EB%8F%99%EB%AC%BC%29+%28CT+OR+MRI+OR+%EC%B4%88%EC%9D%8C%ED%8C%8C%29&format=rss&setlang=ko&cc=KR&qft=sortbydate%3D%221%22",
+      "kind": "bing",
+      "lookback_days": 30
+    },
+    {
+      "id": "B016", "name": "빙 뉴스 검색: 수의 전문 매체 영상장비", "label": "빙 검색 · Vet 전문 매체",
+      "status": "사용", "categories": ["company", "policy", "hospital", "competitor"],
+      "url": "https://www.bing.com/",
+      "listingUrl": "https://www.bing.com/news/search?q=%28site%3Adailyvet.co.kr+OR+site%3Adailygaewon.com%29+%28CT+OR+MRI+OR+%EC%B4%88%EC%9D%8C%ED%8C%8C+OR+%EC%98%81%EC%83%81%EC%A7%84%EB%8B%A8%29&format=rss&setlang=ko&cc=KR&qft=sortbydate%3D%221%22",
+      "kind": "bing", "lookback_days": 30
     },
     {
       "id": "S028", "name": "캐논 메디컬 일본 공식", "label": "캐논 일본 공식 · 일본어",
@@ -813,7 +822,7 @@
       "status": "사용",
       "category": "hospital",
       "topic": "Vet",
-      "main": ["동물의료센터", "동물 의료센터", "동물의료 센터", "동물 의료 센터", "동물병원", "동물 병원", "수의대", "수의과대학", "수의과 대학", "수의 대학", "수의", "동물", "반려견", "반려묘", "강아지", "고양이", "veterinary", "veterinarian", "vet", "animal", "canine", "feline"],
+      "main": ["동물메디컬센터", "동물 메디컬센터", "동물 메디컬 센터", "동물메디칼센터", "동물 메디칼센터", "동물의료센터", "동물 의료센터", "동물의료 센터", "동물 의료 센터", "동물병원", "동물 병원", "수의대", "수의과대학", "수의과 대학", "수의 대학", "수의", "동물", "반려견", "반려묘", "강아지", "고양이", "veterinary", "veterinarian", "vet", "animal", "canine", "feline"],
       "auxiliary": ["CT", "MRI", "MR", "CBCT", "PET", "XR", "초음파", "영상진단", "영상 진단", "영상판독", "영상 판독", "영상분석", "영상 분석", "영상검사", "영상 검사", "영상의학", "영상 의학", "영상장비", "영상 장비", "진단영상", "진단 영상", "수의영상", "수의 영상", "엑스레이", "엑스선", "X-ray", "X ray", "Xray", "X선", "X-선", "방사선 촬영", "방사선 검사", "방사선 진단", "방사선촬영", "방사선검사", "방사선진단", "자기공명", "컴퓨터단층", "전산화단층", "ultrasound", "radiology", "radiography"],
       "excluded": ["채용"]
     },
@@ -1144,6 +1153,7 @@
     "S022",
     "B011",
     "B012",
+    "B016",
     "B001",
     "B002",
     "B003",

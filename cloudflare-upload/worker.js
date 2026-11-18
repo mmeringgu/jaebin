@@ -104,11 +104,16 @@ async function addMissingColumns(db) {
     const name = String(a.source || "").replace(/\s*\(빙 검색\)\s*$/, "").trim();
     return host.endsWith(".kr") && !/\.(?:go|ac|or|re)\.kr$/.test(host) && !/공식|보도자료|병원|의료원|협회|학회|공단|진흥원|로이터|블룸버그|야후|Reuters|Bloomberg/i.test(name) && /뉴스|신문|일보|투데이|데일리|타임[스즈]|저널|프레스|미디어|방송|^KBS$|^MBC$|^SBS$|^YTN$|^KNN$/i.test(name);
   }
-  function isVeterinaryImaging(title) {
-    const text2 = String(title || "");
+  function isVeterinaryImaging(title, context = "") {
+    const text2 = String(title || "").normalize("NFKC");
     const veterinary = /(?<!필)수의(?!\s*계약)|동물|반려견|반려묘|강아지|고양이|(?:^|[^a-z0-9])(?:veterinary|veterinarian|vet|animal|canine|feline)(?=$|[^a-z0-9])/i.test(text2);
-    const imaging2 = /수의\s*영상|초음파|영상\s*(?:진단|판독|분석|검사|의학|장비)|진단\s*영상|엑스(?:레이|선)|방사선\s*(?:촬영|검사|진단)|자기공명|컴퓨터단층|전산화단층|(?:^|[^a-z0-9])(?:CT|MRI?|CBCT|PET|XR|x[- ]?ray|x[- ]?선|ultrasound|radiology|radiography)(?=$|[^a-z0-9])/i.test(text2);
-    return veterinary && imaging2;
+    const imaging2 = /수의\s*영상|초음파|영상\s*(?:진단|판독|분석|검사|의학|장비)|진단\s*영상|엑스(?:레이|선)|방사선\s*(?:촬영|검사|진단)|자기공명|컴퓨터단층|전산화단층|(?:^|[^a-z0-9])(?:CT|MRI?|CBCT|PET|XR|x[- ]?ray|x[- ]?선|ultrasound|radiology|radiography)(?=$|[^a-z0-9])/i;
+    if (veterinary && imaging2.test(text2)) return true;
+    const lead = String(context || "").normalize("NFKC").slice(0, 600);
+    if (/예를\s*들|예컨대|비교하면|비교할\s*때/.test(lead)) return false;
+    const institution = /동물\s*(?:병원|의료\s*센터|메디[컬칼]\s*센터)|수의(?:대|과대학)/i.test(lead);
+    const adoption = /도입|설치|교체|증설|확충|가동|운영|보유|장비/.test(text2 + " " + lead);
+    return (imaging2.test(text2) || imaging2.test(lead)) && adoption && (veterinary || institution);
   }
   function compareNewest2(a, b) {
     return b.date.localeCompare(a.date) || String(b.saved_at || "").localeCompare(String(a.saved_at || "")) || Number(b.id || 0) - Number(a.id || 0);
@@ -165,7 +170,7 @@ async function addMissingColumns(db) {
 
 // src/config.json
 var config_default = {
-  version: "2026-11-17-balanced-selection",
+  version: "2026-11-18-vet-imaging",
   automation: {
     daily_targets: { company: 30, policy: 45, competitor: 45, hospital: 30, conference: 10 },
     canon_source_order: ["S030", "S029", "S028", "B014", "B015", "B013", "B001"],
@@ -683,8 +688,9 @@ var config_default = {
       status: "사용",
       categories: ["company", "policy", "hospital", "competitor"],
       url: "https://www.bing.com/",
-      listingUrl: "https://www.bing.com/news/search?q=(수의+OR+동물의료센터+OR+%22동물+의료센터%22+OR+동물병원+OR+%22동물+병원%22+OR+수의대+OR+수의과대학+OR+반려동물)+(영상진단+OR+영상판독+OR+영상의학+OR+엑스레이)&format=rss&setlang=ko&cc=KR&qft=sortbydate%3D%221%22",
-      kind: "bing"
+      listingUrl: "https://www.bing.com/news/search?q=%28%EC%88%98%EC%9D%98+OR+%EB%8F%99%EB%AC%BC%EC%9D%98%EB%A3%8C%EC%84%BC%ED%84%B0+OR+%22%EB%8F%99%EB%AC%BC+%EC%9D%98%EB%A3%8C%EC%84%BC%ED%84%B0%22+OR+%EB%8F%99%EB%AC%BC%EB%A9%94%EB%94%94%EC%BB%AC%EC%84%BC%ED%84%B0+OR+%22%EB%8F%99%EB%AC%BC+%EB%A9%94%EB%94%94%EC%BB%AC%EC%84%BC%ED%84%B0%22+OR+%EB%8F%99%EB%AC%BC%EB%A9%94%EB%94%94%EC%B9%BC%EC%84%BC%ED%84%B0+OR+%EB%8F%99%EB%AC%BC%EB%B3%91%EC%9B%90+OR+%22%EB%8F%99%EB%AC%BC+%EB%B3%91%EC%9B%90%22+OR+%EC%88%98%EC%9D%98%EB%8C%80+OR+%EC%88%98%EC%9D%98%EA%B3%BC%EB%8C%80%ED%95%99+OR+%EB%B0%98%EB%A0%A4%EB%8F%99%EB%AC%BC%29+%28%EC%98%81%EC%83%81%EC%A7%84%EB%8B%A8+OR+%EC%98%81%EC%83%81%ED%8C%90%EB%8F%85+OR+%EC%98%81%EC%83%81%EC%9D%98%ED%95%99+OR+%EC%97%91%EC%8A%A4%EB%A0%88%EC%9D%B4+OR+%EB%B0%A9%EC%82%AC%EC%84%A0%29&format=rss&setlang=ko&cc=KR&qft=sortbydate%3D%221%22",
+      kind: "bing",
+      lookback_days: 30
     },
     {
       id: "B012",
@@ -693,8 +699,20 @@ var config_default = {
       status: "사용",
       categories: ["company", "policy", "hospital", "competitor"],
       url: "https://www.bing.com/",
-      listingUrl: "https://www.bing.com/news/search?q=(수의+OR+동물의료센터+OR+%22동물+의료센터%22+OR+동물병원+OR+%22동물+병원%22+OR+수의대+OR+수의과대학+OR+반려동물)+(CT+OR+MRI+OR+초음파)&format=rss&setlang=ko&cc=KR&qft=sortbydate%3D%221%22",
-      kind: "bing"
+      listingUrl: "https://www.bing.com/news/search?q=%28%EC%88%98%EC%9D%98+OR+%EB%8F%99%EB%AC%BC%EC%9D%98%EB%A3%8C%EC%84%BC%ED%84%B0+OR+%22%EB%8F%99%EB%AC%BC+%EC%9D%98%EB%A3%8C%EC%84%BC%ED%84%B0%22+OR+%EB%8F%99%EB%AC%BC%EB%A9%94%EB%94%94%EC%BB%AC%EC%84%BC%ED%84%B0+OR+%22%EB%8F%99%EB%AC%BC+%EB%A9%94%EB%94%94%EC%BB%AC%EC%84%BC%ED%84%B0%22+OR+%EB%8F%99%EB%AC%BC%EB%A9%94%EB%94%94%EC%B9%BC%EC%84%BC%ED%84%B0+OR+%EB%8F%99%EB%AC%BC%EB%B3%91%EC%9B%90+OR+%22%EB%8F%99%EB%AC%BC+%EB%B3%91%EC%9B%90%22+OR+%EC%88%98%EC%9D%98%EB%8C%80+OR+%EC%88%98%EC%9D%98%EA%B3%BC%EB%8C%80%ED%95%99+OR+%EB%B0%98%EB%A0%A4%EB%8F%99%EB%AC%BC%29+%28CT+OR+MRI+OR+%EC%B4%88%EC%9D%8C%ED%8C%8C%29&format=rss&setlang=ko&cc=KR&qft=sortbydate%3D%221%22",
+      kind: "bing",
+      lookback_days: 30
+    },
+    {
+      id: "B016",
+      name: "빙 뉴스 검색: 수의 전문 매체 영상장비",
+      label: "빙 검색 · Vet 전문 매체",
+      status: "사용",
+      categories: ["company", "policy", "hospital", "competitor"],
+      url: "https://www.bing.com/",
+      listingUrl: "https://www.bing.com/news/search?q=%28site%3Adailyvet.co.kr+OR+site%3Adailygaewon.com%29+%28CT+OR+MRI+OR+%EC%B4%88%EC%9D%8C%ED%8C%8C+OR+%EC%98%81%EC%83%81%EC%A7%84%EB%8B%A8%29&format=rss&setlang=ko&cc=KR&qft=sortbydate%3D%221%22",
+      kind: "bing",
+      lookback_days: 30
     },
     {
       id: "S028",
@@ -1141,7 +1159,7 @@ var config_default = {
       status: "사용",
       category: "hospital",
       topic: "Vet",
-      main: ["동물의료센터", "동물 의료센터", "동물의료 센터", "동물 의료 센터", "동물병원", "동물 병원", "수의대", "수의과대학", "수의과 대학", "수의 대학", "수의", "동물", "반려견", "반려묘", "강아지", "고양이", "veterinary", "veterinarian", "vet", "animal", "canine", "feline"],
+      main: ["동물메디컬센터", "동물 메디컬센터", "동물 메디컬 센터", "동물메디칼센터", "동물 메디칼센터", "동물의료센터", "동물 의료센터", "동물의료 센터", "동물 의료 센터", "동물병원", "동물 병원", "수의대", "수의과대학", "수의과 대학", "수의 대학", "수의", "동물", "반려견", "반려묘", "강아지", "고양이", "veterinary", "veterinarian", "vet", "animal", "canine", "feline"],
       auxiliary: ["CT", "MRI", "MR", "CBCT", "PET", "XR", "초음파", "영상진단", "영상 진단", "영상판독", "영상 판독", "영상분석", "영상 분석", "영상검사", "영상 검사", "영상의학", "영상 의학", "영상장비", "영상 장비", "진단영상", "진단 영상", "수의영상", "수의 영상", "엑스레이", "엑스선", "X-ray", "X ray", "Xray", "X선", "X-선", "방사선 촬영", "방사선 검사", "방사선 진단", "방사선촬영", "방사선검사", "방사선진단", "자기공명", "컴퓨터단층", "전산화단층", "ultrasound", "radiology", "radiography"],
       excluded: ["채용"]
     },
@@ -1472,6 +1490,7 @@ var config_default = {
     "S022",
     "B011",
     "B012",
+    "B016",
     "B001",
     "B002",
     "B003",
@@ -1537,15 +1556,19 @@ function isOpinionTitle(title) {
   const words = config_default.excluded_title_words || [];
   return words.some((word) => title.includes(word));
 }
-function keywordMatch(title, source2) {
+function keywordMatch(title, source2, excerpt = {}) {
   if (source2.status !== "사용") return [];
   if (isOpinionTitle(title)) return [];
   if ((source2.excluded_title_words || []).some((word) => hasWord(title, word))) return [];
   const matches = [];
   for (const rule of config_default.rules) {
     if (rule.status !== "사용" || !source2.categories.includes(rule.category)) continue;
-    const ruleTitle = source2.kind === "canon_official" && source2.company_context && rule.category === "company" ? source2.company_context + " " + title : title;
-    if (rule.topic === "Vet" && !globalThis.NewsRules.isVeterinaryImaging(title)) continue;
+    let ruleTitle = source2.kind === "canon_official" && source2.company_context && rule.category === "company" ? source2.company_context + " " + title : title;
+    if (rule.topic === "Vet") {
+      const lead = [excerpt.subtitle, excerpt.first_paragraph].filter(Boolean).join(" ").slice(0, 600);
+      if (!globalThis.NewsRules.isVeterinaryImaging(title, lead)) continue;
+      ruleTitle = title + " " + lead;
+    }
     if (rule.required_groups && !rule.required_groups.every((words) => words.some((word) => hasWord(ruleTitle, word)))) continue;
     if (rule.combinations && !rule.combinations.some((words) => words.every((word) => hasWord(ruleTitle, word)))) continue;
     const main = rule.main.filter((word) => hasWord(ruleTitle, word));
@@ -2320,7 +2343,7 @@ function parseBingRss(page, source2) {
       url = "";
     }
     if (title.length < 8 || !url || !date || !description || date < oldest) continue;
-    const groups = keywordMatch(title, source2);
+    const groups = keywordMatch(title, source2, { first_paragraph: description });
     if (groups.length === 0) continue;
     const level = selectionLevel(groups);
     items.push({
@@ -2950,7 +2973,7 @@ var deviceChange = /도입|구매|설치|가동|개발|연구|임상|협력|협�
 var names = { company: "캐논 뉴스", competitor: "경쟁사", policy: "정책", hospital: "병원·학회" };
 function assessArticle(title, source2, excerpt = {}) {
   title = String(title || "").normalize("NFKC");
-  const groups = keywordMatch(title, source2);
+  const groups = keywordMatch(title, source2, excerpt);
   const reject = (reason2) => ({ selected: false, level: selectionLevel(groups), groups, reasons: [reason2] });
   if (!groups.length) return reject("제목의 유효한 수집 키워드·정보원 조건과 일치하지 않습니다.");
   if (/채용|면접|기출문제|자기소개서|취업|경력직|구인|求人|recruitment|job vacancy/i.test(title)) return reject("채용·취업 준비 콘텐츠입니다.");
@@ -2979,7 +3002,7 @@ function assessArticle(title, source2, excerpt = {}) {
     if (/다짐|기념|홍보|유공|표창/.test(title)) return reject("정책 변화보다 기관 홍보·행사에 해당합니다.");
     reason = imagingTechnology ? "의료영상 AI 기술의 개발·공급·임상 적용" : "영상의료 제도·검사 수가 또는 의료체계·병원 지정 변화";
   } else {
-    const vet = globalThis.NewsRules.isVeterinaryImaging(title);
+    const vet = globalThis.NewsRules.isVeterinaryImaging(title, lead);
     const genuineOpening = hospitalChange.test(title) && !/개원가|개원의|주년|기념|신설\s*(?:요구|촉구)|수가\s*신설/.test(title);
     const imagingNews = (titleImaging || leadImaging && /진단|판독|영상|장비|검사/.test(title)) && deviceChange.test(title);
     const institution = /[가-힣A-Za-z0-9]+(?:병원|의료원)|영상\s*센터|의대/.test(title);
@@ -3244,7 +3267,7 @@ async function readBody(env, source2, articleId = null) {
   const candidate = await findPending(env, source2, articleId);
   if (!candidate) return { message: "처리할 기사 없음" };
   candidate.title = cleanArticleTitle(candidate.title, source2);
-  let groups = keywordMatch(candidate.title, source2);
+  let groups = keywordMatch(candidate.title, source2, parseExcerpt(candidate.snippet));
   if (groups.length === 0) {
     await run(db, "UPDATE news_candidates SET processing_status='excluded' WHERE id=?", [candidate.id]);
     return { skipped: true };
