@@ -135,8 +135,11 @@ select:hover{border-color:var(--ink-2)}
 .news-head::after{content:"";position:absolute;left:0;bottom:-1px;width:48px;height:2px;background:var(--cat,var(--red))}
 .news-head h2{font-size:20px;font-weight:300;letter-spacing:1px;margin:0;display:flex;align-items:center;gap:10px;color:var(--k90)}
 .news-head .dot{width:10px;height:10px}
-.head-count{font-size:12px;font-weight:600;color:var(--cat,var(--ink));border:1px solid var(--cat,var(--ink));border-radius:var(--radius);padding:0 8px;letter-spacing:0}
-.count{font-size:12px;color:var(--muted)}
+.competitor-region{display:inline-flex;flex-shrink:0;border:1px solid var(--gray-1);border-radius:var(--radius);overflow:hidden}
+.region-button{border:0;background:white;padding:4px 12px;font-size:12px;line-height:1.6;color:var(--ink-2);cursor:pointer}
+.region-button[aria-pressed=true]{background:var(--k90);color:white;font-weight:600}
+.region-button:hover{background:var(--k10);color:var(--k90)}
+.region-button[aria-pressed=true]:hover{background:var(--k80);color:white}
 .news-list{background:white;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
 .empty{margin:0;padding:18px 20px;color:var(--muted);font-size:14px}
 

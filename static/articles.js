@@ -99,6 +99,7 @@ function card(a,others){
 const PAGE_SIZE=4;
 const MAX_PAGES=10; // 페이지는 최대 10쪽까지만 보여줍니다. (그보다 오래된 기사는 목록에서 빠짐)
 const currentPages={}; // 카테고리별로 지금 보고 있는 페이지 번호 (1부터 시작)
+let competitorRegion='domestic';
 function resetPages(){categories.forEach(function(c){currentPages[c.id]=1;});}
 function matchesTopic(a,topic){
  if(!topic)return true;
@@ -138,6 +139,7 @@ function titlePieces(title){return NewsRules.titlePieces(title);}
 function similarity(a,b){return NewsRules.similarity(a,b);}
 function groupSameNews(rows){return NewsRules.groupSameNews(rows);}
 function render(){
+ const competitorOnly=arguments[0]===true;
  const q=document.getElementById('search').value.trim().toLocaleLowerCase();
  const topic=document.getElementById('topic').value;
  const period=document.getElementById('period').value;
@@ -149,17 +151,20 @@ function render(){
   return (!q||text.includes(q))&&matchesTopic(a,topic)&&matchesPeriod(a,period)&&(!onlyStar||a.starred)&&!a.hidden;
  });
  // 업계 동향 탭은 필터와 상관없이 전체 기사로 다시 계산합니다. (stats.js)
- if(typeof renderStats==='function')renderStats();
- if(typeof renderMonthlySummary==='function')renderMonthlySummary();
+ if(!competitorOnly&&typeof renderStats==='function')renderStats();
+ if(!competitorOnly&&typeof renderMonthlySummary==='function')renderMonthlySummary();
  // 카테고리가 다르게 분류된 중복 기사도 한 번만 표시합니다.
  const allGroups=groupSameNews(matches);
- renderBriefing(allGroups.map(function(g){return g.main;}));
- document.getElementById('sections').innerHTML=categories.map(function(c){
-  const groups=allGroups.filter(function(g){return g.main.category===c.id;});
+ if(!competitorOnly)renderBriefing(allGroups.map(function(g){return g.main;}));
+ const sections=categories.map(function(c){
+  let groups=allGroups.filter(function(g){return g.main.category===c.id;});
+  if(c.id==='competitor')groups=groups.flatMap(function(g){
+   const members=[g.main,...g.others].filter(function(a){return a.category==='competitor'&&NewsRules.newsRegion(a)===competitorRegion;}).sort(compareNewest);
+   return members.length?[{main:members[0],others:members.slice(1)}]:[];
+  });
   const ordered=sortRows(groups.map(function(g){return g.main;}),sort);
   const positions=new Map(ordered.map(function(a,i){return [a,i];}));
   groups.sort(function(a,b){return positions.get(a.main)-positions.get(b.main);});
-  const originalCount=groups.reduce(function(n,g){return n+1+g.others.length;},0);
   // 전체 페이지 수를 구하고, 지금 페이지가 범위를 넘으면(기사를 숨겨서 줄어든 경우 등) 마지막 페이지로 맞춥니다.
   const pageCount=Math.min(MAX_PAGES,Math.max(1,Math.ceil(groups.length/PAGE_SIZE)));
   let page=currentPages[c.id]||1;
@@ -167,13 +172,17 @@ function render(){
   currentPages[c.id]=page;
   const shown=groups.slice((page-1)*PAGE_SIZE,page*PAGE_SIZE);
   const more=pageCount>1?pageButtons(c,page,pageCount):'';
-  const sameNote=originalCount>groups.length?'중복 기사 포함 '+originalCount+'건':'';
+  const regionToggle=c.id==='competitor'?'<div class="competitor-region" role="group" aria-label="경쟁사 기사 발행처">'+[['domestic','국내'],['global','글로벌']].map(function(option){
+   return '<button type="button" class="region-button" data-competitor-region="'+option[0]+'" aria-pressed="'+(competitorRegion===option[0])+'">'+option[1]+'</button>';
+  }).join('')+'</div>':'';
   const list=shown.length?shown.map(function(g){return card(g.main,g.others);}).join(''):'<p class="empty">조건에 맞는 기사가 없습니다.</p>';
   return '<section class="news-section cat-'+c.id+'" id="'+c.id+'">'+
-   '<div class="news-head"><h2><span class="dot"></span>'+c.name+'<span class="head-count">'+groups.length+'</span></h2><span class="count">'+sameNote+'</span></div>'+
+   '<div class="news-head"><h2><span class="dot"></span>'+c.name+'</h2>'+regionToggle+'</div>'+
    '<div class="news-list">'+list+'</div>'+more+
   '</section>';
- }).join('');
+ });
+ if(competitorOnly)document.getElementById('competitor').outerHTML=sections[categories.findIndex(function(c){return c.id==='competitor';})];
+ else document.getElementById('sections').innerHTML=sections.join('');
 }
 
 // 카테고리 아래의 페이지 버튼 줄을 만듭니다. 예: [◀ 이전] [1] [2] [3] [다음 ▶]
@@ -248,6 +257,13 @@ async function saveHidden(id,hidden){
 }
 // 기사별 중요 표시·영향 직접 분류·숨김·페이지 이동을 처리합니다.
 document.getElementById('sections').addEventListener('click',function(event){
+ const regionButton=event.target.closest('button[data-competitor-region]');
+ if(regionButton){
+  const region=regionButton.getAttribute('data-competitor-region');
+  if(!['domestic','global'].includes(region)||region===competitorRegion)return;
+  competitorRegion=region;currentPages.competitor=1;render(true);
+  document.querySelector('button[data-competitor-region="'+region+'"]')?.focus();return;
+ }
  const starButton=event.target.closest('button[data-star]');
  if(starButton){const id=Number(starButton.getAttribute('data-star'));const now=articles.find(function(a){return a.id===id;});saveStar(id,!(now&&now.starred),starButton);return;}
  const impactButton=event.target.closest('button[data-impact]');

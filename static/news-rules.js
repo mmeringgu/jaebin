@@ -35,6 +35,15 @@ function isDomesticMedia(a){
  const name=String(a.source||'').replace(/\s*\(빙 검색\)\s*$/,'').trim();
  return host.endsWith('.kr')&&!/\.(?:go|ac|or|re)\.kr$/.test(host)&&!/공식|보도자료|병원|의료원|협회|학회|공단|진흥원|로이터|블룸버그|야후|Reuters|Bloomberg/i.test(name)&&/뉴스|신문|일보|투데이|데일리|타임[스즈]|저널|프레스|미디어|방송|^KBS$|^MBC$|^SBS$|^YTN$|^KNN$/i.test(name);
 }
+// 한글 번역 여부와 무관하게 발행처를 기준으로 국내·글로벌 뉴스를 구분합니다.
+// 국내 기관·기업 공식 사이트는 언론 노출 집계 대상과는 별도로 국내에 포함합니다.
+function newsRegion(a){
+ if(isDomesticMedia(a))return 'domestic';
+ try{
+  const host=new URL(a.url).hostname.toLowerCase();
+  return host.endsWith('.kr')||host==='kr'?'domestic':'global';
+ }catch{return 'global';}
+}
 // 수의 맥락과 영상진단 맥락이 제목에 함께 있어야 Vet 분야로 봅니다.
 // MRI의 한글·영문 이름과 띄어쓰기 변형을 수집·선별·화면에서 함께 판정합니다.
 function isMri(value,includeMr=true){
@@ -116,5 +125,5 @@ function monthlyArticles(rows,since,until){
   return chosen?[{...chosen,duplicate_count:members.length}]:[];
  }).sort(compareNewest);
 }
-root.NewsRules=Object.freeze({compareNewest,titlePieces,similarity,groupSameNews,monthlyArticles,isMri,isVeterinaryImaging,isDomesticMedia,companyLabel,designatedCompany,isDesignatedArticle});
+root.NewsRules=Object.freeze({compareNewest,titlePieces,similarity,groupSameNews,monthlyArticles,isMri,isVeterinaryImaging,isDomesticMedia,companyLabel,designatedCompany,isDesignatedArticle,newsRegion});
 })(globalThis);
