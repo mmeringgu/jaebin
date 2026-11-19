@@ -12,32 +12,32 @@ function reportTable(section){
  const scroll=document.createElement('div');scroll.className='table-scroll';
  const table=document.createElement('table');table.className='report-table';
  const head=document.createElement('thead'),header=document.createElement('tr');
- ['대상','핵심 변화','영향','출처'].forEach(function(label){
+ ['관련 항목','핵심 변화','출처'].forEach(function(label){
   const cell=document.createElement('th');cell.scope='col';cell.textContent=label;header.append(cell);
  });
  head.append(header);table.append(head);
  const body=document.createElement('tbody');
- section.items.forEach(function(item){
+ section.items.forEach(function(item,index){
   const row=document.createElement('tr');
-  const target=document.createElement('th');target.scope='row';target.textContent=item.target||'';
-  const change=document.createElement('td');change.className='report-change';change.textContent=item.text;
-  const impact=document.createElement('td');impact.className='report-impact';
-  if(item.impact==='기회'||item.impact==='위협'){
-   const symbol=document.createElement('span');
-   symbol.className=item.impact==='기회'?'report-positive':'report-negative';
-   symbol.textContent=item.impact==='기회'?'▲':'▼';
-   symbol.title=item.impact==='기회'?'긍정 영향 · 중요 기사 직접 선택':'부정 영향 · 중요 기사 직접 선택';
-   symbol.setAttribute('role','img');symbol.setAttribute('aria-label',symbol.title);impact.append(symbol);
+  const grouped=section.group_rows;
+  const first=!grouped||index===0||section.items[index-1].target!==item.target;
+  const members=grouped?section.items.filter(function(other){return other.target===item.target;}):[item];
+  if(first){
+   const target=document.createElement('th');target.scope=grouped&&members.length>1?'rowgroup':'row';target.textContent=item.target||'';
+   target.rowSpan=members.length;row.append(target);
   }
+  const change=document.createElement('td');change.className='report-change';
+  change.textContent=(grouped&&members.length>1?(members.indexOf(item)+1)+'. ':'')+item.text;
   const source=document.createElement('td');source.append(reportSources(item));
-  row.append(target);row.append(change);row.append(impact);row.append(source);body.append(row);
+  row.append(change);row.append(source);body.append(row);
  });
  table.append(body);scroll.append(table);return scroll;
 }
 function renderReport(report,output){
  output.replaceChildren();
  report.sections.forEach(function(section){
-  const heading=document.createElement('h3');heading.textContent=section.title;output.append(heading);
+  const icon={기회:'🟢',위협:'🔴'}[section.title];
+  const heading=document.createElement('h3');heading.textContent=(icon?icon+' ':'')+section.title;output.append(heading);
   if(!section.items.length){
    const empty=document.createElement('p');empty.className='muted';empty.textContent=section.empty_message||'월간 요약에 포함할 항목이 없습니다.';output.append(empty);return;
   }
@@ -55,22 +55,30 @@ function renderReport(report,output){
 function importantReport(list){
  const since=kstDate(29),until=kstDate(0);
  const important=NewsRules.monthlyArticles(list,since,until);
- const categories={company:'캐논 뉴스',policy:'정책',hospital:'병원',conference:'학회',competitor:'경쟁사'};
- function item(a){return {target:a.entity||categories[a.category]||'중요 기사',text:a.title,
+ function related(a){
+  if(a.category!=='competitor')return '정책';
+  const name=String(a.entity||a.title).normalize('NFKC');
+  if(/지멘스|siemens/i.test(name))return '지멘스';
+  if(/\bge\b|지이헬스케어/i.test(name))return 'GE헬스케어';
+  if(/필립스|philips/i.test(name))return '필립스';
+  if(/삼성메디슨|samsung\s*medison/i.test(name))return '삼성메디슨';
+  if(/후지필름|후지\s*필름|fujifilm/i.test(name))return '후지필름';
+  if(/유나이티드\s*이미징|united\s*imaging|\buih\b/i.test(name))return '유나이티드 이미징';
+  return a.entity||'경쟁사';
+ }
+ function item(a){return {target:related(a),text:a.title,
   impact:['기회','위협'].includes(a.impact_override)?a.impact_override:'',
   sources:[{title:a.title,url:a.url,source:a.source,date:a.date}]};}
- return {since:since,until:until,count:important.length,
-  unclassified:important.filter(function(a){return a.category!=='policy'&&!['기회','위협'].includes(a.impact_override);}).length,sections:[
-  {title:'정책',format:'table',empty_message:'선택된 정책 기사가 없습니다.',items:important.filter(function(a){return a.category==='policy'&&!['기회','위협'].includes(a.impact_override);}).map(item)},
-  {title:'기회',format:'table',empty_message:'선택된 기사가 없습니다.',items:important.filter(function(a){return a.impact_override==='기회';}).map(item)},
-  {title:'위협',format:'table',empty_message:'선택된 기사가 없습니다.',items:important.filter(function(a){return a.impact_override==='위협';}).map(item)}
- ]};
+ return {since:since,until:until,count:important.length,sections:['기회','위협'].map(function(impact){
+  const items=important.filter(function(a){return a.impact_override===impact;}).map(item);
+  items.sort(function(a,b){return (a.target==='정책')-(b.target==='정책')||a.target.localeCompare(b.target,'ko');});
+  return {title:impact,format:'table',group_rows:true,empty_message:'선택된 기사가 없습니다.',items:items};
+ })};
 }
 function renderMonthlySummary(){
  const report=importantReport(articles);
  renderReport(report,document.getElementById('report-output'));
- document.getElementById('report-status').textContent=report.since+' ~ '+report.until+' · 중요 기사 '+report.count+'건'
-  +(report.unclassified?' · 미분류 '+report.unclassified+'건: 중요 기사에서 기회·위협을 선택해 주세요.':'');
+ document.getElementById('report-status').textContent=report.since+' ~ '+report.until;
  refreshInsightState(report);
 }
 let monthlyInsightKey='',monthlyInsightBusy=false,monthlyInsightRequest=0;
@@ -91,7 +99,7 @@ function refreshInsightState(report){
 async function createMonthlyInsights(){
  if(monthlyInsightBusy)return;
  const report=importantReport(articles),status=document.getElementById('monthly-insight-status');
- if(!report.count){status.textContent='최근 30일의 중요 기사가 없습니다.';return;}
+ if(!report.count){status.textContent='최근 30일의 중요 기사 중 기회·위협을 선택한 기사가 없습니다.';return;}
  monthlyInsightBusy=true;monthlyInsightKey=insightKey();const requestId=++monthlyInsightRequest;
  status.textContent='중요 기사를 바탕으로 대응 방향과 비즈니스 영향을 분석하고 있습니다…';refreshInsightState(report);
  try{

@@ -401,12 +401,12 @@ export async function archiveOldArticles(env) {
 
 // ───────────────────────── 월간 리포트 · 브리핑 ─────────────────────────
 
-// 표와 동일하게 최근 30일 중요 기사만 중복 제거해 AI에 전달합니다.
+// 표와 동일하게 최근 30일의 기회·위협을 선택한 중요 기사만 중복 제거해 AI에 전달합니다.
 export async function makeReport(env, day) {
   const days = 30;
   const since = addDays(day, -(days - 1));
   const chosen = globalThis.NewsRules.monthlyArticles(await visibleArticles(env), since, day);
-  if (chosen.length === 0) return { error: "최근 " + days + "일의 중요 기사가 없습니다." };
+  if (chosen.length === 0) return { error: "최근 " + days + "일의 중요 기사 중 기회·위협을 선택한 기사가 없습니다." };
   const report = await monthlyInsights(env, chosen);
   if (!report) return { error: "AI 인사이트를 만들지 못했습니다. OPENAI_API_KEY 설정을 확인하거나 다시 시도해 주세요." };
   return { report, article_count: chosen.length, since, until: day };

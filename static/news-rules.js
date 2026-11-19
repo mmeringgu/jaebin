@@ -87,16 +87,15 @@ function groupSameNews(rows){
  return groups;
 }
 
-// 월간 표와 AI가 같은 중요 기사·중복 제거 기준을 사용합니다.
+// 월간 표와 AI는 기회·위협을 선택한 중요 기사만 같은 중복 제거 기준으로 사용합니다.
 function monthlyArticles(rows,since,until){
  const urls=new Set();
- const eligible=rows.filter(function(a){return a.starred&&!a.hidden&&a.date>=since&&a.date<=until;}).slice().sort(compareNewest)
+ const eligible=rows.filter(function(a){return a.starred&&!a.hidden&&a.category!=='hospital'&&a.date>=since&&a.date<=until;}).slice().sort(compareNewest)
   .filter(function(a){if(urls.has(a.url))return false;urls.add(a.url);return true;});
- return groupSameNews(eligible).map(function(group){
+ return groupSameNews(eligible).flatMap(function(group){
   const members=[group.main,...group.others].sort(compareNewest);
-  const chosen=members.find(function(a){return ['기회','위협'].includes(a.impact_override);})
-   ||members.find(function(a){return a.category==='policy';})||members[0];
-  return {...chosen,duplicate_count:members.length};
+  const chosen=members.find(function(a){return ['기회','위협'].includes(a.impact_override);});
+  return chosen?[{...chosen,duplicate_count:members.length}]:[];
  }).sort(compareNewest);
 }
 root.NewsRules=Object.freeze({compareNewest,titlePieces,similarity,groupSameNews,monthlyArticles,isMri,isVeterinaryImaging,isDomesticMedia});

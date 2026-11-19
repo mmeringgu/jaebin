@@ -323,9 +323,6 @@ a.movement-title:hover{text-decoration:underline;text-underline-offset:3px}
 .report-table thead th{background:var(--k10);font-size:12px;color:var(--ink-2);white-space:nowrap}
 .report-table tbody th{min-width:100px;max-width:170px;font-weight:600}
 .report-change{min-width:180px}
-.report-table .report-impact{text-align:center;width:52px;vertical-align:middle}
-.report-positive{color:var(--red);font-size:20px;line-height:1}
-.report-negative{color:#2563eb;font-size:20px;line-height:1}
 .report-table .report-sources{margin-top:0;min-width:90px}
 
 /* ===== 수집 관리 (예약 기록, 정보원 상태, 수집 후보 목록) ===== */

@@ -117,7 +117,7 @@ test("표의 영향은 근거 별표 기사의 직접 선택값만 사용하며 
   assert.equal(make([3]).impact, "");
 });
 
-test("핵심 동향은 목록으로, 나머지는 네 열 표와 빨간 ▲·파란 ▼로 표시합니다", () => {
+test("핵심 동향은 목록으로, 나머지는 영향 열 없이 세 열 표로 표시합니다", () => {
   const script = readFileSync(new URL("../static/report.js", import.meta.url), "utf8");
   const createElement = (tag) => ({ tag, children: [], attributes: {},
     append(child) { this.children.push(child); }, replaceChildren() { this.children = []; },
@@ -137,20 +137,14 @@ test("핵심 동향은 목록으로, 나머지는 네 열 표와 빨간 ▲·파
   assert.equal(output.children[1].tag, "ul");
   const table = output.children[3].children[0];
   assert.equal(table.tag, "table");
-  assert.deepEqual(table.children[0].children[0].children.map((cell) => cell.textContent), ["대상", "핵심 변화", "영향", "출처"]);
+  assert.deepEqual(table.children[0].children[0].children.map((cell) => cell.textContent), ["관련 항목", "핵심 변화", "출처"]);
   const rows = table.children[1].children;
-  assert.equal(rows[0].children[2].children[0].textContent, "▲");
-  assert.equal(rows[0].children[2].children[0].className, "report-positive");
-  assert.match(rows[0].children[2].children[0].attributes["aria-label"], /긍정 영향/);
-  assert.equal(rows[1].children[2].children[0].textContent, "▼");
-  assert.equal(rows[1].children[2].children[0].className, "report-negative");
-  assert.equal(rows[2].children[2].children.length, 0);
+  assert.ok(rows.every((row) => row.children.length === 3));
+  assert.equal(rows[0].children[2].children[0].children[0].href, source.url);
+  assert.equal(rows[1].children[2].children[0].children[0].href, source.url);
   assert.equal(rows[2].children[0].textContent, "<img>");
   assert.equal(rows[2].children[1].textContent, "<script>내용</script>");
-  assert.equal(rows[2].children[3].children[0].children.length, 0);
-  const css = readFileSync(new URL("../static/style.css", import.meta.url), "utf8");
-  assert.match(css, /\.report-positive\{color:var\(--red\)/);
-  assert.match(css, /\.report-negative\{color:#2563eb/);
+  assert.equal(rows[2].children[2].children[0].children.length, 0);
 });
 
 test("리포트 생성 요청에는 직접 선택한 분류를 전달하며 미분류 기사를 자동 판정하지 않습니다", async () => {
