@@ -78,15 +78,15 @@ test('월간 요약은 최근 30일 분류된 중요 기사만 기회·위협 �
  assert.equal(ui.get('report-status').textContent,'2026-10-20 ~ 2026-11-18');
  rows[0].starred=0;rows[1].hidden=true;ui.renderMonthlySummary();
  assert.equal(ui.get('report-status').textContent,'2026-10-20 ~ 2026-11-18');
- assert.match(ui.get('report-output').children[1].textContent,/선택된 기사가 없습니다/);
+ assert.match(ui.get('report-output').children[1].children[1].textContent,/선택된 기사가 없습니다/);
 });
 
 test('기회·위협 선택 변경을 즉시 반영하며 표와 독립된 AI 버튼을 하나만 제공합니다',()=>{
  const rows=[article(1)],ui=screen(rows);
  assert.equal(ui.importantReport(rows).sections[1].items.length,0);
  rows[0].impact_override='기회';ui.renderMonthlySummary();
- const table=ui.get('report-output').children[1].children[0];
- const headings=[0,2].map((i)=>ui.get('report-output').children[i].textContent);
+ const table=ui.get('report-output').children[0].children[1].children[0];
+ const headings=[0,1].map((i)=>ui.get('report-output').children[i].children[0].textContent);
  assert.deepEqual(headings,['🟢 기회','🔴 위협']);
  assert.deepEqual(table.children[0].children[0].children.map((cell)=>cell.textContent),['관련 항목','핵심 변화','출처']);
  assert.equal(table.children[1].children[0].children.length,3);
@@ -127,7 +127,7 @@ test('경쟁사별·정책별 관련 항목만 병합하고 기사 행·출처�
  const ui=screen(rows),report=ui.importantReport(rows);
  assert.equal(report.count,6);
  assert.deepEqual(Array.from(report.sections[0].items,(item)=>item.target),['GE','Siemens','Siemens','정책','정책']);
- const rendered=ui.get('report-output').children[1].children[0].children[1].children;
+ const rendered=ui.get('report-output').children[0].children[1].children[0].children[1].children;
  assert.equal(rendered.length,5);
  assert.equal(rendered[1].children[0].rowSpan,2);
  assert.equal(rendered[1].children[0].scope,'rowgroup');

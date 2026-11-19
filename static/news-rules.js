@@ -23,7 +23,15 @@ const domesticMediaHosts=new Set([
  'docdocdoc.co.kr','whosaeng.com','medigatenews.com','khanews.com','medicaltimes.com','doctorsnews.co.kr','etnews.com','bosa.co.kr','rapportian.com','doctorstimes.com','dailypharm.com','medipana.com','monews.co.kr','yakup.com','yna.co.kr',
  'chosun.com','donga.com','hankyung.com','sedaily.com','fnnews.com','joongang.co.kr','hani.co.kr','khan.co.kr','mk.co.kr','mt.co.kr','edaily.co.kr','asiae.co.kr','newsis.com','news1.kr','newspim.com','gukjenews.com',
  'ytn.co.kr','kbs.co.kr','imbc.com','sbs.co.kr','koreaherald.com','koreatimes.co.kr','bizwatch.co.kr','businesspost.co.kr','medifonews.com','medworld.co.kr','healthinnews.co.kr','dailymedi.com',
- 'heraldcorp.com','newstomato.com','ohmynews.com','hankookilbo.com','segye.com','kmib.co.kr','munhwa.com','dt.co.kr'
+ 'heraldcorp.com','newstomato.com','ohmynews.com','hankookilbo.com','segye.com','kmib.co.kr','munhwa.com','dt.co.kr',
+ 'bokuennews.com','dailygaewon.com'
+]);
+// 확인된 해외 매체·뉴스 배포 서비스와 해외 공식 발표 출처만 글로벌로 표시합니다.
+const globalNewsHosts=new Set([
+ 'reuters.com','bloomberg.com','nikkei.com','asahi.com','mainichi.jp','yomiuri.co.jp','japantimes.co.jp','jiji.com','kyodonews.net',
+ 'yahoo.com','msn.com','newswire.ca','prnewswire.com','businesswire.com','globenewswire.com',
+ 'auntminnie.com','itnonline.com','imagingtechnologynews.com','healthimaging.com','radiologybusiness.com','diagnosticimaging.com','healthcare-in-europe.com','dotmed.com','medtechdive.com','medicaldevice-network.com','fiercebiotech.com','fiercehealthcare.com','beckershospitalreview.com',
+ 'global.canon','global.medical.canon','jp.medical.canon','siemens-healthineers.com','gehealthcare.com','philips.com'
 ]);
 function isDomesticMedia(a){
  if(typeof a.domestic_media==='boolean')return a.domestic_media;
@@ -43,8 +51,11 @@ function newsRegion(a){
  if(isDomesticMedia({...a,domestic_media:undefined}))return 'domestic';
  try{
   const host=new URL(a.url).hostname.toLowerCase();
-  return host.endsWith('.kr')||host==='kr'?'domestic':'global';
- }catch{return 'global';}
+  if(host.endsWith('.kr')||host==='kr')return 'domestic';
+  if([...globalNewsHosts].some(function(domain){return host===domain||host.endsWith('.'+domain);}))return 'global';
+ }catch{}
+ // 미등록 .com 주소나 잘못된 URL만으로 해외 매체라고 간주하지 않습니다.
+ return 'domestic';
 }
 // 수의 맥락과 영상진단 맥락이 제목에 함께 있어야 Vet 분야로 봅니다.
 // MRI의 한글·영문 이름과 띄어쓰기 변형을 수집·선별·화면에서 함께 판정합니다.

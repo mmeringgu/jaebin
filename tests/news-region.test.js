@@ -38,24 +38,33 @@ test('해외 이슈를 보도한 국내 .com 매체와 한국 이슈를 보도�
  }
 });
 
-test('캐논 뉴스도 출처 기준 국내·글로벌로 나누고 경쟁사와 독립적으로 선택합니다',()=>{
- const title='캐논 메디칼 MRI 신제품 출시';
+test('캐논 뉴스는 토글 없이 국내·글로벌을 모두 표시하고 경쟁사 선택과 독립적으로 유지합니다',()=>{
  const ui=screen([
-  article(1,{category:'company',entity:'캐논',title,date:'2026-11-18'}),
-  article(2,{category:'company',entity:'캐논',title,source:'캐논 글로벌 공식',url:'https://global.medical.canon/news/2',domestic_media:false}),
+  article(1,{category:'company',entity:'캐논',title:'캐논 CT 국내 공급',date:'2026-11-18'}),
+  article(2,{category:'company',entity:'캐논',title:'캐논 MRI 신제품 출시',source:'캐논 글로벌 공식',url:'https://global.medical.canon/news/2',domestic_media:false}),
   article(3,{title:'지멘스 한국 병원 장비 공급',source:'Reuters',url:'https://www.reuters.com/3'})
  ]);
  ui.render();const original=ui.get('sections').innerHTML,counts=ui.counts();
- assert.match(original,/data-company-region="domestic" aria-pressed="true"/);
- assert.match(original,/docdocdoc\.co\.kr/);assert.doesNotMatch(original,/global\.medical\.canon/);
- ui.pages.company=2;ui.toggle('global','company');
- const selected=ui.get('company').outerHTML;
- assert.match(selected,/global\.medical\.canon/);assert.doesNotMatch(selected,/docdocdoc\.co\.kr/);
- assert.match(selected,/data-company-region="global" aria-pressed="true"/);
- assert.equal(ui.pages.company,1);assert.equal(ui.get('sections').innerHTML,original);assert.deepEqual(ui.counts(),counts);
+ assert.doesNotMatch(original,/data-company-region/);
+ assert.match(original,/docdocdoc\.co\.kr/);assert.match(original,/global\.medical\.canon/);
  ui.toggle('global');assert.match(ui.get('competitor').outerHTML,/reuters\.com/);
- assert.equal(ui.get('company').outerHTML,selected);
- ui.toggle('domestic','company');assert.match(ui.get('company').outerHTML,/docdocdoc\.co\.kr/);
+ assert.equal(ui.get('sections').innerHTML,original);assert.deepEqual(ui.counts(),counts);
+});
+
+test('보건뉴스는 국내에 표시하며 미등록 .com 출처를 글로벌로 간주하지 않습니다',()=>{
+ const url='http://bokuennews.com/news/article.html?no=286884';
+ for(const host of ['bokuennews.com','www.bokuennews.com','m.bokuennews.com']){
+  const row=article(1,{source:'보건뉴스',url:url.replace('bokuennews.com',host),domestic_media:false});
+  assert.equal(NewsRules.newsRegion(row),'domestic');
+  assert.equal(NewsRules.isDomesticMedia({...row,domestic_media:undefined}),true);
+ }
+ for(const unknown of ['https://unregistered-press.com/1','https://reuters.com.unregistered-press.com/1','bad-url']){
+  assert.equal(NewsRules.newsRegion(article(2,{source:'미확인 매체',url:unknown})),'domestic');
+ }
+ const ui=screen([article(1,{source:'보건뉴스',url,title:'지멘스 해외 의료사업 확장'}),article(2,{source:'Reuters',url:'https://www.reuters.com/2',title:'지멘스 한국 병원 장비 공급'})]);
+ ui.render();assert.match(ui.get('sections').innerHTML,/bokuennews\.com/);
+ ui.toggle('global');assert.doesNotMatch(ui.get('competitor').outerHTML,/bokuennews\.com/);
+ assert.match(ui.get('competitor').outerHTML,/reuters\.com/);
 });
 
 test('국내를 기본으로 표시하고 토글 전환은 경쟁사만 갱신하며 다른 영역·집계는 유지합니다',()=>{

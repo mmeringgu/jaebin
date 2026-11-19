@@ -36,19 +36,20 @@ function reportTable(section){
 function renderReport(report,output){
  output.replaceChildren();
  report.sections.forEach(function(section){
+  const area=document.createElement('section');area.className='report-output';output.append(area);
   const icon={기회:'🟢',위협:'🔴'}[section.title];
-  const heading=document.createElement('h3');heading.textContent=(icon?icon+' ':'')+section.title;output.append(heading);
+  const heading=document.createElement('h3');heading.textContent=(icon?icon+' ':'')+section.title;area.append(heading);
   if(!section.items.length){
-   const empty=document.createElement('p');empty.className='muted';empty.textContent=section.empty_message||'월간 요약에 포함할 항목이 없습니다.';output.append(empty);return;
+   const empty=document.createElement('p');empty.className='muted';empty.textContent=section.empty_message||'월간 요약에 포함할 항목이 없습니다.';area.append(empty);return;
   }
-  if(section.format==='table'){output.append(reportTable(section));return;}
+  if(section.format==='table'){area.append(reportTable(section));return;}
   const list=document.createElement('ul');
   section.items.forEach(function(item){
    const row=document.createElement('li');
    const text=document.createElement('div');text.textContent=item.text;row.append(text);
    row.append(reportSources(item));list.append(row);
   });
-  output.append(list);
+  area.append(list);
  });
 }
 // 월간 요약은 생성 요청 없이 중요 기사에서 바로 계산합니다.

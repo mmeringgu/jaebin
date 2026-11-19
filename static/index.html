@@ -33,7 +33,7 @@
    <div class="search-options" role="group" aria-label="뉴스 표시 옵션">
    <select id="period" aria-label="기간 필터"><option value="">전체 기간</option><option value="today">오늘</option><option value="7">최근 7일</option></select>
    <select id="sort" aria-label="정렬"><option value="relevance">관련도순</option><option value="new">최신순</option></select>
-   <label class="important-option"><input type="checkbox" id="only-star"><span class="star-symbol important-star" aria-hidden="true">★</span> 중요 기사</label>
+   <label class="important-option"><span class="star-symbol important-star" aria-hidden="true">★</span> 중요 기사<input type="checkbox" id="only-star"></label>
    </div>
   </div>
  </div>
@@ -43,7 +43,7 @@
 
  <!-- 탭 2: 월간 요약 -->
  <div data-panel="report" hidden>
- <section class="section" id="report"><div class="section-head"><h2>월간 요약</h2><button type="button" class="button primary" id="monthly-insight-button" disabled>AI 인사이트 만들기</button></div><p id="monthly-insight-status" class="status" role="status" aria-live="polite"></p><div id="monthly-insight-output" class="report-output monthly-insights" aria-live="polite"></div><p id="report-status" class="status" role="status" aria-live="polite">중요 기사를 불러오는 중…</p><div id="report-output" class="report-output"></div></section>
+ <section class="section" id="report"><div class="report-actions"><button type="button" class="button primary" id="monthly-insight-button" disabled>AI 인사이트 만들기</button><p id="report-status" class="status" role="status" aria-live="polite"></p></div><p id="monthly-insight-status" class="status" role="status" aria-live="polite"></p><div id="monthly-insight-output" class="report-output monthly-insights" aria-live="polite"></div><div id="report-output" class="report-sections"></div></section>
  </div>
 
  <!-- 탭 3: 업계 동향 (내용은 stats.js가 채웁니다) -->

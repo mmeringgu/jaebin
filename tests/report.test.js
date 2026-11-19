@@ -134,8 +134,8 @@ test("핵심 동향은 목록으로, 나머지는 영향 열 없이 세 열 표�
       { target: "<img>", text: "<script>내용</script>", impact: "", sources: [{ ...source, url: "javascript:alert(1)" }] },
     ] },
   ] }, output);
-  assert.equal(output.children[1].tag, "ul");
-  const table = output.children[3].children[0];
+  assert.equal(output.children[0].children[1].tag, "ul");
+  const table = output.children[1].children[1].children[0];
   assert.equal(table.tag, "table");
   assert.deepEqual(table.children[0].children[0].children.map((cell) => cell.textContent), ["관련 항목", "핵심 변화", "출처"]);
   const rows = table.children[1].children;
@@ -178,7 +178,7 @@ test("출처 링크를 클릭 가능한 요소로 표시하고 생성 텍스트�
     { url: "https://example.com/original", source: "매체", title: "기사" },
     { url: "javascript:alert(1)", source: "위험 링크", title: "기사" },
   ] }] }] }, output);
-  const row = output.children[1].children[0];
+  const row = output.children[0].children[1].children[0];
   assert.equal(row.children[0].textContent, "<script>test</script>");
   assert.equal(row.children[1].children.length, 1);
   assert.equal(row.children[1].children[0].href, "https://example.com/original");

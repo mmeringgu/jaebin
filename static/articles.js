@@ -100,7 +100,6 @@ const PAGE_SIZE=4;
 const MAX_PAGES=10; // 페이지는 최대 10쪽까지만 보여줍니다. (그보다 오래된 기사는 목록에서 빠짐)
 const currentPages={}; // 카테고리별로 지금 보고 있는 페이지 번호 (1부터 시작)
 let competitorRegion='domestic';
-let companyRegion='domestic';
 function resetPages(){categories.forEach(function(c){currentPages[c.id]=1;});}
 function matchesTopic(a,topic){
  if(!topic)return true;
@@ -140,7 +139,7 @@ function titlePieces(title){return NewsRules.titlePieces(title);}
 function similarity(a,b){return NewsRules.similarity(a,b);}
 function groupSameNews(rows){return NewsRules.groupSameNews(rows);}
 function render(){
- const sectionOnly=arguments[0]===true?'competitor':(['company','competitor'].includes(arguments[0])?arguments[0]:'');
+ const sectionOnly=arguments[0]===true||arguments[0]==='competitor'?'competitor':'';
  const q=document.getElementById('search').value.trim().toLocaleLowerCase();
  const topic=document.getElementById('topic').value;
  const period=document.getElementById('period').value;
@@ -159,9 +158,8 @@ function render(){
  if(!sectionOnly)renderBriefing(allGroups.map(function(g){return g.main;}));
  const sections=categories.map(function(c){
   let groups=allGroups.filter(function(g){return g.main.category===c.id;});
-  const selectedRegion=c.id==='company'?companyRegion:competitorRegion;
   if(['company','competitor'].includes(c.id))groups=allGroups.flatMap(function(g){
-   const members=[g.main,...g.others].filter(function(a){return a.category===c.id&&NewsRules.newsRegion(a)===selectedRegion;}).sort(compareNewest);
+   const members=[g.main,...g.others].filter(function(a){return a.category===c.id&&(c.id==='company'||NewsRules.newsRegion(a)===competitorRegion);}).sort(compareNewest);
    return members.length?[{main:members[0],others:members.slice(1)}]:[];
   });
   const ordered=sortRows(groups.map(function(g){return g.main;}),sort);
@@ -174,8 +172,8 @@ function render(){
   currentPages[c.id]=page;
   const shown=groups.slice((page-1)*PAGE_SIZE,page*PAGE_SIZE);
   const more=pageCount>1?pageButtons(c,page,pageCount):'';
-  const regionToggle=['company','competitor'].includes(c.id)?'<div class="competitor-region" role="group" aria-label="'+c.name+' 기사 발행처">'+[['domestic','국내'],['global','글로벌']].map(function(option){
-   return '<button type="button" class="region-button" data-'+c.id+'-region="'+option[0]+'" aria-pressed="'+(selectedRegion===option[0])+'">'+option[1]+'</button>';
+  const regionToggle=c.id==='competitor'?'<div class="competitor-region" role="group" aria-label="경쟁사 기사 발행처">'+[['domestic','국내'],['global','글로벌']].map(function(option){
+   return '<button type="button" class="region-button" data-competitor-region="'+option[0]+'" aria-pressed="'+(competitorRegion===option[0])+'">'+option[1]+'</button>';
   }).join('')+'</div>':'';
   const list=shown.length?shown.map(function(g){return card(g.main,g.others);}).join(''):'<p class="empty">조건에 맞는 기사가 없습니다.</p>';
   return '<section class="news-section cat-'+c.id+'" id="'+c.id+'">'+
@@ -257,15 +255,12 @@ async function saveHidden(id,hidden){
 }
 // 기사별 중요 표시·영향 직접 분류·숨김·페이지 이동을 처리합니다.
 document.getElementById('sections').addEventListener('click',function(event){
- const competitorButton=event.target.closest('button[data-competitor-region]');
- const regionButton=competitorButton||event.target.closest('button[data-company-region]');
+ const regionButton=event.target.closest('button[data-competitor-region]');
  if(regionButton){
-  const category=competitorButton?'competitor':'company';
-  const region=regionButton.getAttribute('data-'+category+'-region');
-  if(!['domestic','global'].includes(region)||region===(competitorButton?competitorRegion:companyRegion))return;
-  if(competitorButton)competitorRegion=region;else companyRegion=region;
-  currentPages[category]=1;render(category);
-  document.querySelector('button[data-'+category+'-region="'+region+'"]')?.focus();return;
+  const region=regionButton.getAttribute('data-competitor-region');
+  if(!['domestic','global'].includes(region)||region===competitorRegion)return;
+  competitorRegion=region;currentPages.competitor=1;render(true);
+  document.querySelector('button[data-competitor-region="'+region+'"]')?.focus();return;
  }
  const starButton=event.target.closest('button[data-star]');
  if(starButton){const id=Number(starButton.getAttribute('data-star'));const now=articles.find(function(a){return a.id===id;});saveStar(id,!(now&&now.starred),starButton);return;}
