@@ -9,8 +9,8 @@
 .header-detail-line{display:flex;align-items:baseline;justify-content:space-between;gap:4px 16px;width:100%;margin-top:2px;min-width:0}
 .header-detail-line .sub{display:block;white-space:nowrap}
 .header-forecast{grid-column:2;grid-row:1;align-self:center;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0}
-.header-date{margin:0;font-size:13px;line-height:18px;text-align:center}
-.weather-reading{font-size:12px;line-height:18px;color:var(--ink-2);text-align:center;white-space:nowrap}
+.header-date{align-self:stretch;margin:0;font-size:13px;line-height:18px;text-align:right}
+.weather-reading{align-self:stretch;font-size:12px;line-height:18px;color:var(--ink-2);text-align:right;white-space:nowrap}
 .topbar.is-compact .header-forecast{gap:0}
 .topbar.is-compact .header-date,.topbar.is-compact .weather-reading{display:none}
 .topbar.is-compact .header-weather{width:140px;max-width:100%;height:48px}

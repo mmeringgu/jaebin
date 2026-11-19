@@ -25,11 +25,25 @@ function screen(now='2026-11-19T03:00:00Z',options={}){
 }
 const flush=()=>new Promise(resolve=>setImmediate(resolve));
 
+test('작은 스크롤과 배너 축소에 따른 108px 위치 보정으로 확대·축소가 반복되지 않습니다',()=>{
+ const ui=screen(),header=ui.get('.topbar');
+ for(const y of [100,0,120,12,0]){
+  ui.scroll(y);assert.equal(header.classList.contains('is-compact'),false);
+ }
+ ui.scroll(161);assert.equal(header.classList.contains('is-compact'),true);
+ for(const y of [53,54,52,10]){
+  ui.scroll(y);assert.equal(header.classList.contains('is-compact'),true);
+ }
+ ui.scroll(0);assert.equal(header.classList.contains('is-compact'),false);
+ const restored=screen(undefined,{scrollY:161});
+ assert.equal(restored.get('.topbar').classList.contains('is-compact'),true);
+});
+
 test('최초에는 6초 재생하고 스크롤 축소와 독립적으로 정지하며 최상단 복귀 때 다시 시작합니다',async()=>{
  const ui=screen();await flush();
  assert.equal(ui.root.classList.contains('paused'),false);assert.equal(ui.timers.size,1);
  assert.equal(Array.from(ui.timers.values())[0].ms,6000);assert.ok(ui.animations.every(animation=>animation.currentTime===0));
- ui.scroll(120);assert.equal(ui.get('.topbar').classList.contains('is-compact'),true);
+ ui.scroll(180);assert.equal(ui.get('.topbar').classList.contains('is-compact'),true);
  assert.equal(ui.root.classList.contains('paused'),false);
  ui.stop();assert.equal(ui.root.classList.contains('paused'),true);
  ui.animations.forEach(animation=>{animation.currentTime=6000;});
@@ -47,7 +61,7 @@ test('한국 날짜의 계절 경계와 11월 중순의 겨울 전환을 반영�
 test('사용자 일시 정지와 모션 감소 설정을 최상단 재진입 때도 존중합니다',async()=>{
  for(const options of [{manuallyPaused:true},{reduced:true}]){
   const ui=screen(undefined,options);await flush();assert.equal(ui.root.classList.contains('paused'),true);assert.equal(ui.timers.size,0);
-  ui.scroll(120);ui.scroll(0);assert.equal(ui.root.classList.contains('paused'),true);assert.equal(ui.timers.size,0);
+  ui.scroll(180);ui.scroll(0);assert.equal(ui.root.classList.contains('paused'),true);assert.equal(ui.timers.size,0);
  }
  const ui=screen();await flush();ui.get('.weather-pause').click();assert.equal(ui.root.classList.contains('paused'),true);assert.equal(ui.timers.size,0);
  ui.get('.weather-pause').click();assert.equal(ui.root.classList.contains('paused'),false);assert.equal(ui.timers.size,1);
