@@ -217,6 +217,53 @@ select:hover{border-color:var(--ink-2)}
 .section{scroll-margin-top:120px;margin:32px 0}
 .industry-section{scroll-margin-top:calc(var(--header-height,104px) + 76px)}
 .competitor-sections{display:grid;gap:16px}
+/* 업계 동향: 공식 제품 현황과 기사 기반 정책·시설 현황을 분리합니다. */
+.industry-dashboard{display:grid;gap:20px;padding:20px 0 0}
+.industry-product-toolbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.industry-source-note{font-size:12px;color:var(--muted)}
+.industry-product-toolbar label{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--ink-2)}
+.industry-product-toolbar select{min-width:170px}
+.industry-product-grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,3fr);gap:16px;align-items:start}
+.industry-panel{min-width:0;background:white;border:1px solid var(--line);border-radius:var(--radius);padding:20px;display:flex;flex-direction:column}
+.industry-panel-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;min-height:32px}
+.industry-panel-head h2{margin:0;font-size:17px;font-weight:700;letter-spacing:-.3px}
+.industry-panel-head select{padding:4px 6px;font-size:12px;border-color:var(--line)}
+.industry-state{font-size:11px;color:var(--red);border:1px solid var(--red-soft);padding:2px 7px}
+.industry-panel-note{margin:6px 0 16px;font-size:11px;color:var(--muted);line-height:1.6}
+.industry-recall-list{list-style:none;margin:0;padding:0}
+.industry-recall-list li{padding:12px 0;border-bottom:1px solid var(--line-2)}
+.industry-recall-list li:first-child{padding-top:0}
+.industry-record-meta{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px}
+.industry-record-meta strong{font-size:15px;font-weight:700}
+.industry-record-meta>span{font-size:11px;color:var(--muted)}
+.industry-record-meta time{margin-left:auto;font-size:11px;color:var(--muted);white-space:nowrap}
+.industry-record-title{margin-top:4px;font-size:13px;line-height:1.5}
+.industry-record-title a{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-decoration:none}
+.industry-record-detail{margin-top:4px;font-size:11px;color:var(--muted);overflow-wrap:anywhere}
+.industry-panel a:hover{color:var(--red);text-decoration:underline;text-underline-offset:3px}
+.industry-approval-table{width:100%;border-collapse:collapse;font-size:12px;line-height:1.5}
+.industry-approval-table th,.industry-approval-table td{padding:10px 7px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line-2)}
+.industry-approval-table thead th{font-size:11px;font-weight:500;color:var(--muted);background:#fafafa;white-space:nowrap}
+.industry-approval-table tbody th{font-weight:600;min-width:66px;max-width:90px}
+.industry-approval-table td:nth-child(2){font-size:11px;color:var(--ink-2)}
+.industry-approval-table td:nth-child(3){min-width:110px;overflow-wrap:anywhere}
+.industry-approval-table td:last-child{white-space:nowrap;font-size:11px;color:var(--muted)}
+.industry-approval-table a{text-decoration:none}
+.industry-permit{display:block;font-size:10px;color:var(--muted);margin-top:3px}
+.industry-empty{min-height:120px;display:flex;align-items:center;justify-content:center;margin:0;padding:20px 10px;text-align:center;font-size:13px;color:var(--muted);line-height:1.7}
+.industry-pagination{display:flex;justify-content:flex-end;align-items:center;gap:12px;margin-top:12px;font-size:11px;color:var(--muted)}
+.industry-pagination:empty{display:none}
+.industry-pagination button{background:white;border:1px solid var(--line);padding:4px 9px;cursor:pointer;font-size:11px;color:var(--ink-2)}
+.industry-pagination button:disabled{opacity:.35;cursor:default}
+.industry-data-status{font-size:10px;line-height:1.6;color:var(--muted);margin:12px 0 6px}
+.industry-source-link{font-size:11px;color:var(--ink-2);margin-top:auto;align-self:flex-start;text-decoration:none}
+.industry-scope-note{font-size:10px;color:var(--muted);margin-top:5px}
+.industry-article-panel{min-width:0}
+.industry-article-panel .stat-box{padding:20px}
+.industry-article-panel .stat-box h3{font-size:17px;font-weight:700;letter-spacing:-.3px;color:var(--ink);margin-bottom:16px}
+.industry-article-panel .trend-table{margin:0}
+.industry-article-panel .trend-table th{font-weight:500;border-bottom:1px solid var(--line);background:#fafafa}
+@media(max-width:800px){.industry-product-grid{grid-template-columns:minmax(0,1fr)}.industry-panel,.industry-article-panel .stat-box{padding:18px 16px}.industry-product-toolbar select{min-width:145px}.industry-dashboard{gap:16px}}
 .admin-gate{padding:56px 0;text-align:center}
 .admin-gate p{font-size:14px}
 .admin-gate form{display:flex;justify-content:center;gap:8px;margin-top:20px}
@@ -235,14 +282,12 @@ select:hover{border-color:var(--ink-2)}
 .movement-company{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
 .movement-company h4{font-size:15px;font-weight:600;margin:0}
 .movement-stories{list-style:none;padding:0;margin:0}
-.movement-story{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(50px,76px);gap:8px;align-items:start;height:52px;padding:7px 0;line-height:1.45}
+.movement-story{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:start;height:52px;padding:7px 0;line-height:1.45}
 .movement-story+.movement-story{border-top:1px solid var(--line)}
 .movement-title{min-width:0;overflow-wrap:anywhere;font-size:13px;color:var(--ink);text-decoration:none;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
 a.movement-title:hover{text-decoration:underline;text-underline-offset:3px}
 .movement-story>time{font-size:11px;color:var(--ink-2);white-space:nowrap}
-.movement-row-sources{display:block;min-width:0;font-size:11px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .movement-empty{margin:12px 0;color:var(--muted);font-size:12px}
-.movement-row-sources a{color:var(--ink-2);text-underline-offset:2px}
 .section-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--gray-1)}
 .section-head h2{font-size:18px;font-weight:300;letter-spacing:3px;margin:0;color:var(--red)}
 
@@ -270,6 +315,7 @@ a.movement-title:hover{text-decoration:underline;text-underline-offset:3px}
 .stat-list a,.trend-latest a,.issue-list a{text-decoration:none;font-weight:500}
 .stat-list a:hover,.trend-latest a:hover,.issue-list a:hover{color:var(--red);text-decoration:underline}
 .list-date{color:var(--muted);font-size:12px;min-width:38px}
+.recall-company{font-size:15px;font-weight:700}
 .d-day{font-size:12px;font-weight:600;color:var(--red)}
 .kind-start{border-color:var(--c-policy);color:var(--c-policy)}
 .stage-move{color:var(--ink-2)}
@@ -418,7 +464,7 @@ footer{margin-top:56px;padding:20px 0 0;border-top:1px solid var(--gray-1);font-
  .stat-grid{grid-template-columns:1fr}
  .movement-grid{grid-template-columns:1fr}
  .movement-card{padding:10px 12px}
- .movement-story{grid-template-columns:minmax(0,1fr) auto minmax(44px,74px);gap:6px}
+ .movement-story{gap:6px}
  .toolbar select{flex:1}
  .toolbar-search{overflow-x:auto;padding-bottom:3px}
  .toolbar .toolbar-search input[type=search]{min-width:160px}

@@ -257,8 +257,7 @@ function movementHeadline(row){
 function movementStory(row){
  const a=row.a,headline=movementHeadline(row);
  const link=/^https?:\/\//i.test(a.url)?'<a class="movement-title" href="'+esc(a.url)+'" target="_blank" rel="noopener noreferrer" title="'+esc(a.title)+'">'+esc(headline)+'</a>':'<span class="movement-title">'+esc(headline)+'</span>';
- const source=/^https?:\/\//i.test(a.url)?'<a href="'+esc(a.url)+'" target="_blank" rel="noopener noreferrer" title="'+esc(a.source||'원문')+'">'+esc(a.source||'원문')+'</a>':'';
- return '<li class="movement-story">'+link+'<time datetime="'+esc(a.date)+'">'+esc(shortDate(a.date))+'</time><span class="movement-row-sources">'+source+'</span></li>';
+ return '<li class="movement-story">'+link+'<time datetime="'+esc(a.date)+'">'+esc(shortDate(a.date))+'</time></li>';
 }
 function competitorMovements(list){
  const companies=new Map();
@@ -285,7 +284,7 @@ function recallList(list){
   if(company)rows.push({a:a,company:company.name});
  });
  const body=rows.length?'<ul class="stat-list">'+rows.slice(0,10).map(function(r){
-  return '<li><span class="list-date">'+shortDate(r.a.date)+'</span><span class="chip">'+esc(r.company)+'</span>'+linkOf(r.a)+' <span class="muted">'+esc(r.a.source)+'</span></li>';
+  return '<li><span class="list-date">'+shortDate(r.a.date)+'</span><strong class="recall-company">'+esc(r.company)+'</strong>'+linkOf(r.a)+' <span class="muted">'+esc(r.a.source)+'</span></li>';
  }).join('')+'</ul>':'<p class="muted">최근 90일 동안 언론에 나온 경쟁사 회수·판매중지 소식이 없습니다.</p>';
  return '<div class="stat-box"><h3>회수·판매중지 현황</h3>'+body+'</div>';
 }
@@ -484,11 +483,9 @@ function policySchedule(list,statuses){
 function renderStats(){
  const list=statsArticles();
  document.getElementById('stats-company').innerHTML='<div class="stat-grid company-comparison">'+companyTrend(list)+companyShare(list)+'</div>'+exposureComparisons(list);
- document.getElementById('stats-competitor').innerHTML=recallList(list);
- document.getElementById('stats-movements').innerHTML=competitorMovements(list);
- document.getElementById('stats-hospital').innerHTML='<div class="stat-grid">'+newHospitals(list)+'</div>';
+ document.getElementById('stats-hospital').innerHTML=newHospitals(list);
  const statuses=policyStatus(list);
- document.getElementById('stats-policy').innerHTML='<div class="stat-grid">'+policyBoard(statuses)+policyChanges(statuses)+policySchedule(list,statuses)+'</div>';
+ document.getElementById('stats-policy').innerHTML=policyBoard(statuses);
 }
 // 주간/월간 버튼
 document.getElementById('stats-company').addEventListener('click',function(event){

@@ -5,6 +5,7 @@
 import { addMissingColumns, first } from "./db.js";
 import * as service from "./service.js";
 import { gangnamWeather } from "./weather.js";
+import { officialIndustry, officialRecallDetail } from './industry-official.js';
 import { ADMIN_PATHS, adminSession, adminLogin, adminLogout } from './admin-auth.js';
 import { CONFIG, koreaNow, SOURCE_BY_ID, SOURCES } from "./settings.js";
 
@@ -217,6 +218,14 @@ export default {
       }
       if (ADMIN_PATHS.has(path) && !await adminSession(request,env)) return json({error:'관리자 인증이 필요합니다.'},401);
       if (request.method === 'GET' && path === '/api/weather') return json(await gangnamWeather());
+      if(request.method==='GET'&&path==='/api/industry-official'){
+        const params=new URL(request.url).searchParams;
+        return json(await officialIndustry(params.get('kind'),params.get('company')));
+      }
+      if(request.method==='GET'&&path==='/api/industry-recall-detail'){
+        const params=new URL(request.url).searchParams;
+        return json(await officialRecallDetail(params.get('id'),params.get('permit')));
+      }
       await addMissingColumns(env.DB);
       return await handleApi(request, env, path, ctx);
     } catch (error) {

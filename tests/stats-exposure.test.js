@@ -143,7 +143,7 @@ test("비교할 기사가 없으면 빈 상태를 안내합니다", () => {
   assert.doesNotMatch(html, /NaN|Infinity/);
 });
 
-test("경쟁사 움직임은 같은 뉴스의 최신 대표 기사와 출처 하나만 표시합니다", () => {
+test("경쟁사 움직임은 같은 뉴스의 최신 대표 제목 링크와 날짜만 표시합니다", () => {
   const api = setup();
   const rows = [
     article("지멘스 MRI 신제품 출시", { id: 1, entity: "지멘스", url: "https://example.com/1" }),
@@ -165,17 +165,17 @@ test("경쟁사 움직임은 같은 뉴스의 최신 대표 기사와 출처 하
   assert.equal((html.match(/class="movement-empty"/g)||[]).length,2);
 });
 
-test("업계 동향 이동 바는 뉴스와 같은 디자인이며 경쟁사 움직임이 회수 현황보다 앞에 있습니다", () => {
+test("업계 동향은 공식 제품 현황·정책·병원 대시보드이며 중복 기사 영역을 표시하지 않습니다", () => {
   const html = readFileSync(new URL("../static/index.html", import.meta.url), "utf8");
-  const nav = html.match(/<nav class="summary-bar" id="industry-summary-bar"[^>]*>([\s\S]*?)<\/nav>/)[1];
-  assert.deepEqual([...nav.matchAll(/href="#([^"]+)"/g)].map((m) => m[1]), ["industry-competitor", "industry-policy", "industry-hospital"]);
-  assert.deepEqual([...nav.matchAll(/<\/span>([^<]+)<\/a>/g)].map((m) => m[1]), ["경쟁사", "정책", "병원"]);
-  assert.ok(html.indexOf('id="stats-movements"') < html.indexOf('id="stats-competitor"'));
-  assert.ok(html.indexOf('id="industry-competitor"') < html.indexOf('id="industry-policy"'));
+  assert.doesNotMatch(html,/id="(?:industry-summary-bar|stats-movements|stats-competitor)"/);
+  assert.ok(html.indexOf('id="industry-recalls-output"') < html.indexOf('id="industry-approvals-output"'));
+  assert.ok(html.indexOf('id="industry-approvals-output"') < html.indexOf('id="industry-policy"'));
   assert.ok(html.indexOf('id="industry-policy"') < html.indexOf('id="industry-hospital"'));
-  for (const id of ["industry-competitor", "industry-policy", "industry-hospital"]) assert.ok(html.includes(`id="${id}"`));
+  for (const id of ["industry-company", "industry-policy", "industry-hospital"]) assert.ok(html.includes(`id="${id}"`));
   const api = setup([article("지멘스 MRI 신제품 출시", { entity: "지멘스" })]);
-  assert.match(api.get("stats-movements").innerHTML, /지멘스 MRI 신제품 출시/);
+  assert.match(api.get("stats-policy").innerHTML, /정책 현황판/);
+  assert.doesNotMatch(api.get("stats-policy").innerHTML,/이번 주 단계 변화|시행 예정 일정/);
+  assert.match(api.get("stats-hospital").innerHTML,/신설·증설 병원/);
 });
 
 test("네 경쟁사 카드를 고정 순서로 표시하고 주요 사업 기사만 최대 세 건씩 담습니다", () => {
@@ -196,7 +196,9 @@ test("네 경쟁사 카드를 고정 순서로 표시하고 주요 사업 기사
   assert.match(html, />CT 100대 공급 계약<|>CT 100대 공급 계약<\/a>/);
   assert.doesNotMatch(html, /이사회 대표 선임/);
   assert.match(html, /<time datetime="2026-11-16">11\/16<\/time>/);
-  assert.match(html, /class="movement-row-sources"><a href="https:\/\/example.com\/1"/);
+  assert.match(html, /class="movement-title" href="https:\/\/example.com\/1"/);
+  assert.doesNotMatch(html, /movement-row-sources/);
+  assert.equal((html.match(/<a /g)||[]).length,4);
   assert.doesNotMatch(html, /movement-kind|movement-lead|movement-meta|movement-more|<table|<details/);
   const css = readFileSync(new URL('../static/style.css', import.meta.url), 'utf8');
   assert.match(css, /\.movement-grid\{display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
