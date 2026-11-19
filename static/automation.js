@@ -1,12 +1,14 @@
 
 (function(){
+ const adminFetch=(...args)=>globalThis.AdminAccess?globalThis.AdminAccess.request(...args):fetch(...args);
  const status=document.getElementById('auto-status'),result=document.getElementById('auto-result'),test=document.getElementById('auto-test'),refreshButton=document.getElementById('auto-refresh');
  let collecting=false,testing=false,setupRequired=false;
  function updateTest(){test.disabled=collecting||testing||setupRequired;}
  document.addEventListener('collection-busy',function(event){collecting=event.detail.busy;updateTest();});
  document.addEventListener('collection-finished',function(){refresh().catch(function(e){result.textContent=e.message;});});
  async function refresh(){
-  const r=await fetch('/api/automation-status');let d;try{d=await r.json();}catch(e){throw new Error('예약 상태 응답을 확인하지 못했습니다.');}if(!r.ok)throw new Error(d.error||'상태 조회 실패');
+  if(globalThis.AdminAccess)await globalThis.AdminAccess.ready;
+  const r=await adminFetch('/api/automation-status');let d;try{d=await r.json();}catch(e){throw new Error('예약 상태 응답을 확인하지 못했습니다.');}if(!r.ok)throw new Error(d.error||'상태 조회 실패');
   setupRequired=Boolean(d.setupRequired);updateTest();
   if(setupRequired){status.textContent='예약 수집용 D1 설정이 필요합니다.';return;}
   // 한 줄에 몰려 있던 상태를 작은 칸 여러 개로 나눠 보여줍니다.
@@ -31,6 +33,6 @@
  }
  // 상태 확인: 누르는 동안 버튼을 잠그고 "확인 중…"을 보여줍니다. 오류는 바로 위 상태 칸에 보여줍니다.
  refreshButton.onclick=async function(){refreshButton.disabled=true;refreshButton.textContent='확인 중…';try{await refresh();}catch(e){status.textContent=e.message;}finally{refreshButton.disabled=false;refreshButton.textContent='상태 확인';}};
- test.onclick=async function(){if(collecting||testing||setupRequired)return;testing=true;updateTest();document.dispatchEvent(new CustomEvent('collection-busy',{detail:{busy:true}}));result.textContent='다음 작업 한 개를 실행합니다…';try{const r=await fetch('/api/automation-step',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});let d;try{d=await r.json();}catch(e){throw new Error('실행 응답을 확인하지 못했습니다.');}if(!r.ok)throw new Error(d.error||'실행 실패');result.textContent=(d.source?d.source+' · ':'')+(d.message||d.status);await refresh();await refreshArticles();}catch(e){result.textContent=e.message;}finally{testing=false;document.dispatchEvent(new CustomEvent('collection-busy',{detail:{busy:false}}));updateTest();document.dispatchEvent(new CustomEvent('collection-finished'));}};
+ test.onclick=async function(){if(collecting||testing||setupRequired)return;testing=true;updateTest();document.dispatchEvent(new CustomEvent('collection-busy',{detail:{busy:true}}));result.textContent='다음 작업 한 개를 실행합니다…';try{const r=await adminFetch('/api/automation-step',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});let d;try{d=await r.json();}catch(e){throw new Error('실행 응답을 확인하지 못했습니다.');}if(!r.ok)throw new Error(d.error||'실행 실패');result.textContent=(d.source?d.source+' · ':'')+(d.message||d.status);await refresh();await refreshArticles();}catch(e){result.textContent=e.message;}finally{testing=false;document.dispatchEvent(new CustomEvent('collection-busy',{detail:{busy:false}}));updateTest();document.dispatchEvent(new CustomEvent('collection-finished'));}};
  refresh().catch(function(e){status.textContent=e.message;});
 })();

@@ -204,6 +204,12 @@ select:hover{border-color:var(--ink-2)}
 .section{scroll-margin-top:120px;margin:32px 0}
 .industry-section{scroll-margin-top:calc(var(--header-height,104px) + 76px)}
 .competitor-sections{display:grid;gap:16px}
+.admin-gate{padding:56px 0;text-align:center}
+.admin-gate p{font-size:14px}
+.admin-gate form{display:flex;justify-content:center;gap:8px;margin-top:20px}
+.admin-gate input{width:160px;min-width:0;border:1px solid var(--line);border-radius:var(--radius);padding:8px 12px}
+.admin-lock-row{display:flex;justify-content:flex-end;padding-top:12px}
+#admin-gate[hidden],#admin-content[hidden]{display:none}
 .movement-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
 .movement-card{min-width:0;height:216px;border:1px solid var(--line);padding:12px 14px;display:flex;flex-direction:column}
 .movement-company{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}

@@ -1,6 +1,7 @@
 // 관리 탭 → 수집 관리의 "정보원별 수집" 표를 그립니다.
 // 정보원마다 마지막으로 확인한 시각, 최근 7일 새 기사 수, 며칠째 새 기사가 없는지를 보여줍니다.
 (function(){
+ const adminFetch=(...args)=>globalThis.AdminAccess?globalThis.AdminAccess.request(...args):fetch(...args);
  const box=document.getElementById('source-status');
  const refreshButton=document.getElementById('source-status-refresh');
  let collecting=false;
@@ -41,9 +42,10 @@
  }
 
  async function load(){
+  if(globalThis.AdminAccess)await globalThis.AdminAccess.ready;
   box.textContent='불러오는 중…';
   try{
-   const r=await fetch('/api/source-status');
+   const r=await adminFetch('/api/source-status');
    let d;try{d=await r.json();}catch(e){throw new Error('정보원 상태 응답을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.');}
    if(!r.ok)throw new Error(d.error||'정보원 상태를 불러오지 못했습니다.');
    // 문제 있는 정보원이 위로 오게 정렬합니다. (실패 → 새 기사 없음 → 기록 없음 → 정상)

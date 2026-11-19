@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "node:fs";
-import worker from "../src/index.js";
+import worker from "./helpers/admin-worker.js";
 import { manualArticleUrl, manualMetadata, fetchManualArticle } from "../src/manual-article.js";
 import { articles, excludedArticles, readBody, automationStatus } from "../src/service.js";
 import { koreaNow } from "../src/settings.js";

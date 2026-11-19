@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "node:fs";
-import worker from "../src/index.js";
+import worker from "./helpers/admin-worker.js";
 import { articles, setImpact, readBody } from "../src/service.js";
 
 test("기존 DB 전환·수동 분류 저장·재조회·재수집·별표 해제와 인사이트 API 제거를 확인합니다", async () => {

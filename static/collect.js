@@ -1,9 +1,10 @@
 
 (function(){
+ const adminFetch=(...args)=>globalThis.AdminAccess?globalThis.AdminAccess.request(...args):fetch(...args);
  const resultBox=document.getElementById('collect-result');
  let sources=[],busy=false;
  function setBusy(value){busy=value;document.dispatchEvent(new CustomEvent('collection-busy',{detail:{busy:value}}));}
- async function api(path,input){const r=await fetch(path,input?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)}:{});let d;const raw=await r.text();try{d=JSON.parse(raw);}catch(e){if(/1102|exceeded.*(CPU|resource)|CPU.*limit/i.test(raw))throw new Error('서버 처리 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.');throw new Error('응답을 확인하지 못했습니다. 새로고침하고 로그인 상태를 확인해 주세요.');}if(!r.ok)throw new Error(d.error||'처리 실패');return d;}
+ async function api(path,input){const r=await adminFetch(path,input?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)}:{});let d;const raw=await r.text();try{d=JSON.parse(raw);}catch(e){if(/1102|exceeded.*(CPU|resource)|CPU.*limit/i.test(raw))throw new Error('서버 처리 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.');throw new Error('응답을 확인하지 못했습니다. 새로고침하고 로그인 상태를 확인해 주세요.');}if(!r.ok)throw new Error(d.error||'처리 실패');return d;}
  async function collect(sourceId){
   if(busy)return;
   await ready;
@@ -29,6 +30,7 @@
  }
  document.addEventListener('collection-request',function(event){collect(event.detail.sourceId).catch(function(e){resultBox.textContent=e.message;});});
  async function initialize(){
+  if(globalThis.AdminAccess)await globalThis.AdminAccess.ready;
   try{const data=await api('/api/sources');sources=data.sources;}
   catch(e){resultBox.textContent=e.message;}
  }

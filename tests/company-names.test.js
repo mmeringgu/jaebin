@@ -5,7 +5,7 @@ import {runInNewContext} from 'node:vm';
 import '../static/news-rules.js';
 import {keywordMatch} from '../src/rules.js';
 import {normalizeInsights} from '../src/report.js';
-import worker from '../src/index.js';
+import worker from './helpers/admin-worker.js';
 const rules=globalThis.NewsRules;
 
 test('지정 경쟁사 이름의 한글·영문 변형을 네 표준 이름으로 통일합니다',()=>{

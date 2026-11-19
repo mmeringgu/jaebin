@@ -5,6 +5,7 @@
 import { addMissingColumns, first } from "./db.js";
 import * as service from "./service.js";
 import { gangnamWeather } from "./weather.js";
+import { ADMIN_PATHS, adminSession, adminLogin, adminLogout } from './admin-auth.js';
 import { CONFIG, koreaNow, SOURCE_BY_ID, SOURCES } from "./settings.js";
 
 // ───────────────────────── 응답 만들기 도우미 ─────────────────────────
@@ -201,6 +202,16 @@ export default {
   async fetch(request, env, ctx) {
     const path = new URL(request.url).pathname;
     try {
+      if (path==='/api/admin/session' && request.method==='GET') return json({authenticated:await adminSession(request,env)});
+      if (path==='/api/admin/login' && request.method==='POST') {
+        const payload=await readJson(request,env);
+        const response=json({authenticated:true});response.headers.set('Set-Cookie',await adminLogin(request,env,payload.password));return response;
+      }
+      if (path==='/api/admin/logout' && request.method==='POST') {
+        await readJson(request,env);
+        const response=json({authenticated:false});response.headers.set('Set-Cookie',await adminLogout(request,env));return response;
+      }
+      if (ADMIN_PATHS.has(path) && !await adminSession(request,env)) return json({error:'관리자 인증이 필요합니다.'},401);
       if (request.method === 'GET' && path === '/api/weather') return json(await gangnamWeather());
       await addMissingColumns(env.DB);
       return await handleApi(request, env, path, ctx);

@@ -6,7 +6,7 @@ import { assessArticle } from "../src/selection-policy.js";
 import { hasWord } from "../src/rules.js";
 import { SOURCE_BY_ID } from "../src/settings.js";
 import { articles, candidates, readBody } from "../src/service.js";
-import worker from "../src/index.js";
+import worker from "./helpers/admin-worker.js";
 
 const source = SOURCE_BY_ID.S012;
 test("중도안은 수가·제도·시설·영상의료·의료 사업 변화를 포함합니다", () => {

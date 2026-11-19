@@ -55,13 +55,15 @@
   <a class="summary-chip cat-policy" href="#industry-policy"><span class="dot"></span>정책</a>
   <a class="summary-chip cat-hospital" href="#industry-hospital"><span class="dot"></span>병원</a>
  </nav>
- <section class="section industry-section" id="industry-competitor"><div class="section-head"><h2>경쟁사</h2></div><div class="competitor-sections"><div id="stats-movements"><p class="empty">불러오는 중…</p></div><div id="stats-competitor"><p class="empty">불러오는 중…</p></div></div></section>
- <section class="section industry-section" id="industry-policy"><div class="section-head"><h2>정책</h2></div><div id="stats-policy"><p class="empty">불러오는 중…</p></div></section>
- <section class="section industry-section" id="industry-hospital"><div class="section-head"><h2>병원</h2></div><div id="stats-hospital"><p class="empty">불러오는 중…</p></div></section>
+ <section class="section industry-section cat-competitor" id="industry-competitor"><div class="news-head"><h2><span class="dot" aria-hidden="true"></span>경쟁사</h2></div><div class="competitor-sections"><div id="stats-movements"><p class="empty">불러오는 중…</p></div><div id="stats-competitor"><p class="empty">불러오는 중…</p></div></div></section>
+ <section class="section industry-section cat-policy" id="industry-policy"><div class="news-head"><h2><span class="dot" aria-hidden="true"></span>정책</h2></div><div id="stats-policy"><p class="empty">불러오는 중…</p></div></section>
+ <section class="section industry-section cat-hospital" id="industry-hospital"><div class="news-head"><h2><span class="dot" aria-hidden="true"></span>병원</h2></div><div id="stats-hospital"><p class="empty">불러오는 중…</p></div></section>
  </div>
 
  <!-- 탭 4: 관리 -->
  <div data-panel="admin" hidden>
+ <section id="admin-gate" class="admin-gate"><p>관리자 전용 페이지입니다. 비밀번호를 입력해 주세요.</p><form id="admin-login-form"><input id="admin-password" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="current-password" aria-label="관리자 비밀번호" placeholder="비밀번호" required><button type="submit" class="button primary" id="admin-login-button">확인</button></form><p id="admin-login-status" class="status" role="status" aria-live="polite"></p></section>
+ <div id="admin-content" hidden><div class="admin-lock-row"><button type="button" class="button" id="admin-lock-button">관리 페이지 잠그기</button></div>
  <details class="section management-group" id="collection-management"><summary>수집 관리</summary><div class="management-content">
  <section class="section" id="admin"><div class="section-head"><h2>자동 수집 현황</h2><button class="button" id="auto-refresh">상태 확인</button></div><div id="auto-status" class="status status-pills" role="status">상태 확인 중…</div><p id="auto-schedule-note" class="muted"></p></section>
 
@@ -90,10 +92,11 @@
  </div></details>
  </div>
 
+ </div>
  <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
  <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
  <footer><div><span class="footer-company">CANON MEDICAL SYSTEMS KOREA</span><br>Strategic Marketing Division · 사내 시범 사이트</div></footer>
 </main>
 <button type="button" id="back-to-top" class="back-to-top" aria-label="맨 위로 이동" title="맨 위로 이동" hidden><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
-<script defer src="/back-to-top.js"></script><script defer src="/weather.js"></script>
+<script defer src="/back-to-top.js"></script><script defer src="/weather.js"></script><script defer src="/admin-auth.js"></script>
 <script defer src="/news-rules.js"></script><script defer src="/impact.js"></script><script defer src="/articles.js"></script><script defer src="/article-detail.js"></script><script defer src="/stats.js"></script><script defer src="/automation.js"></script><script defer src="/collect.js"></script><script defer src="/manual-article.js"></script><script defer src="/report.js"></script><script defer src="/source-status.js"></script></body></html>

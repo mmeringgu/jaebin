@@ -57,3 +57,11 @@ CREATE TABLE IF NOT EXISTS monitor_jobs (
 CREATE INDEX IF NOT EXISTS idx_jobs_day ON monitor_jobs(run_day, source_id);
 -- "멈춘 작업 정리"가 1분마다 작업 기록 전체를 읽지 않도록 상태(status)로 바로 찾게 해 줍니다.
 CREATE INDEX IF NOT EXISTS idx_jobs_status ON monitor_jobs(status);
+
+-- 관리자 인증: 원문 비밀번호·세션 토큰 대신 토큰 해시와 만료 시간만 저장합니다.
+CREATE TABLE IF NOT EXISTS admin_sessions (
+ token_hash TEXT PRIMARY KEY, expires_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS admin_login_attempts (
+ client_hash TEXT PRIMARY KEY, attempts INTEGER NOT NULL, expires_at INTEGER NOT NULL
+);

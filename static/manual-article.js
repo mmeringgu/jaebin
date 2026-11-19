@@ -1,11 +1,12 @@
 (function(){
+ const adminFetch=(...args)=>globalThis.AdminAccess?globalThis.AdminAccess.request(...args):fetch(...args);
  const get=function(id){return document.getElementById('manual-'+id);};
  const form=document.getElementById('manual-article-form'),fields=get('fields'),status=get('status');
  const url=get('url'),preview=get('preview'),save=get('save');
  let articleUrl='',detailText='',busy=false;
  function setBusy(value){busy=value;preview.disabled=value;save.disabled=value;fields.disabled=value||!articleUrl;url.disabled=value;}
  async function post(path,data){
-  const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+  const r=await adminFetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
   let d;try{d=await r.json();}catch(e){throw new Error('응답을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.');}
   if(!r.ok)throw new Error(d.error||'기사 추가에 실패했습니다.');return d;
  }
