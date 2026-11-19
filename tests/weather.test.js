@@ -51,7 +51,7 @@ test('화면은 날씨 응답을 표시하고 실패 시 마지막 정보를 유
  runInNewContext(readFileSync(new URL('../static/weather.js',import.meta.url),'utf8'),{
   document:{getElementById:get,createElement:node,hidden:false,addEventListener(key,value){listeners.set(key,value);}},
   fetch:async()=>{callCount++;if(fail)throw new Error('offline');return {ok:true,json:async()=>data};},
-  localStorage:{getItem:()=>null,setItem(){}},AbortSignal,Date,setInterval(fn){listeners.set('interval',fn);}
+  localStorage:{getItem:()=>null,setItem(){}},AbortSignal,Date,setInterval(fn){listeners.set('interval',fn);},setTimeout(fn){listeners.set('stop',fn);return 1;},clearTimeout(){}
  });
  await new Promise(resolve=>setImmediate(resolve));
  assert.equal(root.dataset.weather,'snowy');assert.match(get('weather-reading').textContent,/雪|눈/);assert.ok(classes.has('blustery'));

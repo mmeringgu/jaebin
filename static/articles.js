@@ -285,6 +285,8 @@ function measureHeader(){
 renderHeaderDate();
 measureHeader();
 window.addEventListener('resize',measureHeader);
+if(typeof ResizeObserver==='function')new ResizeObserver(measureHeader).observe(document.querySelector('.topbar'));
+if(document.fonts?.ready)document.fonts.ready.then(measureHeader);
 // 탭 메뉴: 위쪽 탭 버튼을 누르면 그 화면만 보이고 나머지 화면은 숨깁니다.
 function showTab(name){
  // 없는 탭 이름이면 뉴스 탭을 보여줍니다.
