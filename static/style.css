@@ -79,7 +79,7 @@ main{max-width:1080px;margin:auto;padding:0 24px 60px}
 /* 카테고리 바로가기 줄: 스크롤해도 맨 위 제목줄(topbar) 바로 아래에 붙어 있습니다.
    --header-height(제목줄 높이)는 화면 크기에 따라 달라서 articles.js가 재어서 넣어 줍니다. */
 .summary-bar{display:flex;gap:8px;flex-wrap:wrap;position:sticky;top:var(--header-height,104px);z-index:15;background:var(--bg);padding:12px 0;margin-bottom:4px}
-.summary-chip{display:inline-flex;align-items:center;gap:8px;background:white;border:1px solid var(--line);border-radius:var(--radius);padding:6px 14px;font-size:13px;text-decoration:none;transition:border-color .15s}
+.summary-chip{display:inline-flex;align-items:center;gap:8px;min-height:40px;background:white;border:1px solid var(--line);border-radius:var(--radius);padding:6px 14px;font-size:13px;text-decoration:none;transition:border-color .15s}
 .summary-chip b{font-size:16px;font-weight:300}
 a.summary-chip:hover{border-color:var(--cat,var(--ink-2))}
 .today-chip{background:var(--red);border-color:var(--red);color:white}
@@ -290,6 +290,7 @@ a.movement-title:hover{text-decoration:underline;text-underline-offset:3px}
 .company-share .bar-num{width:auto}
 .company-share .bar-track{grid-column:1/-1;grid-row:2}
 .stat-box h3{font-size:13px;font-weight:400;color:var(--red);letter-spacing:1.5px;margin:0 0 16px}
+.industry-section .stat-box h3{font-size:16px;font-weight:700}
 .bar-row{display:flex;align-items:center;gap:10px;font-size:12px;margin:9px 0;color:var(--ink-2)}
 .bar-name{width:110px;flex:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right}
 .bar-track{flex:1;background:var(--k10);height:14px}
