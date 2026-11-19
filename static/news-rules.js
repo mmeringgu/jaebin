@@ -22,7 +22,8 @@ function isDesignatedArticle(a){return a.category!=='competitor'||!!designatedCo
 const domesticMediaHosts=new Set([
  'docdocdoc.co.kr','whosaeng.com','medigatenews.com','khanews.com','medicaltimes.com','doctorsnews.co.kr','etnews.com','bosa.co.kr','rapportian.com','doctorstimes.com','dailypharm.com','medipana.com','monews.co.kr','yakup.com','yna.co.kr',
  'chosun.com','donga.com','hankyung.com','sedaily.com','fnnews.com','joongang.co.kr','hani.co.kr','khan.co.kr','mk.co.kr','mt.co.kr','edaily.co.kr','asiae.co.kr','newsis.com','news1.kr','newspim.com','gukjenews.com',
- 'ytn.co.kr','kbs.co.kr','imbc.com','sbs.co.kr','koreaherald.com','koreatimes.co.kr','bizwatch.co.kr','businesspost.co.kr','medifonews.com','medworld.co.kr','healthinnews.co.kr','dailymedi.com'
+ 'ytn.co.kr','kbs.co.kr','imbc.com','sbs.co.kr','koreaherald.com','koreatimes.co.kr','bizwatch.co.kr','businesspost.co.kr','medifonews.com','medworld.co.kr','healthinnews.co.kr','dailymedi.com',
+ 'heraldcorp.com','newstomato.com','ohmynews.com','hankookilbo.com','segye.com','kmib.co.kr','munhwa.com','dt.co.kr'
 ]);
 function isDomesticMedia(a){
  if(typeof a.domestic_media==='boolean')return a.domestic_media;
@@ -38,7 +39,8 @@ function isDomesticMedia(a){
 // 한글 번역 여부와 무관하게 발행처를 기준으로 국내·글로벌 뉴스를 구분합니다.
 // 국내 기관·기업 공식 사이트는 언론 노출 집계 대상과는 별도로 국내에 포함합니다.
 function newsRegion(a){
- if(isDomesticMedia(a))return 'domestic';
+ // 언론 노출 통계용 domestic_media 값과 분리하고 실제 발행처로 다시 판정합니다.
+ if(isDomesticMedia({...a,domestic_media:undefined}))return 'domestic';
  try{
   const host=new URL(a.url).hostname.toLowerCase();
   return host.endsWith('.kr')||host==='kr'?'domestic':'global';

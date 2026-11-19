@@ -276,7 +276,7 @@ export async function articles(env, titleOptions = {}) {
       id: row.id, category: manual ? excerpt.manual_category : groups[0]?.category || row.category, match_level: manual ? "full" : selectionLevel(groups),
       entity: groups[0]?.mainMatches[0] || row.entity || "", date: row.published_date,
       source: articleSourceName(excerpt.media || row.source, row.url),
-      domestic_media: globalThis.NewsRules.isDomesticMedia({ url: row.url, source: row.source, source_kind: sources[0]?.kind }),
+      domestic_media: globalThis.NewsRules.isDomesticMedia({ url: row.url, source: articleSourceName(excerpt.media || row.source, row.url), source_kind: sources[0]?.kind }),
       title: translatedTitle(excerpt, row.title) || row.title,
       original_title: translatedTitle(excerpt, row.title) ? row.title : "",
       url: row.url, subtitle: excerpt.subtitle || "",
