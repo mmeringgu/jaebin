@@ -204,14 +204,12 @@ function renderHeaderDate(){
  date.dateTime=today;
 }
 function renderBriefing(list){
- const today=kstDate(0);
- const todayCount=list.filter(function(a){return a.date===today;}).length;
  renderHeaderDate();
  const chips=categories.map(function(c){
   const n=list.filter(function(a){return a.category===c.id;}).length;
   return '<a class="summary-chip cat-'+c.id+'" href="#'+c.id+'"><span class="dot"></span>'+c.name+' <b>'+n+'</b></a>';
  }).join('');
- document.getElementById('summary-bar').innerHTML='<span class="summary-chip today-chip">오늘 <b>'+todayCount+'</b>건</span>'+chips;
+ document.getElementById('summary-bar').innerHTML=chips;
 }
 function changeFilters(){resetPages();render();}
 document.getElementById('search').addEventListener('input',changeFilters);

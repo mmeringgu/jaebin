@@ -1,18 +1,23 @@
 /* Title weather landscape: custom CSS illustration, no external artwork. */
-.top{--masthead-expanded:156px;--masthead-compact:104px;display:grid;grid-template-columns:minmax(0,1fr) 30%;grid-template-rows:1fr;height:var(--masthead-expanded);min-height:0;padding:16px 24px;gap:0 28px;transition:height .26s ease,padding .26s ease}
-.topbar.is-compact .top{height:var(--masthead-compact);padding-top:12px;padding-bottom:12px}
-.brand-wrap{grid-column:1;grid-row:1;align-self:start;display:flex;flex-direction:column;align-items:flex-start;gap:0;min-width:0}
+.top{--masthead-expanded:172px;--masthead-compact:64px;display:grid;grid-template-columns:minmax(0,1fr) 30%;grid-template-rows:1fr;height:var(--masthead-expanded);min-height:0;padding:16px 24px;gap:0 28px;transition:height .26s ease,padding .26s ease}
+.topbar.is-compact .top{height:var(--masthead-compact);padding-top:8px;padding-bottom:8px}
+.brand-wrap{grid-column:1;grid-row:1;align-self:center;display:flex;flex-direction:column;align-items:flex-start;gap:0;min-width:0}
 /* 원본의 흰 여백은 표시 영역 밖으로 두고, 붉은 글자의 좌표에 맞춰 배치합니다. */
 .brand-logo{position:relative;width:118px;aspect-ratio:666 / 152;max-height:28px;margin-bottom:16px;overflow:hidden;opacity:1;transition:max-height .26s ease,margin .26s ease,opacity .2s ease}
 .brand-logo img{position:absolute;width:145.946%;height:auto;max-width:none;left:-20.721%;top:-84.211%}
-.topbar.is-compact .brand-logo{max-height:0;margin-bottom:0;opacity:0;visibility:hidden}
+.topbar.is-compact .brand-logo,.topbar.is-compact .header-detail-line{display:none}
 .header-detail-line{display:flex;align-items:baseline;justify-content:space-between;gap:4px 16px;width:100%;margin-top:2px;min-width:0}
 .header-detail-line .sub{display:block;white-space:nowrap}
-.header-date{margin:2px 0 0;font-size:13px;line-height:1.4}
-.weather-reading{font-size:12px;color:var(--ink-2);white-space:nowrap}
+.header-forecast{grid-column:2;grid-row:1;align-self:center;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0}
+.header-date{margin:0;font-size:13px;line-height:18px;text-align:center}
+.weather-reading{font-size:12px;line-height:18px;color:var(--ink-2);text-align:center;white-space:nowrap}
+.topbar.is-compact .header-forecast{gap:0}
+.topbar.is-compact .header-date,.topbar.is-compact .weather-reading{display:none}
+.topbar.is-compact .header-weather{width:140px;max-width:100%;height:48px}
+.topbar.is-compact .header-weather .smd-landscape{width:200%;height:96px;transform:scale(.5);transform-origin:top left}
 .weather-attribution{font-size:11px;color:var(--muted)}
 .weather-attribution summary{cursor:pointer}
-.header-weather{--grass:#d1e9cd;--grass-dark:#a8cda5;--leaf:#9fc89b;--cloud:#f0f3f5;grid-column:2;grid-row:1;position:relative;min-width:0;min-height:0;height:100%}
+.header-weather{--grass:#d1e9cd;--grass-dark:#a8cda5;--leaf:#9fc89b;--cloud:#f0f3f5;position:relative;min-width:0;min-height:0;width:100%;height:96px}
 .header-weather .weather-pause{position:absolute;right:3px;bottom:3px;z-index:3;border:0;background:#ffffffc9;color:#68726b;border-radius:50%;width:24px;height:24px;padding:0;font-size:11px;cursor:pointer}
 .header-weather[data-weather=unavailable] .smd-landscape{opacity:.3}
 .header-weather[data-weather=unavailable] .smd-landscape *{animation-play-state:paused!important}
@@ -148,6 +153,6 @@
 .header-weather[data-weather=snowy] .hill-front{background:#d5e3e9}
 .header-weather[data-weather=snowy] .season-flowers,.header-weather[data-weather=snowy] .fallen-leaves{display:none}
 @media(max-width:900px){.top{column-gap:16px}.brand{font-size:25px}.sub{font-size:9px;letter-spacing:1px}.header-date{font-size:12px}.weather-reading{font-size:11px}}
-@media(max-width:700px){.top{--masthead-expanded:213px;--masthead-compact:142px;padding-left:16px;padding-right:16px;column-gap:12px}.brand{font-size:clamp(18px,4.8vw,25px)}.brand-logo{width:100px;max-height:24px}.header-detail-line{flex-wrap:wrap;justify-content:flex-start;gap:3px 12px}.header-weather .weather-pause{right:0}.header-weather .distant-buildings{display:none}}
+@media(max-width:700px){.top{grid-template-columns:minmax(0,1fr) minmax(100px,32%);padding-left:16px;padding-right:16px;column-gap:12px}.brand{font-size:clamp(16px,4.5vw,25px)}.brand-logo{width:100px;max-height:24px}.header-detail-line{margin-top:4px}.header-detail-line .sub{white-space:normal;font-size:8px;letter-spacing:.5px}.header-date{font-size:10px}.weather-reading{font-size:10px;line-height:15px;white-space:normal;word-break:keep-all;text-wrap:balance}.header-weather{height:84px}.header-weather .weather-pause{right:0}.header-weather .distant-buildings{display:none}}
 @media(prefers-reduced-motion:reduce){.top,.brand-logo{transition:none}}
 @media(prefers-reduced-motion:reduce){.header-weather .smd-landscape *,.header-weather .smd-landscape *:before,.header-weather .smd-landscape *:after{animation:none!important;transition:none!important}.header-weather[data-weather=rainy] .drop,.header-weather[data-weather=thunder] .drop,.header-weather[data-weather=snowy] .drop{opacity:.6;top:66px}.header-weather .weather-pause{display:none}}
