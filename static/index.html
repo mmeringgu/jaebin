@@ -28,15 +28,14 @@
 
  <!-- 검색·필터 상자 -->
  <div class="toolbar">
-  <div class="toolbar-row">
+  <div class="toolbar-row toolbar-search">
+   <select id="topic" aria-label="분야 필터"><option value="">전체</option><option>AI</option><option>CT</option><option>MRI</option><option>UL</option><option>VL/XR</option><option>Vet</option></select>
    <input id="search" type="search" aria-label="뉴스 검색" placeholder="기사 제목, 회사·장비, 키워드 검색">
   </div>
   <div class="toolbar-row">
-   <select id="topic" aria-label="분야 필터"><option value="">전체 분야</option><option>AI</option><option>CT</option><option>MRI</option><option>UL</option><option>VL/XR</option><option>Vet</option></select>
    <select id="period" aria-label="기간 필터"><option value="">전체 기간</option><option value="today">오늘</option><option value="7">최근 7일</option></select>
    <select id="sort" aria-label="정렬"><option value="relevance">관련도순</option><option value="new">최신순</option></select>
    <label class="check-label important-filter"><input type="checkbox" id="only-star"><span class="star-symbol important-star" aria-hidden="true">★</span> 중요 기사만 보기</label>
-   <label class="check-label"><input type="checkbox" id="show-hidden"> 숨긴 기사 보기</label>
   </div>
  </div>
 
@@ -87,6 +86,8 @@
  <details class="section collection-details"><summary>상세 점검</summary><div id="auto-distribution" class="quota-grid"></div><p class="muted">분야별 원문 처리 횟수와 배정 기준입니다. 대기 기사 중 같은 소식은 후순위로 처리합니다.</p><p class="desc">‘다음 작업 1회 실행’은 자동 수집 순서의 다음 작업 하나를 실제로 실행합니다.</p><div class="controls"><button class="button" id="auto-test">다음 작업 1회 실행</button></div><p id="auto-result" class="status" role="status"></p><div id="auto-history"></div></details>
  </div></details>
 
+ <details class="section management-group" id="hidden-article-management"><summary>숨긴 기사</summary><div class="management-content"><div class="controls"><button type="button" class="button" id="hidden-articles-refresh">새로고침</button></div><p id="hidden-articles-status" class="status" role="status" aria-live="polite"></p><div id="hidden-articles-output" class="hidden-articles-output"></div></div></details>
+
  <details class="section management-group" id="exposure-management"><summary>노출 관리 <span class="basis">국내 기사만</span></summary><div class="management-content">
  <section class="section"><div class="section-head"><h2>경쟁사·우리회사</h2></div><div id="stats-company"><p class="empty">불러오는 중…</p></div></section>
  </div></details>
@@ -98,5 +99,5 @@
  <footer><div><span class="footer-company">CANON MEDICAL SYSTEMS KOREA</span><br>Strategic Marketing Division · 사내 시범 사이트</div></footer>
 </main>
 <button type="button" id="back-to-top" class="back-to-top" aria-label="맨 위로 이동" title="맨 위로 이동" hidden><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
-<script defer src="/back-to-top.js"></script><script defer src="/weather.js"></script><script defer src="/admin-auth.js"></script>
+<script defer src="/back-to-top.js"></script><script defer src="/weather.js"></script><script defer src="/admin-auth.js"></script><script defer src="/hidden-articles.js"></script>
 <script defer src="/news-rules.js"></script><script defer src="/impact.js"></script><script defer src="/articles.js"></script><script defer src="/article-detail.js"></script><script defer src="/stats.js"></script><script defer src="/automation.js"></script><script defer src="/collect.js"></script><script defer src="/manual-article.js"></script><script defer src="/report.js"></script><script defer src="/source-status.js"></script></body></html>

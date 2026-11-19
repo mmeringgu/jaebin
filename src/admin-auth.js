@@ -1,6 +1,6 @@
 const COOKIE='smd_admin';
 const SESSION_SECONDS=8*60*60;
-export const ADMIN_PATHS=new Set(['/api/sources','/api/source-status','/api/automation-status','/api/candidates','/api/excluded-articles','/api/export.csv','/api/collect','/api/read-body','/api/automation-step','/api/manual-article-preview','/api/manual-article']);
+export const ADMIN_PATHS=new Set(['/api/sources','/api/source-status','/api/automation-status','/api/candidates','/api/excluded-articles','/api/hidden-articles','/api/export.csv','/api/collect','/api/read-body','/api/automation-step','/api/manual-article-preview','/api/manual-article']);
 
 async function hash(value){
  const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value));

@@ -143,11 +143,10 @@ function render(){
  const period=document.getElementById('period').value;
  const sort=document.getElementById('sort').value;
  const onlyStar=document.getElementById('only-star').checked;
- const showHidden=document.getElementById('show-hidden').checked;
  searchWord=q;
  const matches=articles.filter(function(a){
   const text=[a.title,a.original_title,a.entity,a.source,a.summary].concat(a.tags).join(' ').toLocaleLowerCase();
-  return (!q||text.includes(q))&&matchesTopic(a,topic)&&matchesPeriod(a,period)&&(!onlyStar||a.starred)&&(!a.hidden||showHidden);
+  return (!q||text.includes(q))&&matchesTopic(a,topic)&&matchesPeriod(a,period)&&(!onlyStar||a.starred)&&!a.hidden;
  });
  // 업계 동향 탭은 필터와 상관없이 전체 기사로 다시 계산합니다. (stats.js)
  if(typeof renderStats==='function')renderStats();
@@ -208,7 +207,7 @@ function renderBriefing(list){
 function changeFilters(){resetPages();render();}
 document.getElementById('search').addEventListener('input',changeFilters);
 document.getElementById('topic').addEventListener('change',changeFilters);
-['period','sort','only-star','show-hidden'].forEach(function(id){document.getElementById(id).addEventListener('change',changeFilters);});
+['period','sort','only-star'].forEach(function(id){document.getElementById(id).addEventListener('change',changeFilters);});
 // 화면 아래에 알림을 잠깐 띄웁니다. (팝업 대신 사용)
 // undo를 넘기면 "되돌리기" 버튼이 함께 나옵니다.
 let noticeTimer=null;
@@ -241,7 +240,8 @@ async function saveStar(id,starred,button){
 async function saveHidden(id,hidden){
  try{
   await postJson('/api/article-hide',{id:id,hidden:hidden});articles.forEach(function(a){if(a.id===id)a.hidden=hidden;});render();
-  if(hidden)showNotice('기사를 숨겼습니다. (숨긴 기사 보기에서 다시 볼 수 있어요)',function(){saveHidden(id,false);});
+  document.dispatchEvent(new CustomEvent('hidden-articles-changed'));
+  if(hidden)showNotice('기사를 숨겼습니다. 관리 탭의 숨긴 기사에서 확인할 수 있습니다.',function(){saveHidden(id,false);});
   else showNotice('기사를 다시 보이게 했습니다.');
  }
  catch(e){showNotice(e.message);}

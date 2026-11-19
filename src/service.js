@@ -240,10 +240,11 @@ export async function candidates(env, sourceId = null, titleOptions = {}) {
   return result;
 }
 
-// 뉴스 화면용: 게시된 기사 최대 500건 (숨긴 기사도 함께 보내고, 화면에서 보일지 정합니다)
+// 게시된 기사 최대 500건. 공개 뉴스와 관리자용 숨긴 목록은 SQL 단계에서 구분합니다.
 // 통계 탭이 최근 90일을 다 보려면 넉넉해야 해서 200건 → 500건으로 늘렸습니다.
 export async function articles(env, titleOptions = {}) {
-  const rows = await resolveArticleTitles(await all(env.DB, "SELECT * FROM articles WHERE review_status='published' AND archived=0 AND is_sample=0 ORDER BY published_date DESC,id DESC"), titleOptions);
+  const hiddenFilter=titleOptions.hiddenOnly?' AND hidden=1':titleOptions.visibleOnly?' AND hidden=0':'';
+  const rows = await resolveArticleTitles(await all(env.DB, "SELECT * FROM articles WHERE review_status='published' AND archived=0 AND is_sample=0"+hiddenFilter+" ORDER BY published_date DESC,id DESC"), titleOptions);
   const result = [];
   const translationRows = [];
   for (const row of rows) {

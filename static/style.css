@@ -109,11 +109,16 @@ button:disabled{opacity:.5;cursor:default}
 .toolbar,.controls{background:white;border:1px solid var(--line);border-radius:var(--radius);padding:14px}
 .toolbar{display:flex;flex-direction:column;gap:10px;margin-bottom:8px}
 .toolbar-row,.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.toolbar-search{flex-wrap:nowrap}
+.toolbar-search #topic{flex:0 0 auto;min-width:76px;align-self:stretch}
+.toolbar .toolbar-search input[type=search]{min-width:0;width:0}
 /* 검색칸: 테두리 없이 아래 선만 그어서 깔끔하게 */
 .toolbar input[type=search]{flex:1;min-width:200px;border:0;border-bottom:1px solid var(--gray-1);border-radius:0;padding:8px 4px;background:transparent;font-size:15px}
 .toolbar input[type=search]:focus{border-bottom-color:var(--red);outline:none}
 select{border:1px solid var(--line);border-radius:var(--radius);padding:6px 10px;background:white;cursor:pointer;font-size:14px}
 select:hover{border-color:var(--ink-2)}
+#topic option,#manual-category option{background:white;color:var(--ink)}
+#topic option:nth-child(even),#manual-category option:nth-child(even){background:var(--line-2)}
 
 /* 체크박스를 네모 버튼처럼 보이게 합니다. 켜지면 캐논 레드가 됩니다. */
 .check-label{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;cursor:pointer;font-size:13px;border:1px solid var(--line);border-radius:var(--radius);padding:5px 12px;background:white;user-select:none}
@@ -210,6 +215,13 @@ select:hover{border-color:var(--ink-2)}
 .admin-gate input{width:160px;min-width:0;border:1px solid var(--line);border-radius:var(--radius);padding:8px 12px}
 .admin-lock-row{display:flex;justify-content:flex-end;padding-top:12px}
 #admin-gate[hidden],#admin-content[hidden]{display:none}
+.hidden-articles-output{overflow:auto;max-height:520px}
+.hidden-articles-table{width:100%;border-collapse:collapse;font-size:13px}
+.hidden-articles-table th,.hidden-articles-table td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.hidden-articles-table thead th{background:var(--k10);white-space:nowrap}
+.hidden-articles-table td:first-child{min-width:220px}
+.hidden-articles-table td:last-child{white-space:nowrap}
+.hidden-articles-table a{text-underline-offset:3px}
 .movement-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
 .movement-card{min-width:0;height:216px;border:1px solid var(--line);padding:12px 14px;display:flex;flex-direction:column}
 .movement-company{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
