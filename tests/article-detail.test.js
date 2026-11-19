@@ -9,7 +9,8 @@ import { detailExcerpt } from "../src/article-excerpt.js";
 import worker from "../src/index.js";
 
 const script = readFileSync(new URL("../static/articles.js", import.meta.url), "utf8");
-const { splitText, card } = runInNewContext(script.slice(0, script.indexOf("function render(){")) + "\n({splitText,card});", { impactControls: () => "" });
+const shared = readFileSync(new URL("../static/news-rules.js", import.meta.url), "utf8");
+const { splitText, card } = runInNewContext(shared + "\n" + script.slice(0, script.indexOf("function render(){")) + "\n({splitText,card});", { impactControls: () => "" });
 const first = "첫 문단이 짧은 기사입니다.";
 const second = "두 번째 문단에는 병원 장비 도입 일정과 구체적인 사업 계획이 자세하게 설명되어 있습니다.";
 

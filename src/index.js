@@ -4,6 +4,7 @@
 // 화면 파일(index.html, css, js)은 static 폴더에서 Cloudflare가 알아서 보내 줍니다. (wrangler.toml의 [assets])
 import { addMissingColumns, first } from "./db.js";
 import * as service from "./service.js";
+import { gangnamWeather } from "./weather.js";
 import { CONFIG, koreaNow, SOURCE_BY_ID, SOURCES } from "./settings.js";
 
 // ───────────────────────── 응답 만들기 도우미 ─────────────────────────
@@ -15,7 +16,13 @@ const SECURITY_HEADERS = {
 };
 
 function json(data, status = 200) {
-  return new Response(JSON.stringify(data), {
+  // 이름표·출처·관리 안내만 표준화하고 title/summary/detail_text 등 기사 원문은 유지합니다.
+  const metadata = new Set(['entity','source','source_name','name','label','message','error']);
+  return new Response(JSON.stringify(data, (key,value) => {
+    if (metadata.has(key) && typeof value === 'string') return globalThis.NewsRules.companyLabel(value);
+    if (['tags','reasons'].includes(key) && Array.isArray(value)) return value.map(v=>typeof v==='string'?globalThis.NewsRules.companyLabel(v):v);
+    return value;
+  }), {
     status,
     headers: { ...SECURITY_HEADERS, "Content-Type": "application/json; charset=utf-8" },
   });
@@ -73,8 +80,8 @@ async function exportCsv(env) {
   for (const c of CONFIG.categories) names[c.id] = c.name;
   const lines = [["발행일", "카테고리", "회사·기관", "출처", "제목", "첫 문단", "키워드", "중요", "메모", "원문 링크"]];
   for (const a of await service.visibleArticles(env)) {
-    lines.push([a.date, names[a.category] || a.category, a.entity, a.source, a.title,
-      a.summary, a.tags.join(", "), a.starred ? "★" : "", a.memo, a.url].map(safeCell));
+    lines.push([a.date, names[a.category] || a.category, globalThis.NewsRules.companyLabel(a.entity), globalThis.NewsRules.companyLabel(a.source), a.title,
+      a.summary, a.tags.map(globalThis.NewsRules.companyLabel).join(", "), a.starred ? "★" : "", a.memo, a.url].map(safeCell));
   }
   const csv = lines.map((row) => row.map(csvCell).join(",")).join("\r\n") + "\r\n";
   // 엑셀에서 한글이 깨지지 않도록 맨 앞에 BOM(﻿)을 붙입니다.
@@ -194,6 +201,7 @@ export default {
   async fetch(request, env, ctx) {
     const path = new URL(request.url).pathname;
     try {
+      if (request.method === 'GET' && path === '/api/weather') return json(await gangnamWeather());
       await addMissingColumns(env.DB);
       return await handleApi(request, env, path, ctx);
     } catch (error) {

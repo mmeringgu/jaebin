@@ -113,7 +113,7 @@ test("회사 행·열은 언급 수 내림차순이고 정렬 후에도 각 회�
   const rows = api.topicExposureRows(list);
   const table = api.exposureTable(rows, "분야");
   const headers = [...table.matchAll(/<th scope="col"[^>]*>([^<]+)<\/th>/g)].map((m) => m[1]);
-  assert.deepEqual(headers.slice(0, 4), ["분야", "GE", "캐논", "지멘스"]);
+  assert.deepEqual(headers.slice(0, 4), ["분야", "GE", "캐논", "Siemens"]);
   const cells = table.match(/<th scope="row">CT<\/th>([\s\S]*?)<\/tr>/)[1];
   const numbers = [...cells.matchAll(/class="exposure-count">(\d+)/g)].map((m) => Number(m[1]));
   assert.deepEqual(numbers.slice(0, 3), [1, 0, 1]);
@@ -156,12 +156,13 @@ test("경쟁사 움직임은 같은 뉴스의 최신 대표 기사와 출처 하
   ];
   const result = api.competitorMovementRows(rows);
   assert.equal(result.length, 2);
-  const siemens = result.find((row) => row.company === "지멘스");
+  const siemens = result.find((row) => row.company === "Siemens");
   assert.equal(siemens.a.id, 2);
   const html = api.competitorMovements(rows);
   assert.match(html, /경쟁사 움직임/);assert.doesNotMatch(html, /추가 출처|최근 소식|\+1/);
   assert.doesNotMatch(html, /https:\/\/example.com\/1/);assert.match(html, /https:\/\/example.com\/2/);
-  assert.doesNotMatch(html, /제품 회수|필립스|캐논메디칼|삼성메디슨/);
+  assert.doesNotMatch(html, /제품 회수|캐논메디칼/);
+  assert.equal((html.match(/class="movement-empty"/g)||[]).length,2);
 });
 
 test("업계 동향 이동 바는 뉴스와 같은 디자인이며 경쟁사 움직임이 회수 현황보다 앞에 있습니다", () => {
@@ -177,7 +178,7 @@ test("업계 동향 이동 바는 뉴스와 같은 디자인이며 경쟁사 움
   assert.match(api.get("stats-movements").innerHTML, /지멘스 MRI 신제품 출시/);
 });
 
-test("경쟁사 카드는 최신 회사부터 표시하고 회사별 모든 소식을 간결한 행으로 모읍니다", () => {
+test("네 경쟁사 카드를 고정 순서로 표시하고 주요 사업 기사만 최대 세 건씩 담습니다", () => {
   const api = setup();
   const rows = [
     article("지멘스 CT 100대 공급 계약", { entity: "지멘스", date: "2026-11-16", url: "https://example.com/1" }),
@@ -187,18 +188,56 @@ test("경쟁사 카드는 최신 회사부터 표시하고 회사별 모든 소�
     article("GE헬스케어 CT FDA 승인", { entity: "GE헬스케어", url: "https://example.com/5" }),
   ];
   const html = api.competitorMovements(rows);
-  assert.equal((html.match(/<article class="movement-card">/g) || []).length, 2);
-  assert.equal((html.match(/class="movement-story"/g) || []).length, 5);
-  assert.ok(html.indexOf('<h4>GE</h4>') < html.indexOf('<h4>지멘스</h4>'));
+  assert.equal((html.match(/<article class="movement-card">/g) || []).length, 4);
+  assert.equal((html.match(/class="movement-story"/g) || []).length, 4);
+  assert.ok(html.indexOf('<h4>Philips</h4>') < html.indexOf('<h4>GE</h4>'));
+  assert.ok(html.indexOf('<h4>GE</h4>') < html.indexOf('<h4>Siemens</h4>'));
   assert.doesNotMatch(html, /최근 소식 \d+건/);
   assert.match(html, />CT 100대 공급 계약<|>CT 100대 공급 계약<\/a>/);
-  assert.match(html, /이사회 대표 선임/);
+  assert.doesNotMatch(html, /이사회 대표 선임/);
   assert.match(html, /<time datetime="2026-11-16">11\/16<\/time>/);
   assert.match(html, /class="movement-row-sources"><a href="https:\/\/example.com\/1"/);
   assert.doesNotMatch(html, /movement-kind|movement-lead|movement-meta|movement-more|<table|<details/);
   const css = readFileSync(new URL('../static/style.css', import.meta.url), 'utf8');
   assert.match(css, /\.movement-grid\{display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(css.slice(css.indexOf('@media(max-width:700px)')), /\.movement-grid\{grid-template-columns:1fr\}/);
+  assert.match(css,/\.movement-card\{[^}]*height:216px/);
+  assert.match(css,/\.movement-title\{[^}]*-webkit-line-clamp:2/);
+});
+
+test('기사 많은 회사도 세 건으로 제한하고 중요 기사·사업 변화·주제 다양성을 우선합니다',()=>{
+ const api=setup();
+ const rows=[
+  article('지멘스 MRI 신제품 출시',{id:1,entity:'지멘스',date:'2026-11-17',url:'https://example.com/product1'}),
+  article('지멘스 초음파 진단기 출시',{id:2,entity:'지멘스',date:'2026-11-16',url:'https://example.com/product2'}),
+  article('지멘스 의료사업 공장 투자',{id:3,entity:'지멘스',date:'2026-11-15',url:'https://example.com/investment'}),
+  article('지멘스 대표 선임',{id:4,entity:'지멘스',date:'2026-11-14',starred:1,url:'https://example.com/starred'}),
+  article('후지필름 CT 신제품 출시',{id:5,entity:'후지필름',url:'https://example.com/fuji'}),
+  article('유나이티드 이미징 공급 계약',{id:6,entity:'United Imaging',url:'https://example.com/uih'}),
+ ];
+ const selected=api.competitorMovementRows(rows);
+ assert.equal(selected.length,3);
+ assert.deepEqual(Array.from(selected,row=>row.a.id),[1,3,4]);
+ const html=api.competitorMovements(rows);
+ assert.doesNotMatch(html,/후지필름|United Imaging|product2/);
+ assert.equal((html.match(/class="movement-card"/g)||[]).length,4);
+});
+
+test('같은 소식의 오래된 중요 기사도 선별에서 중요 표시를 유지합니다',()=>{
+ const api=setup();
+ const rows=[article('필립스 MRI 신제품 출시',{id:1,entity:'필립스',starred:1,date:'2026-11-15',url:'https://example.com/star'}),
+  article('필립스 MRI 신제품 출시',{id:2,entity:'필립스',date:'2026-11-17',url:'https://example.com/new'})];
+ const selected=api.competitorMovementRows(rows);
+ assert.equal(selected.length,1);assert.equal(selected[0].a.id,1);assert.equal(selected[0].a.starred,1);
+});
+
+test('업계 동향의 기사 모집단은 지정 경쟁사만 포함하고 뉴스 원본 목록은 보존합니다',()=>{
+ const rows=[article('후지필름 CT 신제품 출시',{entity:'후지필름'}),article('유나이티드 이미징 MRI 공급 계약',{entity:'United Imaging'}),
+  article('GE헬스케어 초음파 승인',{entity:'GE Healthcare'}),article('서울대병원 영상센터 착공',{category:'hospital'})];
+ const api=setup(rows);
+ assert.equal(api.statsArticles().length,2);
+ assert.equal(rows.length,4);
+ assert.doesNotMatch(api.get('stats-movements').innerHTML,/후지필름|유나이티드/);
 });
 
 test("카드 제목은 원문 사실과 전체 제목을 보존하며 HTML과 잘못된 원문 링크를 실행하지 않습니다", () => {

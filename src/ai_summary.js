@@ -3,14 +3,11 @@ import { normalizeReport, normalizeInsights } from "./report.js";
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 
 // 캐논메디칼 입장의 경쟁사 목록입니다. 월간 요약에 사용합니다.
-// 경쟁사를 더하거나 빼고 싶으면 여기만 고치세요. (2026-11-05 기준)
+// 뉴스 수집 대상 전체와 구별되는 지정 경쟁사 네 곳입니다.
 const COMPETITORS = `[우리 회사의 경쟁사]
-- 글로벌 3대 회사: 지멘스 헬시니어스(Siemens Healthineers), GE 헬스케어(GE HealthCare), 필립스(Philips) — CT·MRI·X-ray·초음파·혈관조영 전 분야
-- 후지필름 헬스케어(Fujifilm, 옛 히타치 영상의학 사업) — CT·MRI·X-ray·초음파
-- 유나이티드 이미징(United Imaging, UIH, 국내 합작법인 유나이티드 이미징 헬스케어 코리아) — CT·MRI, 가격 경쟁력으로 국내 진출한 중국 회사
-- 그 밖의 해외 회사: 시마즈(Shimadzu, X-ray·혈관조영), 코니카미놀타(X-ray), 마인드레이(Mindray, 초음파), 뉴소프트(Neusoft, CT·MRI)
-- 국내 회사: 삼성메디슨·삼성전자(초음파·X-ray·이동형 CT), 레이언스·디알텍·뷰웍스(X-ray 디텍터·디지털 X-ray)
-- 경쟁이자 협력 상대: 루닛·뷰노(AI 판독), 에어스메디컬(MRI 촬영 시간 단축 AI)`;
+- GE, Siemens, Philips, Samsung Medison만 우리 회사의 지정 경쟁사입니다.
+- 기사 원문에 쓰인 이름과 관계없이 생성하는 설명에서는 위 네 이름을 그대로 사용하세요.
+- 다른 업계 업체를 지정 경쟁사로 추가하거나 분석 대상으로 확장하지 마세요.`;
 
 // 최근 30일을 대상으로 하는 월간 리포트용 요청 문구입니다.
 const REPORT_PROMPT = `당신은 캐논메디칼시스템즈코리아 전략마케팅팀의 시장 분석 담당자입니다.
@@ -93,7 +90,7 @@ export async function monthlyReport(env, articles) {
 
 // 월간 화면의 버튼을 누를 때만 중요 기사로 전략적 시사점을 생성합니다.
 export async function monthlyInsights(env, articles) {
-  const important = articles.filter((a) => a.starred);
+  const important = articles.filter((a) => a.starred && globalThis.NewsRules.isDesignatedArticle(a));
   if (!important.length) return null;
   const prompt = `당신은 캐논메디칼시스템즈코리아 전략마케팅 담당자입니다. CT·MRI·초음파·혈관조영 장비의 병원 영업과 사업 전략 관점에서 분석하세요.
 ${COMPETITORS}
@@ -105,7 +102,7 @@ ${COMPETITORS}
 - 항목마다 한 문장, 100자 이하로 간결하게 쓰세요. '~확인이 필요함.', '~검토가 필요함.', '~대비가 필요함.', '~영향이 예상됨.' 등의 보고체를 사용하세요.
 - 같은 내용을 다른 말로 반복하지 말고 대응 우선순위·기회/리스크·후속 변화를 서로 다른 관점으로 짚으세요.
 - 모든 sources는 근거 기사 번호 1개 이상이어야 합니다. 입력에 없는 번호나 URL은 만들지 마세요.
-- 미분류 중요 기사도 분석할 수 있지만 사용자의 기회·위협 선택을 변경하거나 표를 새로 분류하지 마세요.`;
+- 사용자의 기회·위협 선택을 변경하거나 표를 새로 분류하지 마세요.`;
   const input = important.map((a, index) => JSON.stringify({ number: index + 1, date: a.date, title: a.title,
     category: a.category, impact: a.impact_override || "", excerpt: String(a.summary || "").slice(0, 1600) })).join("\n");
   const answer = await askGpt(env, prompt, input, 60);

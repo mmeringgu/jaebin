@@ -12,12 +12,13 @@ export function normalizeInsights(raw, articles) {
   const seen = new Set();
   const insights = (Array.isArray(value?.insights) ? value.insights : []).flatMap((item) => {
     if (typeof item?.text !== "string" || !Array.isArray(item.sources)) return [];
-    const text = item.text.replace(/^\s*[-•*]\s*/, "").replace(/\s+/g, " ").trim();
+    const originalText = item.text.replace(/^\s*[-•*]\s*/, "").replace(/\s+/g, " ").trim();
+    const text = globalThis.NewsRules.companyLabel(originalText);
     const ids = [...new Set(item.sources)];
     if (!text || text.length > 100 || seen.has(text) || !ids.length || !ids.every((id) =>
       Number.isInteger(id) && id >= 1 && id <= articles.length && articles[id - 1].starred
       && /^https?:\/\//i.test(articles[id - 1].url))) return [];
-    if (articles.some((a) => text === a.title || text === a.summary)) return [];
+    if (articles.some((a) => originalText === a.title || originalText === a.summary)) return [];
     seen.add(text);
     return [{ text, sources: ids.map((id) => {
       const a = articles[id - 1];return { title: a.title, url: a.url, source: a.source, date: a.date };

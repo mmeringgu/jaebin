@@ -4,7 +4,7 @@ function reportSources(item){
  item.sources.forEach(function(source){
   if(!/^https?:\/\//i.test(source.url))return;
   const link=document.createElement('a');link.href=source.url;link.target='_blank';link.rel='noopener noreferrer';
-  link.textContent=(source.source||'원문 기사')+(source.date?' · '+source.date:'');link.title=source.title;sources.append(link);
+  link.textContent=(globalThis.NewsRules?.companyLabel(source.source||'원문 기사')||source.source||'원문 기사')+(source.date?' · '+source.date:'');link.title=source.title;sources.append(link);
  });
  return sources;
 }
@@ -57,14 +57,7 @@ function importantReport(list){
  const important=NewsRules.monthlyArticles(list,since,until);
  function related(a){
   if(a.category!=='competitor')return '정책';
-  const name=String(a.entity||a.title).normalize('NFKC');
-  if(/지멘스|siemens/i.test(name))return '지멘스';
-  if(/\bge\b|지이헬스케어/i.test(name))return 'GE헬스케어';
-  if(/필립스|philips/i.test(name))return '필립스';
-  if(/삼성메디슨|samsung\s*medison/i.test(name))return '삼성메디슨';
-  if(/후지필름|후지\s*필름|fujifilm/i.test(name))return '후지필름';
-  if(/유나이티드\s*이미징|united\s*imaging|\buih\b/i.test(name))return '유나이티드 이미징';
-  return a.entity||'경쟁사';
+  return NewsRules.designatedCompany(a);
  }
  function item(a){return {target:related(a),text:a.title,
   impact:['기회','위협'].includes(a.impact_override)?a.impact_override:'',

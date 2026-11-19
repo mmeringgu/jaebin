@@ -1,5 +1,23 @@
 // Shared title classification and duplicate grouping for browser and Worker.
 (function(root){
+// 뉴스 수집 대상은 넓게 유지하고, 월간 요약·업계 동향에는 지정 경쟁사만 반영합니다.
+const designatedCompanies=Object.freeze([
+ {name:'GE',pattern:/(?:지이\s*헬스\s*케어|(?<![a-z0-9])ge(?:\s*health\s*care)?(?:\s*헬스\s*케어)?(?![a-z0-9]))/gi},
+ {name:'Siemens',pattern:/(?:지멘스(?:\s*헬시니어스)?|\bsiemens(?:[\s-]+healthineers)?\b)/gi},
+ {name:'Philips',pattern:/(?:필립스|\bphilips(?:\s*healthcare)?\b)/gi},
+ {name:'Samsung Medison',pattern:/(?:삼성\s*메디슨|\bsamsung\s*medison\b)/gi}
+]);
+function companyLabel(value){
+ let label=String(value??'');
+ designatedCompanies.forEach(function(company){label=label.replace(company.pattern,company.name);});
+ return label;
+}
+function designatedCompany(a){
+ const value=String(a.entity||a.title||'').normalize('NFKC');
+ const company=designatedCompanies.find(function(company){company.pattern.lastIndex=0;return company.pattern.test(value);});
+ return company?company.name:'';
+}
+function isDesignatedArticle(a){return a.category!=='competitor'||!!designatedCompany(a);}
 // 제목의 언어나 번역 여부가 아닌 발행처 도메인으로 국내 언론 여부를 확인합니다.
 const domesticMediaHosts=new Set([
  'docdocdoc.co.kr','whosaeng.com','medigatenews.com','khanews.com','medicaltimes.com','doctorsnews.co.kr','etnews.com','bosa.co.kr','rapportian.com','doctorstimes.com','dailypharm.com','medipana.com','monews.co.kr','yakup.com','yna.co.kr',
@@ -90,7 +108,7 @@ function groupSameNews(rows){
 // 월간 표와 AI는 기회·위협을 선택한 중요 기사만 같은 중복 제거 기준으로 사용합니다.
 function monthlyArticles(rows,since,until){
  const urls=new Set();
- const eligible=rows.filter(function(a){return a.starred&&!a.hidden&&a.category!=='hospital'&&a.date>=since&&a.date<=until;}).slice().sort(compareNewest)
+ const eligible=rows.filter(function(a){return a.starred&&!a.hidden&&a.category!=='hospital'&&isDesignatedArticle(a)&&a.date>=since&&a.date<=until;}).slice().sort(compareNewest)
   .filter(function(a){if(urls.has(a.url))return false;urls.add(a.url);return true;});
  return groupSameNews(eligible).flatMap(function(group){
   const members=[group.main,...group.others].sort(compareNewest);
@@ -98,5 +116,5 @@ function monthlyArticles(rows,since,until){
   return chosen?[{...chosen,duplicate_count:members.length}]:[];
  }).sort(compareNewest);
 }
-root.NewsRules=Object.freeze({compareNewest,titlePieces,similarity,groupSameNews,monthlyArticles,isMri,isVeterinaryImaging,isDomesticMedia});
+root.NewsRules=Object.freeze({compareNewest,titlePieces,similarity,groupSameNews,monthlyArticles,isMri,isVeterinaryImaging,isDomesticMedia,companyLabel,designatedCompany,isDesignatedArticle});
 })(globalThis);

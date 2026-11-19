@@ -7,10 +7,10 @@
 // mine: true는 우리 회사입니다. (빨간색으로 강조)
 const COMPANIES=[
  {name:'캐논',words:['캐논메디칼','캐논 메디칼','캐논메디컬','캐논 메디컬','canon medical'],mine:true},
- {name:'지멘스',words:['지멘스','siemens']},
+ {name:'Siemens',words:['지멘스','siemens']},
  {name:'GE',words:['ge헬스케어','ge 헬스케어','ge healthcare','지이헬스케어'],tagWords:['ge']}, // "GE"는 짧아서 본문에서는 찾지 않고 키워드 태그로만 확인합니다.
- {name:'필립스',words:['필립스','philips']},
- {name:'삼성메디슨',words:['삼성메디슨','samsung medison']}
+ {name:'Philips',words:['필립스','philips']},
+ {name:'Samsung Medison',words:['삼성메디슨','삼성 메디슨','samsung medison']}
 ];
 // 회수·판매중지 소식을 찾을 단어
 const RECALL_WORDS=['회수','리콜','recall','판매중지','판매 중지','사용중지','사용 중지','수입중지','제조중지','안전성 서한'];
@@ -49,7 +49,7 @@ let statsPeriod='week'; // 회사별 언급 수 추이: 'week'(주간) 또는 'm
 // 업계 동향·노출 분석은 뉴스 화면의 검색·분야 필터와 독립적으로 전체 분야를 집계합니다.
 // 서버의 공통 업무 관련성 기준을 통과한 기사만 받아 뉴스와 같은 모집단으로 셉니다.
 function statsArticles(){
- return articles.filter(function(a){return !a.hidden;});
+ return articles.filter(function(a){return !a.hidden&&NewsRules.isDesignatedArticle(a);});
 }
 function domesticExposureArticles(list){return list.filter(function(a){return !a.hidden&&NewsRules.isDomesticMedia(a);});}
 function textOf(a){return [a.title,a.subtitle,a.summary].join(' ').toLowerCase();}
@@ -188,30 +188,51 @@ function exposureComparisons(list){
   '<div class="stat-box"><h3>매체별 노출 비교</h3>'+
   (media.length?exposureTable(media,'매체'):'<p class="muted">조건에 맞는 국내 매체별 회사 언급 기사가 없습니다.</p>')+'</div></div>';
 }
-// 최근 30일 경쟁사 소식은 회사별로 중복을 제거해 대표 기사만 표시합니다.
+const MOVEMENT_COMPANIES=['Philips','GE','Siemens','Samsung Medison'];
+function movementTopic(a){
+ const title=a.title.toLowerCase();
+ const topics=[['mna',/인수|합병|분사|분리|acquisition|merger|spin.off/],['approval',/허가|승인|인증|approval|clearance/],
+  ['supply',/공급|계약|수주|납품|supply|contract/],['product',/출시|신제품|개발|launch|new\s+(?:product|system)|develop/],
+  ['investment',/투자|공장|생산|증설|investment|factory|manufactur/],['financial',/실적|매출|영업이익|수익|revenue|earnings/]];
+ return topics.find(function(topic){return topic[1].test(title);})?.[0]||'';
+}
+function selectMovementStories(groups){
+ const candidates=groups.map(function(group){
+  const members=[group.main,...group.others].sort(NewsRules.compareNewest);
+  const a=members.find(function(a){return a.starred;})||group.main;
+  return {a:a,others:members.filter(function(other){return other!==a;}),topic:movementTopic(a),priority:a.starred?2:movementTopic(a)?1:0};
+ }).sort(function(a,b){return b.priority-a.priority||NewsRules.compareNewest(a.a,b.a);});
+ const selected=[],topics=new Set();
+ // 중요 기사 → 주요 사업 변화 → 그 외 순서로 채우되 같은 우선순위에서는 주제를 분산합니다.
+ [2,1,0].forEach(function(priority){
+  const band=candidates.filter(function(row){return row.priority===priority;});
+  band.forEach(function(row){
+   if(selected.length>=3||(row.topic&&topics.has(row.topic)))return;
+   selected.push(row);if(row.topic)topics.add(row.topic);
+  });
+  band.forEach(function(row){if(selected.length<3&&!selected.includes(row))selected.push(row);});
+ });
+ return selected.sort(function(a,b){return NewsRules.compareNewest(a.a,b.a);});
+}
+// 최근 30일의 네 경쟁사만 중복 제거 후 회사별 최대 3건을 선별합니다.
 function competitorMovementRows(list){
  const since=kstDate(29),today=kstDate(0),companies=new Map();
  list.filter(function(a){return !a.hidden&&a.category==='competitor'&&a.date>=since&&a.date<=today
   &&!RECALL_WORDS.some(function(word){return a.title.toLowerCase().includes(word);});}).forEach(function(a){
-  const entity=String(a.entity||'').normalize('NFKC').toLowerCase();
-  const company=COMPANIES.find(function(c){
-   if(c.mine)return false;
-   const words=c.words.concat(c.tagWords||[]);
-   return entity?words.some(function(w){return entity===w||entity.includes(w);}):c.words.some(function(w){return a.title.toLowerCase().includes(w);});
-  });
-  const name=company?company.name:a.entity||'경쟁사';
+  const name=NewsRules.designatedCompany(a);
+  if(!name)return;
   if(!companies.has(name))companies.set(name,[]);companies.get(name).push(a);
  });
  const rows=[];
  companies.forEach(function(items,name){
   const urls=new Set(),headlines=new Set();
-  const unique=items.slice().sort(NewsRules.compareNewest).filter(function(a){
+  const unique=items.slice().sort(function(a,b){return Number(!!b.starred)-Number(!!a.starred)||NewsRules.compareNewest(a,b);}).filter(function(a){
    const headline=movementHeadline({company:name,a:a}).normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}.]/gu,'');
    if(urls.has(a.url)||headlines.has(headline))return false;
    urls.add(a.url);headlines.add(headline);return true;
   });
   const groups=NewsRules.groupSameNews(unique).sort(function(a,b){return NewsRules.compareNewest(a.main,b.main);});
-  groups.forEach(function(group){rows.push({company:name,a:group.main,others:group.others});});
+  selectMovementStories(groups).forEach(function(row){rows.push({company:name,a:row.a,others:row.others});});
  });
  return rows.sort(function(a,b){return NewsRules.compareNewest(a.a,b.a);});
 }
@@ -219,7 +240,7 @@ function movementHeadline(row){
  // 카드 머리의 회사명을 제목 앞에서만 덜어내고 제품·규모·시점 등 원문 사실은 유지합니다.
  const company=COMPANIES.find(function(c){return c.name===row.company;});
  const names=(company?company.words.concat(company.tagWords||[]):[row.company])
-  .concat(row.company==='지멘스'?['지멘스 헬시니어스','지멘스헬시니어스','Siemens Healthineers']:[])
+  .concat(row.company==='Siemens'?['지멘스 헬시니어스','지멘스헬시니어스','Siemens Healthineers']:[])
   .sort(function(a,b){return b.length-a.length;});
  let title=String(row.a.title||'').trim();
  for(const name of names){
@@ -236,7 +257,7 @@ function movementHeadline(row){
 function movementStory(row){
  const a=row.a,headline=movementHeadline(row);
  const link=/^https?:\/\//i.test(a.url)?'<a class="movement-title" href="'+esc(a.url)+'" target="_blank" rel="noopener noreferrer" title="'+esc(a.title)+'">'+esc(headline)+'</a>':'<span class="movement-title">'+esc(headline)+'</span>';
- const source=/^https?:\/\//i.test(a.url)?'<a href="'+esc(a.url)+'" target="_blank" rel="noopener noreferrer">'+esc(a.source||'원문')+'</a>':'';
+ const source=/^https?:\/\//i.test(a.url)?'<a href="'+esc(a.url)+'" target="_blank" rel="noopener noreferrer" title="'+esc(a.source||'원문')+'">'+esc(a.source||'원문')+'</a>':'';
  return '<li class="movement-story">'+link+'<time datetime="'+esc(a.date)+'">'+esc(shortDate(a.date))+'</time><span class="movement-row-sources">'+source+'</span></li>';
 }
 function competitorMovements(list){
@@ -245,11 +266,11 @@ function competitorMovements(list){
   if(!companies.has(row.company))companies.set(row.company,[]);
   companies.get(row.company).push(row);
  });
- // rows가 최신순이므로 카드도 해당 회사의 최신 소식 순으로 배치됩니다.
- const cards=Array.from(companies,function(entry){
-  const name=entry[0],rows=entry[1];
+ // 네 회사의 위치와 카드 높이를 고정해 한눈에 비교할 수 있게 합니다.
+ const cards=MOVEMENT_COMPANIES.map(function(name){
+  const rows=companies.get(name)||[];
   return '<article class="movement-card"><header class="movement-company"><h4>'+esc(name)+'</h4></header>'+
-   '<ul class="movement-stories">'+rows.map(movementStory).join('')+'</ul></article>';
+   (rows.length?'<ul class="movement-stories">'+rows.map(movementStory).join('')+'</ul>':'<p class="movement-empty">최근 30일의 선별 기사가 없습니다.</p>')+'</article>';
  });
  const body=cards.length?'<div class="movement-grid">'+cards.join('')+'</div>':'<p class="muted">최근 30일의 경쟁사 움직임 기사가 없습니다.</p>';
  return '<div class="stat-box wide"><h3>경쟁사 움직임</h3>'+body+'</div>';

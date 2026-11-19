@@ -17,6 +17,7 @@ test("월간 API는 최근 30일 기사로 생성하고 주간 API는 제공하�
   rows.push({ ...rows[0], id: 99, starred: 0, url: 'https://www.docdocdoc.co.kr/news/articleView.html?idxno=99' });
   rows.push({ ...rows[0], id: 100, impact_override: '', url: 'https://www.docdocdoc.co.kr/news/articleView.html?idxno=100' });
   rows.push({ ...rows[0], id: 101, category: 'hospital', title: '서울대병원 MRI 장비 도입', url: 'https://www.docdocdoc.co.kr/news/articleView.html?idxno=101' });
+  rows.push({ ...rows[0], id: 102, category: 'competitor', title: '후지필름 CT 신제품 출시', url: 'https://www.docdocdoc.co.kr/news/articleView.html?idxno=102' });
   const env = { OPENAI_API_KEY: "test", DB: { prepare() {
     return { bind() { return this; }, async run() { return {}; }, async all() { return { results: rows.map((row) => ({ ...row })) }; } };
   } } };
@@ -99,7 +100,7 @@ test('기회·위협 선택 변경을 즉시 반영하며 표와 독립된 AI �
 test('미분류 정책·일반 기사는 제외하고 분류된 정책 기사는 중복 없이 반영합니다',()=>{
  const rows=[article(1,{title:'복지부 특수의료장비 제도 개편'}),
   article(2,{title:'캐논메디칼 신제품 출시',category:'company',impact_override:'기회'}),
-  article(3,{title:'GE헬스케어 공급 확대',category:'competitor',impact_override:'위협'}),
+  article(3,{title:'GE헬스케어 공급 확대',entity:'GE헬스케어',category:'competitor',impact_override:'위협'}),
   article(4,{title:'병원 투자 계획 검토',category:'hospital'}),
   article(5,{title:'복지부 특수의료장비 제도 개편',impact_override:'기회',date:'2026-11-17'}),
   article(6,{title:'국회 건강보험 재정 심의'})];
@@ -125,15 +126,15 @@ test('경쟁사별·정책별 관련 항목만 병합하고 기사 행·출처�
  ];
  const ui=screen(rows),report=ui.importantReport(rows);
  assert.equal(report.count,6);
- assert.deepEqual(Array.from(report.sections[0].items,(item)=>item.target),['지멘스','지멘스','GE헬스케어','정책','정책']);
+ assert.deepEqual(Array.from(report.sections[0].items,(item)=>item.target),['GE','Siemens','Siemens','정책','정책']);
  const rendered=ui.get('report-output').children[1].children[0].children[1].children;
  assert.equal(rendered.length,5);
- assert.equal(rendered[0].children[0].rowSpan,2);
- assert.equal(rendered[0].children[0].scope,'rowgroup');
- assert.equal(rendered[0].children[1].textContent,'1. 지멘스 의료사업 대표 선임');
- assert.equal(rendered[1].children.length,2);
- assert.equal(rendered[1].children[0].textContent,'2. 지멘스 MRI 신제품 출시');
- assert.equal(rendered[1].children[1].children[0].children[0].href,rows[0].url);
+ assert.equal(rendered[1].children[0].rowSpan,2);
+ assert.equal(rendered[1].children[0].scope,'rowgroup');
+ assert.equal(rendered[1].children[1].textContent,'1. 지멘스 의료사업 대표 선임');
+ assert.equal(rendered[2].children.length,2);
+ assert.equal(rendered[2].children[0].textContent,'2. 지멘스 MRI 신제품 출시');
+ assert.equal(rendered[2].children[1].children[0].children[0].href,rows[0].url);
  assert.equal(rendered[3].children[0].textContent,'정책');
  assert.equal(rendered[3].children[0].rowSpan,2);
  assert.equal(rendered[4].children[0].textContent,'2. 캐논메디칼 CT 공급 계약');
@@ -141,9 +142,12 @@ test('경쟁사별·정책별 관련 항목만 병합하고 기사 행·출처�
  const hospitalOnly=screen([rows[5],rows[6]]);
  assert.equal(hospitalOnly.importantReport([rows[5],rows[6]]).count,0);
  assert.equal(hospitalOnly.get('monthly-insight-button').disabled,true);
- for(const [entity,target] of [['FUJIFILM','후지필름'],['United Imaging','유나이티드 이미징'],['Philips Healthcare','필립스'],['Samsung Medison','삼성메디슨']]){
+ for(const [entity,target] of [['Philips Healthcare','Philips'],['Samsung Medison','Samsung Medison']]){
   const report=ui.importantReport([article(20,{category:'competitor',entity,impact_override:'기회'})]);
   assert.equal(report.sections[0].items[0].target,target);
+ }
+ for(const entity of ['FUJIFILM','United Imaging']){
+  assert.equal(ui.importantReport([article(21,{category:'competitor',entity,impact_override:'기회'})]).count,0);
  }
 });
 

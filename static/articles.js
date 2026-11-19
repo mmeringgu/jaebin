@@ -70,19 +70,19 @@ function card(a,others){
  let sameNews='',sameChip='';
  if(others&&others.length){
   sameChip='<span class="chip">외 '+others.length+'개 매체</span>';
-  sameNews='<div class="same-news"><strong>같은 소식을 다룬 기사</strong><ul>'+others.map(function(o){return '<li><a href="'+esc(o.url)+'" target="_blank" rel="noopener noreferrer">'+esc(o.title)+'</a> <span class="muted">'+esc(o.source)+' · '+esc(o.date)+'</span></li>';}).join('')+'</ul></div>';
+  sameNews='<div class="same-news"><strong>같은 소식을 다룬 기사</strong><ul>'+others.map(function(o){return '<li><a href="'+esc(o.url)+'" target="_blank" rel="noopener noreferrer">'+esc(o.title)+'</a> <span class="muted">'+esc(NewsRules.companyLabel(o.source))+' · '+esc(o.date)+'</span></li>';}).join('')+'</ul></div>';
  }
  // 중요 기사에만 직접 선택한 분류와 선택 버튼을 표시합니다.
  const impactChip=impactControls(a);
 
  // 미리보기: 부제목이 있으면 부제목, 없으면 기사 앞부분 90자 정도
  const text=splitText(a);
- const tags='<div class="tags">'+a.tags.map(function(t){return '<span class="tag">'+esc(t)+'</span>';}).join('')+'</div>';
+ const tags='<div class="tags">'+a.tags.map(function(t){return '<span class="tag">'+esc(NewsRules.companyLabel(t))+'</span>';}).join('')+'</div>';
 
  return '<article class="item'+(a.hidden?' hidden-item':'')+'">'+
   '<div class="item-body">'+
    '<div class="item-title"><a href="'+esc(a.url)+'" target="_blank" rel="noopener noreferrer">'+highlight(a.title)+'</a>'+impactChip+'</div>'+
-   '<div class="item-meta"><span class="entity">'+highlight(a.entity)+'</span><span>'+esc(a.source)+'</span><span>'+esc(a.date.slice(5).replace('-','/'))+'</span>'+(a.manual?'<span class="chip">직접 추가</span>':'')+sameChip+'</div>'+
+   '<div class="item-meta"><span class="entity">'+highlight(NewsRules.companyLabel(a.entity))+'</span><span>'+esc(NewsRules.companyLabel(a.source))+'</span><span>'+esc(a.date.slice(5).replace('-','/'))+'</span>'+(a.manual?'<span class="chip">직접 추가</span>':'')+sameChip+'</div>'+
    (text.preview?'<p class="item-preview">'+highlight(text.preview)+'</p>':'')+
    '<details class="item-more" data-article-detail="'+a.id+'"><summary>자세히</summary><div class="item-detail">'+
     originalTitle+
@@ -188,11 +188,17 @@ function pageButtons(c,page,pageCount){
  return '<nav class="pager" aria-label="'+esc(c.name)+' 페이지">'+html+'</nav>';
 }
 
-// 맨 위 브리핑 영역: 오늘 날짜와 카테고리별 건수(누르면 그 구역으로 이동)를 보여줍니다.
+// 제목 오른쪽 날짜와 탭 아래 카테고리별 건수를 보여줍니다.
+function renderHeaderDate(){
+ const today=kstDate(0),date=document.getElementById('today-date');
+ const weekday=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Seoul',weekday:'short'}).format(new Date(today+'T00:00:00+09:00'));
+ date.textContent=today.replace(/-/g,'.')+' '+weekday+'.';
+ date.dateTime=today;
+}
 function renderBriefing(list){
  const today=kstDate(0);
  const todayCount=list.filter(function(a){return a.date===today;}).length;
- document.getElementById('today-date').textContent=new Date().toLocaleDateString('ko-KR',{timeZone:'Asia/Seoul',month:'long',day:'numeric',weekday:'long'});
+ renderHeaderDate();
  const chips=categories.map(function(c){
   const n=list.filter(function(a){return a.category===c.id;}).length;
   return '<a class="summary-chip cat-'+c.id+'" href="#'+c.id+'"><span class="dot"></span>'+c.name+' <b>'+n+'</b></a>';
@@ -260,6 +266,7 @@ function measureHeader(){
  const height=document.querySelector('.topbar').offsetHeight;
  document.documentElement.style.setProperty('--header-height',height+'px');
 }
+renderHeaderDate();
 measureHeader();
 window.addEventListener('resize',measureHeader);
 // 탭 메뉴: 위쪽 탭 버튼을 누르면 그 화면만 보이고 나머지 화면은 숨깁니다.
