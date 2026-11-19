@@ -347,7 +347,7 @@ function newHospitals(list){
   const source=sources[0]+(sources.length>1?'<details><summary>추가 출처 '+(sources.length-1)+'건</summary>'+sources.slice(1).join('<br>')+'</details>':'');
   return '<tr><td class="trend-name">'+esc(group.name)+'</td><td>'+esc(group.project)+'</td><td>'+esc(openTimeOf(group.main))+'</td><td class="trend-latest">'+source+'</td></tr>';
  }).join('')+'</table></div>':'<p class="muted">최근 90일 동안 개원·센터 신설 기사가 없습니다.</p>';
- return '<div class="stat-box wide"><h3>신설·증설 병원</h3>'+body+'</div>';
+ return '<div class="stat-box wide"><h3><span class="industry-title-icon" aria-hidden="true">🏥</span>신설·증설 병원</h3>'+body+'</div>';
 }
 
 // ───── 3. 정책 ─────
@@ -390,7 +390,7 @@ function policyBoard(statuses){
    '<td>'+(s.now?stageSteps(s.now):'<span class="muted">–</span>')+'</td>'+
    '<td class="trend-latest">'+latest+'</td></tr>';
  }).join('');
- return '<div class="stat-box wide"><h3>정책 현황판</h3>'+
+ return '<div class="stat-box wide"><h3><span class="industry-title-icon" aria-hidden="true">📋</span>정책 현황판</h3>'+
   '<div class="table-scroll"><table class="trend-table policy-table"><tr><th>정책</th><th>현재 단계</th><th>근거 기사</th></tr>'+rows+'</table></div></div>';
 }
 // 같은 기사·중복 보도는 한 번만 표시하되 정책마다 다른 이전 단계는 유지합니다.

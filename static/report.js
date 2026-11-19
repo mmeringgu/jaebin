@@ -107,7 +107,7 @@ async function createMonthlyInsights(){
   const list=document.createElement('ul');
   items.forEach(function(item){const row=document.createElement('li'),text=document.createElement('div');text.textContent=item.text;
    row.append(text);row.append(reportSources(item));list.append(row);});output.append(list);
-  status.textContent=data.since+' ~ '+data.until+' · 중요 기사 '+data.article_count+'건 분석';
+  status.textContent='';
  }catch(error){if(requestId===monthlyInsightRequest)status.textContent=error.message;}
  finally{if(requestId===monthlyInsightRequest){monthlyInsightBusy=false;refreshInsightState(importantReport(articles));}}
 }

@@ -1,6 +1,6 @@
 (function(){
  const dashboard=document.getElementById('industry-dashboard');if(!dashboard)return;
- const companies=['GE','Siemens','Philips','Samsung Medison'],size=5;
+ const companies=['GE','Siemens','Philips','Samsung Medison'];
  const state={recalls:{rows:[],results:[],page:1},approvals:{rows:[],results:[],page:1}};
  let loading=false,lastLoaded=0;
  const details=new Map();
@@ -12,12 +12,13 @@
   return escape(label);
  }
  function draw(kind){
+  const size=kind==='recalls'?4:5;
   const s=state[kind],company=get('company').value,period=Number(get('approval-period').value),since=day(period-1);
   const rows=s.rows.filter(r=>(!company||r.company===company)&&(kind!=='approvals'||r.date>=since&&r.date<=day()));
   const pages=Math.max(1,Math.ceil(rows.length/size));s.page=Math.max(1,Math.min(s.page,pages));
   const shown=rows.slice((s.page-1)*size,s.page*size);
   const selected=s.results.filter(r=>!company||r.company===company),failed=selected.filter(r=>r.error),partial=selected.some(r=>r.data?.partial),stale=selected.some(r=>r.data?.stale);
-  if(kind==='recalls')get(kind+'-output').innerHTML=shown.length?'<ul class="industry-recall-list">'+shown.map(r=>{const detail=details.get(r.id);return '<li><div class="industry-record-meta"><strong>'+escape(r.company)+'</strong><span>'+escape(r.family)+'</span><time datetime="'+escape(r.date)+'">'+escape(r.date.slice(2).replace(/-/g,'.'))+'</time></div><div class="industry-record-title">'+sourceLink({...r,reason:detail?.reason},detail?.model||r.item_name)+'</div><div class="industry-record-detail">'+escape(r.action)+' · '+escape(r.permit)+'</div></li>';}).join('')+'</ul>':empty();
+  if(kind==='recalls')get(kind+'-output').innerHTML=shown.length?'<ul class="industry-recall-list">'+shown.map(r=>{const detail=details.get(r.id);return '<li><div class="industry-record-heading"><div class="industry-record-title">'+sourceLink({...r,reason:detail?.reason},detail?.model||r.item_name)+'</div><span class="industry-record-family">'+escape(r.family)+'</span><span class="industry-record-company">'+escape(r.company)+'</span></div><div class="industry-record-detail"><time datetime="'+escape(r.date)+'">'+escape(r.date.slice(2).replace(/-/g,'.'))+'</time><span>'+escape(r.action)+' · '+escape(r.permit)+'</span></div></li>';}).join('')+'</ul>':empty();
   else get(kind+'-output').innerHTML=shown.length?'<div class="table-scroll"><table class="industry-approval-table"><thead><tr><th scope="col">회사</th><th scope="col">장비</th><th scope="col">모델</th><th scope="col">허가일</th></tr></thead><tbody>'+shown.map(r=>'<tr><th scope="row">'+escape(r.company)+'</th><td>'+escape(r.family)+'</td><td>'+sourceLink(r,r.model||r.item_name)+'<span class="industry-permit">'+escape(r.permit)+'</span></td><td><time datetime="'+escape(r.date)+'">'+escape(r.date.slice(2).replace(/-/g,'.'))+'</time></td></tr>').join('')+'</tbody></table></div>':empty();
   function empty(){return '<p class="industry-empty">'+(loading?'공식자료를 불러오는 중…':failed.length?'일부 공식자료를 불러오지 못했습니다.':partial?'조회된 자료에서 조건에 맞는 항목이 없습니다.':'조건에 맞는 '+(kind==='recalls'?'진행중 회수 공지':'인허가 자료')+'가 없습니다.')+'</p>';}
   get(kind+'-pages').innerHTML=pages>1?'<button type="button" data-industry-page="'+kind+'" data-step="-1" '+(s.page===1?'disabled':'')+' aria-label="'+(kind==='recalls'?'회수':'인허가')+' 이전 페이지">이전</button><span>'+s.page+' / '+pages+'</span><button type="button" data-industry-page="'+kind+'" data-step="1" '+(s.page===pages?'disabled':'')+' aria-label="'+(kind==='recalls'?'회수':'인허가')+' 다음 페이지">다음</button>':'';

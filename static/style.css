@@ -219,27 +219,32 @@ select:hover{border-color:var(--ink-2)}
 .competitor-sections{display:grid;gap:16px}
 /* 업계 동향: 공식 제품 현황과 기사 기반 정책·시설 현황을 분리합니다. */
 .industry-dashboard{display:grid;gap:20px;padding:20px 0 0}
-.industry-product-toolbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.industry-official-group{min-width:0;background:white;border:1px solid var(--line);border-radius:var(--radius);padding:20px}
+.industry-product-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-bottom:16px;margin-bottom:16px;border-bottom:1px solid var(--line)}
 .industry-source-note{font-size:12px;color:var(--muted)}
 .industry-product-toolbar label{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--ink-2)}
 .industry-product-toolbar select{min-width:170px}
 .industry-product-grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,3fr);gap:16px;align-items:start}
-.industry-panel{min-width:0;background:white;border:1px solid var(--line);border-radius:var(--radius);padding:20px;display:flex;flex-direction:column}
+.industry-panel{min-width:0;display:flex;flex-direction:column}
+.industry-recalls{border-left:1px solid var(--line);padding-left:16px}
+.industry-panel-title{display:flex;align-items:center;gap:10px}
+.industry-title-icon{display:inline-block;margin-right:7px;font-size:16px;vertical-align:baseline}
 .industry-panel-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;min-height:32px}
 .industry-panel-head h2{margin:0;font-size:17px;font-weight:700;letter-spacing:-.3px}
 .industry-panel-head select{padding:4px 6px;font-size:12px;border-color:var(--line)}
-.industry-state{font-size:11px;color:var(--red);border:1px solid var(--red-soft);padding:2px 7px}
+.industry-state{font-size:11px;color:var(--red);white-space:nowrap}
+.industry-state>span{font-size:8px;vertical-align:1px}
 .industry-panel-note{margin:6px 0 16px;font-size:11px;color:var(--muted);line-height:1.6}
 .industry-recall-list{list-style:none;margin:0;padding:0}
 .industry-recall-list li{padding:12px 0;border-bottom:1px solid var(--line-2)}
 .industry-recall-list li:first-child{padding-top:0}
-.industry-record-meta{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px}
-.industry-record-meta strong{font-size:15px;font-weight:700}
-.industry-record-meta>span{font-size:11px;color:var(--muted)}
-.industry-record-meta time{margin-left:auto;font-size:11px;color:var(--muted);white-space:nowrap}
-.industry-record-title{margin-top:4px;font-size:13px;line-height:1.5}
-.industry-record-title a{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-decoration:none}
-.industry-record-detail{margin-top:4px;font-size:11px;color:var(--muted);overflow-wrap:anywhere}
+.industry-record-heading{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:baseline;gap:8px}
+.industry-record-title{min-width:0;font-size:14px;font-weight:700;line-height:1.5}
+.industry-record-title a{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-decoration:none}
+.industry-record-family{font-size:12px;font-weight:700;white-space:nowrap}
+.industry-record-company{font-size:11px;font-weight:400;color:var(--muted);white-space:nowrap}
+.industry-record-detail{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:4px;font-size:11px;color:var(--muted);overflow-wrap:anywhere}
+.industry-record-detail time{white-space:nowrap}
 .industry-panel a:hover{color:var(--red);text-decoration:underline;text-underline-offset:3px}
 .industry-approval-table{width:100%;border-collapse:collapse;font-size:12px;line-height:1.5}
 .industry-approval-table th,.industry-approval-table td{padding:10px 7px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line-2)}
@@ -263,7 +268,8 @@ select:hover{border-color:var(--ink-2)}
 .industry-article-panel .stat-box h3{font-size:17px;font-weight:700;letter-spacing:-.3px;color:var(--ink);margin-bottom:16px}
 .industry-article-panel .trend-table{margin:0}
 .industry-article-panel .trend-table th{font-weight:500;border-bottom:1px solid var(--line);background:#fafafa}
-@media(max-width:800px){.industry-product-grid{grid-template-columns:minmax(0,1fr)}.industry-panel,.industry-article-panel .stat-box{padding:18px 16px}.industry-product-toolbar select{min-width:145px}.industry-dashboard{gap:16px}}
+@media(max-width:800px){.industry-product-grid{grid-template-columns:minmax(0,1fr)}.industry-official-group,.industry-article-panel .stat-box{padding:18px 16px}.industry-recalls{border-left:0;padding-left:0;border-top:1px solid var(--line);padding-top:16px}.industry-product-toolbar select{min-width:145px}.industry-dashboard{gap:16px}}
+@media(max-width:480px){.industry-product-toolbar label>span{display:none}.industry-product-toolbar select{min-width:0;width:145px;max-width:42vw}.industry-record-heading{gap:6px}}
 .admin-gate{padding:56px 0;text-align:center}
 .admin-gate p{font-size:14px}
 .admin-gate form{display:flex;justify-content:center;gap:8px;margin-top:20px}
@@ -380,7 +386,8 @@ a.movement-title:hover{text-decoration:underline;text-underline-offset:3px}
 .report-sections{display:grid;gap:20px;margin-top:12px}
 .report-sections:empty{display:none}
 .report-sections>.report-output{min-width:0;margin-top:0}
-.report-output{background:white;border:1px solid var(--line);border-top:3px solid var(--red);border-radius:var(--radius);font-size:14px;margin-top:12px;line-height:1.7}
+.report-output{position:relative;background:white;border:1px solid var(--line);border-top-color:var(--gray-1);border-radius:var(--radius);font-size:14px;margin-top:12px;line-height:1.7}
+.report-output::before{content:"";position:absolute;top:-1px;left:-1px;width:48px;height:2px;background:var(--red)}
 .report-output:not(:empty){padding:24px 28px}
 .report-output:empty{display:none}
 .report-output h3{font-size:16px;margin:24px 0 10px}

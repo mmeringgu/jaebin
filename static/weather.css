@@ -16,8 +16,6 @@
 .topbar.is-compact .header-date,.topbar.is-compact .weather-reading{display:none}
 .topbar.is-compact .header-weather{width:140px;max-width:100%;height:48px}
 .topbar.is-compact .header-weather .smd-landscape{width:200%;height:96px;transform:scale(.5);transform-origin:top left}
-.weather-attribution{font-size:11px;color:var(--muted)}
-.weather-attribution summary{cursor:pointer}
 .header-weather{--grass:#d1e9cd;--grass-dark:#a8cda5;--leaf:#9fc89b;--cloud:#f0f3f5;position:relative;min-width:0;min-height:0;width:100%;height:96px}
 .header-weather .weather-pause{position:absolute;right:3px;bottom:3px;z-index:3;border:0;background:#ffffffc9;color:#68726b;border-radius:50%;width:24px;height:24px;padding:0;font-size:11px;cursor:pointer}
 .header-weather[data-weather=unavailable] .smd-landscape{opacity:.3}

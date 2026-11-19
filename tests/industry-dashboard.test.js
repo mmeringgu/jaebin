@@ -23,16 +23,18 @@ function record(id,company,date='2026-11-01'){
 }
 const response=(kind,company,records,extra={})=>({ok:true,json:async()=>({kind,company,records,fetched_at:'2026-11-19T02:00:00Z',partial:false,stale:false,...extra})});
 
-test('탭을 열 때 공식자료만 조회하고 양쪽 공통 회사 필터·5행 페이지·인허가 기간을 적용합니다',async()=>{
+test('탭을 열 때 공식자료만 조회하고 양쪽 공통 회사 필터·회수 4행 페이지·인허가 기간을 적용합니다',async()=>{
  const ui=screen((kind,company)=>{
   const rows=company==='GE'?Array.from({length:7},(_,i)=>record(i+1,company)):company==='Philips'?[record(20,company),record(21,company,'2026-05-01')]:[];
   return response(kind,company,rows);
  });
  assert.equal(ui.calls.length,0);await ui.open();assert.equal(ui.calls.length,8);
- assert.equal((ui.get('industry-recalls-output').innerHTML.match(/<li>/g)||[]).length,5);
- assert.match(ui.get('industry-recalls-pages').innerHTML,/1 \/ 2/);
+ assert.equal((ui.get('industry-recalls-output').innerHTML.match(/<li>/g)||[]).length,4);
+ assert.match(ui.get('industry-recalls-pages').innerHTML,/1 \/ 3/);
  assert.match(ui.get('industry-approvals-pages').innerHTML,/1 \/ 2/);
  ui.page('recalls',1);assert.equal((ui.get('industry-recalls-output').innerHTML.match(/<li>/g)||[]).length,4);
+ ui.page('recalls',1);assert.equal((ui.get('industry-recalls-output').innerHTML.match(/<li>/g)||[]).length,1);
+ assert.match(ui.get('industry-recalls-output').innerHTML,/industry-record-title[\s\S]*industry-record-family[\s\S]*industry-record-company/);
  ui.change('company','Philips');assert.match(ui.get('industry-recalls-output').innerHTML,/Philips/);assert.doesNotMatch(ui.get('industry-recalls-output').innerHTML,/>GE</);
  assert.equal((ui.get('industry-approvals-output').innerHTML.match(/<tr>/g)||[]).length,2);
  ui.change('approval-period','365');assert.equal((ui.get('industry-approvals-output').innerHTML.match(/<tr>/g)||[]).length,3);

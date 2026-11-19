@@ -58,7 +58,7 @@
   updateSeason();
   root.dataset.weather=data.scene;root.classList.toggle('night',!!data.night);root.classList.toggle('blustery',!!data.windy);
   root.classList.toggle('heavy',!!data.heavy);root.classList.toggle('mixed',!!data.mixed);
-  const text='강남구 · '+(data.mixed?'진눈깨비':labels[data.scene])+' '+Math.round(data.temperature)+'° 예보';
+  const text='강남구 · '+(data.mixed?'진눈깨비':labels[data.scene])+' '+Math.round(data.temperature)+'°';
   reading.textContent=text+(stale?' · 갱신 지연':'');
   root.querySelector('.smd-landscape').setAttribute('aria-label',text+(data.night?' · 밤':' · 낮'));
   reading.title='강남구 대표 지점 예보 · '+new Date(data.forecast_time).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'})+' · 풍속 '+data.wind+'m/s';

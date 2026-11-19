@@ -168,9 +168,11 @@ test("경쟁사 움직임은 같은 뉴스의 최신 대표 제목 링크와 날
 test("업계 동향은 공식 제품 현황·정책·병원 대시보드이며 중복 기사 영역을 표시하지 않습니다", () => {
   const html = readFileSync(new URL("../static/index.html", import.meta.url), "utf8");
   assert.doesNotMatch(html,/id="(?:industry-summary-bar|stats-movements|stats-competitor)"/);
-  assert.ok(html.indexOf('id="industry-recalls-output"') < html.indexOf('id="industry-approvals-output"'));
-  assert.ok(html.indexOf('id="industry-approvals-output"') < html.indexOf('id="industry-policy"'));
   assert.ok(html.indexOf('id="industry-policy"') < html.indexOf('id="industry-hospital"'));
+  assert.ok(html.indexOf('id="industry-hospital"') < html.indexOf('id="industry-approvals-output"'));
+  assert.ok(html.indexOf('id="industry-approvals-output"') < html.indexOf('id="industry-recalls-output"'));
+  assert.match(html, /class="industry-official-group" aria-label="식약처 공식자료"/);
+  assert.match(html, /industry-recalls-title[\s\S]*?industry-panel-title[\s\S]*?industry-state/);
   for (const id of ["industry-company", "industry-policy", "industry-hospital"]) assert.ok(html.includes(`id="${id}"`));
   const api = setup([article("지멘스 MRI 신제품 출시", { entity: "지멘스" })]);
   assert.match(api.get("stats-policy").innerHTML, /정책 현황판/);
