@@ -1,19 +1,18 @@
 /* Title weather landscape: custom CSS illustration, no external artwork. */
-.top{--masthead-expanded:156px;--masthead-compact:104px;display:grid;grid-template-columns:minmax(0,1fr) 30%;grid-template-rows:1fr auto;height:var(--masthead-expanded);min-height:0;padding:16px 24px;gap:6px 28px;transition:height .26s ease,padding .26s ease}
+.top{--masthead-expanded:156px;--masthead-compact:104px;display:grid;grid-template-columns:minmax(0,1fr) 30%;grid-template-rows:1fr;height:var(--masthead-expanded);min-height:0;padding:16px 24px;gap:0 28px;transition:height .26s ease,padding .26s ease}
 .topbar.is-compact .top{height:var(--masthead-compact);padding-top:12px;padding-bottom:12px}
-.brand-wrap{grid-column:1;grid-row:1;display:flex;flex-direction:column;align-items:flex-start;gap:0;min-width:0}
+.brand-wrap{grid-column:1;grid-row:1;align-self:start;display:flex;flex-direction:column;align-items:flex-start;gap:0;min-width:0}
 /* 원본의 흰 여백은 표시 영역 밖으로 두고, 붉은 글자의 좌표에 맞춰 배치합니다. */
-.brand-logo{position:relative;width:118px;aspect-ratio:652 / 136;max-height:25px;margin-bottom:8px;overflow:hidden;opacity:1;transition:max-height .26s ease,margin .26s ease,opacity .2s ease}
-.brand-logo img{position:absolute;width:149.08%;height:auto;max-width:none;left:-22.239%;top:-100%}
+.brand-logo{position:relative;width:118px;aspect-ratio:666 / 152;max-height:28px;margin-bottom:16px;overflow:hidden;opacity:1;transition:max-height .26s ease,margin .26s ease,opacity .2s ease}
+.brand-logo img{position:absolute;width:145.946%;height:auto;max-width:none;left:-20.721%;top:-84.211%}
 .topbar.is-compact .brand-logo{max-height:0;margin-bottom:0;opacity:0;visibility:hidden}
-.header-baseline{grid-column:1;grid-row:2;display:flex;align-items:baseline;justify-content:space-between;gap:8px 16px;min-width:0}
-.header-baseline .sub{display:block;white-space:nowrap}
-.header-meta{display:flex;flex-direction:row;align-items:baseline;gap:12px;text-align:left;white-space:nowrap}
-.header-date{margin:0;font-size:13px}
+.header-detail-line{display:flex;align-items:baseline;justify-content:space-between;gap:4px 16px;width:100%;margin-top:2px;min-width:0}
+.header-detail-line .sub{display:block;white-space:nowrap}
+.header-date{margin:2px 0 0;font-size:13px;line-height:1.4}
 .weather-reading{font-size:12px;color:var(--ink-2);white-space:nowrap}
 .weather-attribution{font-size:11px;color:var(--muted)}
 .weather-attribution summary{cursor:pointer}
-.header-weather{--grass:#d1e9cd;--grass-dark:#a8cda5;--leaf:#9fc89b;--cloud:#f0f3f5;grid-column:2;grid-row:1 / span 2;position:relative;min-width:0;min-height:0;height:100%}
+.header-weather{--grass:#d1e9cd;--grass-dark:#a8cda5;--leaf:#9fc89b;--cloud:#f0f3f5;grid-column:2;grid-row:1;position:relative;min-width:0;min-height:0;height:100%}
 .header-weather .weather-pause{position:absolute;right:3px;bottom:3px;z-index:3;border:0;background:#ffffffc9;color:#68726b;border-radius:50%;width:24px;height:24px;padding:0;font-size:11px;cursor:pointer}
 .header-weather[data-weather=unavailable] .smd-landscape{opacity:.3}
 .header-weather[data-weather=unavailable] .smd-landscape *{animation-play-state:paused!important}
@@ -50,9 +49,11 @@
 .header-weather .wind-one{top:36px;left:5%}.wind-two{top:72px;left:30%;animation-delay:-1s;width:100px}.wind-three{top:101px;left:0;animation-delay:-1.7s;width:56px}
 .header-weather .leaf{position:absolute;width:12px;height:6px;border-radius:0 90% 0 90%;background:var(--fallen-leaf,#b9cc83);opacity:0;animation:smd-leaf 4s linear infinite;animation-play-state:paused}
 .header-weather .leaf-one{top:48px;left:10%}.leaf-two{top:90px;left:20%;animation-delay:-2.5s}.leaf-three{top:70px;left:0;animation-delay:-1.1s}
-.header-weather .precipitation{position:absolute;inset:0;pointer-events:none}
+.header-weather .precipitation{display:none;position:absolute;inset:0;pointer-events:none}
+.header-weather[data-weather=rainy] .precipitation,.header-weather[data-weather=thunder] .precipitation,.header-weather[data-weather=snowy] .precipitation{display:block}
 .header-weather .drop{position:absolute;top:37px;width:2px;height:10px;background:light-dark(#8abacb,#8abacb);border-radius:3px;opacity:0;animation:smd-rain 1.2s linear infinite;animation-play-state:paused}
-.header-weather .puddle{position:absolute;bottom:12px;left:44%;width:50px;height:7px;border:1px solid light-dark(#aacdda,#7796a1);border-radius:50%;opacity:0;animation:smd-ripple 2s ease-out infinite;animation-play-state:paused}
+.header-weather .puddle{display:none;position:absolute;bottom:12px;left:44%;width:50px;height:7px;border:1px solid light-dark(#aacdda,#7796a1);border-radius:50%;opacity:0;animation:smd-ripple 2s ease-out infinite;animation-play-state:paused}
+.header-weather[data-weather=rainy] .puddle,.header-weather[data-weather=thunder] .puddle{display:block;animation-play-state:running}
 .header-weather[data-weather=windy] .wind,.header-weather[data-weather=windy] .leaf{opacity:1;animation-play-state:running}
 .header-weather[data-weather=windy] .tree{animation:smd-sway 1.5s ease-in-out infinite}
 .header-weather[data-weather=windy] .cloud{animation:smd-cloud-fast 4s linear infinite}
@@ -146,7 +147,7 @@
 .header-weather[data-weather=snowy] .hill{background:#e7eff2}
 .header-weather[data-weather=snowy] .hill-front{background:#d5e3e9}
 .header-weather[data-weather=snowy] .season-flowers,.header-weather[data-weather=snowy] .fallen-leaves{display:none}
-@media(max-width:900px){.top{column-gap:16px}.brand{font-size:25px}.sub{font-size:9px;letter-spacing:1px}.header-meta{gap:8px}.header-date{font-size:12px}.weather-reading{font-size:11px}}
-@media(max-width:700px){.top{--masthead-expanded:213px;--masthead-compact:142px;padding-left:16px;padding-right:16px;column-gap:12px}.brand{font-size:clamp(18px,4.8vw,25px)}.brand-logo{width:100px;max-height:21px}.header-baseline{grid-column:1 / -1;flex-wrap:wrap;justify-content:flex-start;gap:3px 12px}.header-meta{flex-wrap:wrap;gap:3px 12px}.header-weather{grid-row:1}.header-weather .weather-pause{right:0}.header-weather .distant-buildings{display:none}}
+@media(max-width:900px){.top{column-gap:16px}.brand{font-size:25px}.sub{font-size:9px;letter-spacing:1px}.header-date{font-size:12px}.weather-reading{font-size:11px}}
+@media(max-width:700px){.top{--masthead-expanded:213px;--masthead-compact:142px;padding-left:16px;padding-right:16px;column-gap:12px}.brand{font-size:clamp(18px,4.8vw,25px)}.brand-logo{width:100px;max-height:24px}.header-detail-line{flex-wrap:wrap;justify-content:flex-start;gap:3px 12px}.header-weather .weather-pause{right:0}.header-weather .distant-buildings{display:none}}
 @media(prefers-reduced-motion:reduce){.top,.brand-logo{transition:none}}
 @media(prefers-reduced-motion:reduce){.header-weather .smd-landscape *,.header-weather .smd-landscape *:before,.header-weather .smd-landscape *:after{animation:none!important;transition:none!important}.header-weather[data-weather=rainy] .drop,.header-weather[data-weather=thunder] .drop,.header-weather[data-weather=snowy] .drop{opacity:.6;top:66px}.header-weather .weather-pause{display:none}}

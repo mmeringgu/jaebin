@@ -8,9 +8,8 @@
 <!-- 맨 위 영역: 서비스 이름 -->
 <header class="topbar">
  <div class="top">
-  <div class="brand-wrap"><div class="brand-logo"><img src="/images/canon-logo.png" alt="Canon" width="972" height="412"></div><div class="brand">SMD News Clipping</div></div>
+  <div class="brand-wrap"><div class="brand-logo"><img src="/images/canon-logo.png" alt="Canon" width="972" height="412"></div><div class="brand">SMD News Clipping</div><time class="header-date" id="today-date"></time><div class="header-detail-line"><div class="sub">STRATEGIC MARKETING DIVISION</div><span id="weather-reading" class="weather-reading" role="status">강남구 · 예보 확인 중…</span></div></div>
   <div class="header-weather" id="header-weather" data-weather="unavailable" aria-label="강남구 날씨 일러스트"></div>
-  <div class="header-baseline"><div class="sub">STRATEGIC MARKETING DIVISION</div><div class="header-meta"><time class="header-date" id="today-date"></time><span id="weather-reading" class="weather-reading" role="status">강남구 · 예보 확인 중…</span></div></div>
  </div>
  <nav class="tabs" role="tablist" aria-label="화면 선택">
   <button type="button" class="tab" role="tab" data-tab="news">📰 뉴스</button>
@@ -31,11 +30,11 @@
   <div class="toolbar-row toolbar-search">
    <select id="topic" aria-label="분야 필터"><option value="">전체</option><option>AI</option><option>CT</option><option>MRI</option><option>UL</option><option>VL/XR</option><option>Vet</option></select>
    <input id="search" type="search" aria-label="뉴스 검색" placeholder="기사 제목, 회사·장비, 키워드 검색">
-  </div>
-  <div class="toolbar-row">
+   <div class="search-options" role="group" aria-label="뉴스 표시 옵션">
    <select id="period" aria-label="기간 필터"><option value="">전체 기간</option><option value="today">오늘</option><option value="7">최근 7일</option></select>
    <select id="sort" aria-label="정렬"><option value="relevance">관련도순</option><option value="new">최신순</option></select>
-   <label class="check-label important-filter"><input type="checkbox" id="only-star"><span class="star-symbol important-star" aria-hidden="true">★</span> 중요 기사만 보기</label>
+   <label class="important-option"><input type="checkbox" id="only-star"><span class="star-symbol important-star" aria-hidden="true">★</span> 중요 기사</label>
+   </div>
   </div>
  </div>
 
