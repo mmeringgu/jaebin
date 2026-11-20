@@ -24,14 +24,16 @@ const OPEN_EXCLUDE=['개원가','개원의','주년','기념','수가','요구',
 // 병원 이름이 아니라 "병원 종류"인 경우 (예: "지방 대학병원 신설 필요") 특정 병원 소식이 아니므로 뺍니다.
 const GENERIC_HOSPITALS=['병원','대학병원','종합병원','상급종합병원','요양병원','공공병원','지방의료원','의료원','전문병원','국립대병원'];
 
-// ── 설정: 추적할 정책 (3~5개) ──
-// words 중 하나가 기사 제목·부제목에 있으면 그 정책 기사로 봅니다. 바꾸고 싶으면 여기만 고치세요.
-// (2026-11-09 기준, 최근 기사에 실제로 자주 나오는 정책 중 영상의학 장비와 관련 있는 것으로 골랐습니다)
+// 정책은 묶어서 표시하고 세부 주제별 단계와 근거를 따로 추적합니다.
+// 제목·부제목·기사 앞부분의 키워드는 공백과 대소문자 차이를 무시합니다.
 const TRACKED_POLICIES=[
- {name:'검사 수가 인하·수가 개편',words:['검사 수가','검사수가','검체검사','수가 개편','수가체계','상대가치','환산지수','영상검사 수가','CT 수가','MRI 수가']},
- {name:'관리급여 (비급여 관리)',words:['관리급여','비급여 관리']},
- {name:'의료 AI·디지털헬스 제도',words:['디지털헬스케어법','디지털의료제품법','혁신의료기술','AI 수가','AI 판독','의료 AI 보상']},
- {name:'특수의료장비 설치·품질 기준',words:['특수의료장비','노후 의료장비','노후장비','공동활용병상','병상공동활용']}
+ {name:'수가 개편',topics:[
+  {name:'검사 수가·수가체계',words:['검사 수가','검체검사','수가 개편','수가체계','영상검사 수가','CT 수가','MRI 수가']},
+  {name:'상대가치·환산지수',words:['상대가치','환산지수']},
+  {name:'관리급여·비급여 관리',words:['관리급여','비급여 관리']}
+ ]},
+ {name:'의료 AI',words:['디지털헬스케어법','디지털의료제품법','혁신의료기술','AI 수가','AI 판독','의료 AI 보상']},
+ {name:'특수의료장비 설치 기준',words:['특수의료장비','노후 의료장비','노후장비','공동활용병상','병상공동활용','공동이용병상','병상공동이용']}
 ];
 // 정책 단계: 위에서부터 차례로 확인해서 처음 맞는 단계로 봅니다.
 // ("시행 예정"은 아직 시행 전이므로 "확정"에 넣었습니다)
@@ -306,8 +308,12 @@ function hospitalProjectOf(a){
  const title=a.title.normalize('NFKC');
  const name=hospitalNameOf(a);
  const projectTitle=name==='–'?title:title.replace(name,' ');
- const targets=projectTitle.match(/[가-힣A-Za-z0-9]+센터|[가-힣A-Za-z0-9]*(?:별관|본관|신관|동관|서관|남관|북관)|제\d+병동/g)||[];
- return Array.from(new Set(targets)).sort().join(' · ')||'병원 전체';
+ const targets=projectTitle.match(/(?:중증\s*천식\s*[·ㆍ,/-]?\s*)?[가-힣A-Za-z0-9]+(?:\s*[·ㆍ,/-]\s*[가-힣A-Za-z0-9]+)*\s*(?:센터|집중치료실|중환자실|치료실|수술실|검사실|병동)|[가-힣A-Za-z0-9]*(?:별관|본관|신관|동관|서관|남관|북관)/g)||[];
+ return Array.from(new Set(targets.map(function(target){return target.replace(/\s*[,ㆍ/]\s*/g,'·').replace(/\s+/g,' ').trim();}))).sort().join(' · ')||'병원 전체';
+}
+function hospitalProjectKey(project){
+ // COPD센터와 중증천식·COPD센터는 같은 호흡기 센터의 축약 표기입니다.
+ return project.normalize('NFKC').replace(/\s+/g,'').toLowerCase().replace(/(?:중증)?천식[·,/-]*copd센터/g,'copd센터');
 }
 // 기사에서 예상 시기(개원·준공 예정 시기)를 찾습니다. 못 찾으면 "–"
 // 예) "2027년 3월 개원 예정" → "2027년 3월", "내년 상반기 준공" → "내년 상반기"
@@ -330,9 +336,10 @@ function hospitalProjects(list){
  const groups=new Map();
  list.filter(isNewHospitalNews).slice().sort(NewsRules.compareNewest).forEach(function(a){
   const name=hospitalNameOf(a),project=hospitalProjectOf(a);
-  const key=hospitalKeyOf(name)+'|'+project;
+  const key=hospitalKeyOf(name)+'|'+hospitalProjectKey(project);
   if(!groups.has(key))groups.set(key,{name:name,project:project,main:a,articles:[]});
   const group=groups.get(key);
+  if(project.length>group.project.length)group.project=project;
   if(!group.articles.some(function(old){return old.url===a.url;}))group.articles.push(a);
  });
  return Array.from(groups.values());
@@ -360,19 +367,25 @@ function stageOf(a){
 // 정책별로 관련 기사(최신순)와 현재 단계, 이번 주 시작 전 단계를 구합니다.
 function policyStatus(list){
  const weekStart=mondayOf(kstDate(0));
- return TRACKED_POLICIES.map(function(p){
+ return TRACKED_POLICIES.flatMap(function(policy){
+  const statuses=(policy.topics||[policy]).map(function(topic){
+  const p={name:policy.name,topic:policy.topics?topic.name:''};
   const related=list.filter(function(a){
-   const text=a.title+' '+(a.subtitle||'');
-   return p.words.some(function(w){return text.includes(w);});
+   const normalize=function(value){return String(value||'').replace(/\s+/g,'').toLowerCase();};
+   const text=normalize([a.title,a.subtitle,a.summary].filter(Boolean).join(' '));
+   return topic.words.some(function(w){return text.includes(normalize(w));});
   }).sort(NewsRules.compareNewest);
   const staged=related.filter(function(a){return stageOf(a)!=='';});
-  const latest=staged[0]||null;
+  const latest=staged[0]||related[0]||null;
   const beforeWeek=staged.find(function(a){return a.date<weekStart;})||null;
   const now=latest?stageOf(latest):'';
   const before=beforeWeek?stageOf(beforeWeek):'';
   // 이번 주에 새 기사가 나왔고 단계가 지난주까지와 다르면 "단계 변화"
-  const changed=latest!==null&&latest.date>=weekStart&&now!==before;
+  const changed=!!now&&latest.date>=weekStart&&now!==before;
   return {policy:p,related:related,latest:latest,now:now,before:before,changed:changed};
+  });
+  const active=statuses.filter(function(s){return s.related.length;});
+  return active.length?active:[{...statuses[0],policy:{name:policy.name,topic:''}}];
  });
 }
 // 발의 → 논의 → 확정 → 시행 단계 표시
@@ -384,12 +397,15 @@ function stageSteps(now){
  }).join('')+'</ol>';
 }
 function policyBoard(statuses){
- const rows=statuses.map(function(s){
+ const groups=new Map();
+ statuses.forEach(function(s){if(!groups.has(s.policy.name))groups.set(s.policy.name,[]);groups.get(s.policy.name).push(s);});
+ const rows=Array.from(groups.values()).map(function(group){return group.map(function(s,index){
   const latest=s.latest?linkOf(s.latest)+' <span class="muted">'+shortDate(s.latest.date)+'</span>':'<span class="muted">단계를 알 수 있는 기사가 아직 없습니다.</span>';
-  return '<tr'+(s.changed?' class="changed-row"':'')+'><td class="trend-name">'+esc(s.policy.name)+(s.changed?' <span class="chip chip-notice">이번 주 변화</span>':'')+'</td>'+
-   '<td>'+(s.now?stageSteps(s.now):'<span class="muted">–</span>')+'</td>'+
+  const name=index===0?'<th scope="rowgroup" rowspan="'+group.length+'" class="trend-name">'+esc(s.policy.name)+(group.some(function(row){return row.changed;})?' <span class="chip chip-notice">이번 주 변화</span>':'')+'</th>':'';
+  return '<tr'+(s.changed?' class="changed-row"':'')+'>'+name+
+   '<td>'+(s.policy.topic?'<span class="policy-topic">'+esc(s.policy.topic)+'</span>':'')+(s.now?stageSteps(s.now):'<span class="muted">–</span>')+'</td>'+
    '<td class="trend-latest">'+latest+'</td></tr>';
- }).join('');
+ }).join('');}).join('');
  return '<div class="stat-box wide"><h3><span class="industry-title-icon" aria-hidden="true">📋</span>정책 현황판</h3>'+
   '<div class="table-scroll"><table class="trend-table policy-table"><tr><th>정책</th><th>현재 단계</th><th>근거 기사</th></tr>'+rows+'</table></div></div>';
 }
@@ -408,8 +424,9 @@ function policyChangeGroups(statuses){
   NewsRules.groupSameNews(Array.from(articles.values())).forEach(function(story){
    const urls=new Set([story.main].concat(story.others).map(function(a){return a.url;})),seen=new Set();
    const changes=changed.filter(function(s){
-    if(!urls.has(s.latest.url)||seen.has(s.policy.name))return false;
-    seen.add(s.policy.name);return true;
+    const key=JSON.stringify([s.policy.name,s.policy.topic||'']);
+    if(!urls.has(s.latest.url)||seen.has(key))return false;
+    seen.add(key);return true;
    });
    groups.push({main:story.main,others:story.others,changes:changes});
   });
@@ -420,7 +437,7 @@ function policyChanges(statuses){
  const groups=policyChangeGroups(statuses);
  const body=groups.length?'<ul class="stat-list policy-changes">'+groups.map(function(group){
   const changes=group.changes.map(function(s){
-   return '<div><b>'+esc(s.policy.name)+'</b> <span class="stage-move">'+esc(s.before||'처음 확인')+' → <b>'+esc(s.now)+'</b></span></div>';
+   return '<div><b>'+esc(s.policy.name)+(s.policy.topic?' · '+esc(s.policy.topic):'')+'</b> <span class="stage-move">'+esc(s.before||'처음 확인')+' → <b>'+esc(s.now)+'</b></span></div>';
   }).join('');
   const others=group.others.length?'<span class="policy-change-sources">추가 출처 '+group.others.length+'건 · '+group.others.map(function(a){
    return '<a href="'+esc(a.url)+'" target="_blank" rel="noopener noreferrer">'+esc(a.source||'원문')+'</a>';

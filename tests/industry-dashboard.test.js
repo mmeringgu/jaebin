@@ -55,3 +55,25 @@ test('조회 실패·일부 조회·이전 자료를 명시하고 공식 원문 
  ui.change('company','GE');assert.match(ui.get('industry-recalls-output').innerHTML,/불러오지 못했습니다/);
  assert.doesNotMatch(ui.get('industry-recalls-output').innerHTML,/공지가 없습니다/);
 });
+
+test('회수 장비 필터는 회사 선택과 함께 적용하고 페이지를 초기화하며 인허가에는 영향을 주지 않습니다',async()=>{
+ const ui=screen((kind,company)=>response(kind,company,company==='GE'?[
+  ...Array.from({length:5},(_,i)=>record(i+1,company)),
+  {...record(10,company),family:'MRI',item_name:'MRI 전용 모델'}
+ ]:company==='Philips'?[{...record(20,company),family:'MRI',item_name:'필립스 MRI 모델'}]:[]));
+ await ui.open();
+ ui.page('recalls',1);
+ const approvals=ui.get('industry-approvals-output').innerHTML;
+ ui.change('recall-family','MRI');
+ assert.equal((ui.get('industry-recalls-output').innerHTML.match(/<li>/g)||[]).length,2);
+ assert.match(ui.get('industry-recalls-output').innerHTML,/MRI 전용 모델/);
+ assert.equal(ui.get('industry-recalls-pages').innerHTML,'');
+ assert.equal(ui.get('industry-approvals-output').innerHTML,approvals);
+ ui.change('company','Philips');
+ assert.match(ui.get('industry-recalls-output').innerHTML,/필립스 MRI 모델/);
+ assert.doesNotMatch(ui.get('industry-recalls-output').innerHTML,/MRI 전용 모델/);
+ ui.change('recall-family','CT');assert.match(ui.get('industry-recalls-output').innerHTML,/공지가 없습니다/);
+ ui.change('company','');ui.change('recall-family','');
+ assert.equal((ui.get('industry-recalls-output').innerHTML.match(/<li>/g)||[]).length,4);
+ assert.equal(ui.calls.length,8);
+});

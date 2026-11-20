@@ -69,6 +69,32 @@ test("개원 기념·일반 병원명·다른 카테고리는 표에서 제외�
   ]).length, 0);
 });
 
+test("집중치료실·중환자실은 병원 전체가 아닌 해당 시설로 표시합니다", () => {
+  const rows=hospitalProjects([
+    article(1,"세종충남대병원, 산모, 태아 집중치료실 개소"),
+    article(2,"일산백병원 응급중환자실 개소"),
+    article(3,"일산백병원 신생아 중환자실 개소"),
+  ]);
+  assert.equal(rows.length,3);
+  assert.equal(rows.find(row=>row.main.id===1).project,"산모·태아 집중치료실");
+  assert.equal(rows.find(row=>row.main.id===2).project,"응급중환자실");
+  assert.equal(rows.find(row=>row.main.id===3).project,"신생아 중환자실");
+  assert.ok(rows.every(row=>row.project!=="병원 전체"));
+});
+
+test("같은 병원의 COPD센터 축약 표기만 합치고 다른 센터·다른 병원은 유지합니다", () => {
+  const rows=hospitalProjects([
+    article(1,"해운대백병원 COPD 센터 개소"),
+    article(2,"해운대백병원 중증천식 COPD센터 개소"),
+    article(3,"해운대백병원 암센터 개소"),
+    article(4,"일산백병원 COPD센터 개소"),
+  ]);
+  assert.equal(rows.length,3);
+  const copd=rows.find(row=>row.name==="해운대백병원"&&/COPD/.test(row.project));
+  assert.equal(copd.articles.length,2);
+  assert.match(copd.project,/중증천식.*COPD센터/);
+});
+
 test("출처와 병원명은 HTML로 실행되지 않도록 표시합니다", () => {
   const html = newHospitals([article(1, "한빛병원 개원", { source: '<img src=x onerror="alert(1)">' })]);
   assert.doesNotMatch(html, /<img/);

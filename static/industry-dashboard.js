@@ -14,7 +14,8 @@
  function draw(kind){
   const size=kind==='recalls'?4:5;
   const s=state[kind],company=get('company').value,period=Number(get('approval-period').value),since=day(period-1);
-  const rows=s.rows.filter(r=>(!company||r.company===company)&&(kind!=='approvals'||r.date>=since&&r.date<=day()));
+  const family=get('recall-family').value;
+  const rows=s.rows.filter(r=>(!company||r.company===company)&&(kind!=='recalls'||!family||r.family===family)&&(kind!=='approvals'||r.date>=since&&r.date<=day()));
   const pages=Math.max(1,Math.ceil(rows.length/size));s.page=Math.max(1,Math.min(s.page,pages));
   const shown=rows.slice((s.page-1)*size,s.page*size);
   const selected=s.results.filter(r=>!company||r.company===company),failed=selected.filter(r=>r.error),partial=selected.some(r=>r.data?.partial),stale=selected.some(r=>r.data?.stale);
@@ -57,6 +58,7 @@
  }
  get('company').addEventListener('change',()=>{state.recalls.page=state.approvals.page=1;drawAll();});
  get('approval-period').addEventListener('change',()=>{state.approvals.page=1;draw('approvals');});
+ get('recall-family').addEventListener('change',()=>{state.recalls.page=1;draw('recalls');});
  dashboard.addEventListener('click',event=>{
   const button=event.target.closest('button[data-industry-page]');if(!button)return;
   const kind=button.dataset.industryPage,step=Number(button.dataset.step);if(!state[kind]||![-1,1].includes(step))return;

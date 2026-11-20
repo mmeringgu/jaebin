@@ -221,7 +221,7 @@ select:hover{border-color:var(--ink-2)}
 .industry-dashboard{display:grid;gap:20px;padding:20px 0 0}
 .industry-official-group{min-width:0;background:white;border:1px solid var(--line);border-radius:var(--radius);padding:20px}
 .industry-product-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-bottom:16px;margin-bottom:16px;border-bottom:1px solid var(--line)}
-.industry-source-note{font-size:12px;color:var(--muted)}
+.industry-product-title{margin:0;font-size:17px;font-weight:700;letter-spacing:-.3px;color:var(--ink)}
 .industry-product-toolbar label{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--ink-2)}
 .industry-product-toolbar select{min-width:170px}
 .industry-product-grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,3fr);gap:16px;align-items:start}
@@ -230,7 +230,7 @@ select:hover{border-color:var(--ink-2)}
 .industry-panel-title{display:flex;align-items:center;gap:10px}
 .industry-title-icon{display:inline-block;margin-right:7px;font-size:16px;vertical-align:baseline}
 .industry-panel-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;min-height:32px}
-.industry-panel-head h2{margin:0;font-size:17px;font-weight:700;letter-spacing:-.3px}
+.industry-panel-head h3{margin:0;font-size:15px;font-weight:700;letter-spacing:-.3px}
 .industry-panel-head select{padding:4px 6px;font-size:12px;border-color:var(--line)}
 .industry-state{font-size:11px;color:var(--red);white-space:nowrap}
 .industry-state>span{font-size:8px;vertical-align:1px}
@@ -334,6 +334,8 @@ a.movement-title:hover{text-decoration:underline;text-underline-offset:3px}
 .steps li.done{background:var(--k10);color:var(--ink-2)}
 .steps li.current{background:var(--red);color:white;font-weight:600}
 .policy-table td{vertical-align:middle}
+.policy-table th[scope=rowgroup]{vertical-align:middle;white-space:normal}
+.policy-topic{display:block;margin-bottom:8px;font-size:12px;color:var(--muted)}
 .stat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
 .stat-box{background:white;border:1px solid var(--line);border-radius:var(--radius);padding:22px 24px}
 .stat-box.wide{grid-column:1/-1}

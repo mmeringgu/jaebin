@@ -171,7 +171,9 @@ test("업계 동향은 공식 제품 현황·정책·병원 대시보드이며 �
   assert.ok(html.indexOf('id="industry-policy"') < html.indexOf('id="industry-hospital"'));
   assert.ok(html.indexOf('id="industry-hospital"') < html.indexOf('id="industry-approvals-output"'));
   assert.ok(html.indexOf('id="industry-approvals-output"') < html.indexOf('id="industry-recalls-output"'));
-  assert.match(html, /class="industry-official-group" aria-label="식약처 공식자료"/);
+  assert.match(html, /class="industry-official-group" aria-labelledby="industry-product-title"/);
+  assert.match(html, /id="industry-product-title">[\s\S]*?제품 관련<\/h3>/);
+  assert.match(html, /id="industry-recall-family"[\s\S]*?<option value="" selected>All<\/option>/);
   assert.match(html, /industry-recalls-title[\s\S]*?industry-panel-title[\s\S]*?industry-state/);
   for (const id of ["industry-company", "industry-policy", "industry-hospital"]) assert.ok(html.includes(`id="${id}"`));
   const api = setup([article("지멘스 MRI 신제품 출시", { entity: "지멘스" })]);
