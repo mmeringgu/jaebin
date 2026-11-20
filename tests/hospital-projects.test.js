@@ -111,6 +111,31 @@ test("같은 날 같은 병원의 암센터 증설은 수식어·건물 설명�
   assert.match(newHospitals(rows[0].articles),/추가 출처 2건/);
 });
 
+test("같은 날짜의 같은 센터는 병동·연구동 설명과 병원명 띄어쓰기가 달라도 한 줄로 표시합니다", () => {
+  for(const center of ['암센터','검진센터']){
+    const articles=[
+      article(1,`용인세브란스병원 ${center} 착공`),
+      article(2,`용인 세브란스병원 ${center} 증축, 입원 병동 신설`),
+      article(3,`용인세브란스병원 통합${center}·연구동 증축`),
+    ];
+    const rows=hospitalProjects(articles);
+    assert.equal(rows.length,1,center);
+    assert.equal(rows[0].articles.length,3,center);
+    assert.equal((newHospitals(articles).match(/<tr>/g)||[]).length,2,center);
+    assert.match(newHospitals(articles),/추가 출처 2건/);
+  }
+});
+
+test("같은 날짜·병원이어도 암센터와 검진센터 및 여러 센터의 별개 소식은 구분합니다", () => {
+  const rows=hospitalProjects([
+    article(1,'용인세브란스병원 암센터 증축'),
+    article(2,'용인 세브란스병원 검진센터 개소'),
+    article(3,'용인세브란스병원 암센터·검진센터 신설'),
+    article(4,'강남 세브란스병원 암센터 증축'),
+  ]);
+  assert.equal(rows.length,4);
+});
+
 test("같은 날이라도 별개 센터·지역 병원·건물 사업은 합치지 않습니다", () => {
   const rows=hospitalProjects([
     article(1,"용인세브란스병원 암센터 증설"),

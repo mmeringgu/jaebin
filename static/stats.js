@@ -295,7 +295,7 @@ function recallList(list){
 // 기사 제목에서 병원 이름을 꺼냅니다. 예) "OO대학교병원, 암센터 신축" → "OO대학교병원"
 // "병원"·"의료원"으로 끝나는 첫 이름과 뒤에 붙은 분원·캠퍼스를 씁니다. 못 찾으면 "–"
 function hospitalNameOf(a){
- const title=a.title.normalize('NFKC');
+ const title=a.title.normalize('NFKC').replace(/(용인|강남|신촌)\s+(?=세브란스)/g,'$1');
  const m=title.match(/[가-힣A-Za-z0-9]+(?:대학교\s*병원|대\s*병원|병원|의료원)(?:\s+[가-힣A-Za-z0-9]*(?:분원|캠퍼스))?/);
  return m?m[0].replace(/\s+/g,' ').trim():'–';
 }
@@ -307,7 +307,7 @@ function hospitalKeyOf(name){
 function hospitalProjectOf(a){
  const title=a.title.normalize('NFKC');
  const name=hospitalNameOf(a);
- const projectTitle=name==='–'?title:title.replace(name,' ');
+ const projectTitle=name==='–'?title:title.replace(new RegExp(name.replace(/\s/g,'').split('').join('\\s*')),' ');
  const targets=projectTitle.match(/(?:중증\s*천식\s*[·ㆍ,/-]?\s*)?[가-힣A-Za-z0-9]+(?:\s*[·ㆍ,/-]\s*[가-힣A-Za-z0-9]+)*\s*(?:센터|집중치료실|중환자실|치료실|수술실|검사실|병동)|[가-힣A-Za-z0-9]*(?:별관|본관|신관|동관|서관|남관|북관)/g)||[];
  return Array.from(new Set(targets.map(function(target){return target.replace(/\s*[,ㆍ/]\s*/g,'·').replace(/\s+/g,' ').trim();}))).sort().join(' · ')||'병원 전체';
 }
@@ -329,6 +329,13 @@ function sameDayHospitalProject(a,b){
  const buildings=/^(?:[가-힣a-z0-9]*(?:별관|본관|신관|동관|서관|남관|북관))$/;
  const mainLeft=left.filter(function(key){return !buildings.test(key);});
  const mainRight=right.filter(function(key){return !buildings.test(key);});
+ // 같은 센터의 증축 기사에 병동·연구동 등의 설명이 함께 붙어도 한 소식입니다.
+ // 서로 다른 센터가 추가된 기사는 별개로 남깁니다.
+ const centersLeft=mainLeft.filter(function(key){return key.endsWith('센터');});
+ const centersRight=mainRight.filter(function(key){return key.endsWith('센터');});
+ if(centersLeft.length&&centersRight.length){
+  return centersLeft.length===centersRight.length&&centersLeft.every(function(key){return centersRight.includes(key);});
+ }
  // 센터 사업에 건물 설명만 추가된 경우도 같은 사업으로 봅니다.
  if(!mainLeft.length||!mainRight.length)return false;
  return mainLeft.length===mainRight.length&&mainLeft.every(function(key){return mainRight.includes(key);});
