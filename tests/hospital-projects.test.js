@@ -100,3 +100,28 @@ test("출처와 병원명은 HTML로 실행되지 않도록 표시합니다", ()
   assert.doesNotMatch(html, /<img/);
   assert.match(html, /&lt;img/);
 });
+
+test("같은 날 같은 병원의 암센터 증설은 수식어·건물 설명이 달라도 한 사업으로 묶습니다", () => {
+  const rows=hospitalProjects([
+    article(1,"용인세브란스병원 암센터 확장 개소"),
+    article(2,"용인세브란스병원 통합암센터 증설"),
+    article(3,"용인세브란스병원 신관 암 센터 증설"),
+  ]);
+  assert.equal(rows.length,1);assert.equal(rows[0].articles.length,3);
+  assert.match(newHospitals(rows[0].articles),/추가 출처 2건/);
+});
+
+test("같은 날이라도 별개 센터·지역 병원·건물 사업은 합치지 않습니다", () => {
+  const rows=hospitalProjects([
+    article(1,"용인세브란스병원 암센터 증설"),
+    article(2,"용인세브란스병원 유방암센터 개소"),
+    article(3,"용인세브란스병원 응급중환자실 개소"),
+    article(4,"강남세브란스병원 암센터 증설"),
+    article(5,"용인세브란스병원 신관 증축"),
+  ]);
+  assert.equal(rows.length,5);
+  assert.equal(hospitalProjects([
+    article(1,"용인세브란스병원 암센터 증설"),
+    article(2,"용인세브란스병원 통합암센터 개소",{date:"2026-11-17"}),
+  ]).length,2);
+});

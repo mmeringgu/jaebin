@@ -309,7 +309,6 @@ a.movement-title:hover{text-decoration:underline;text-underline-offset:3px}
 .trend-table .now{font-weight:600;color:var(--k90)}
 .mine-row td{background:var(--red-soft)}
 .mine-row .trend-name{color:var(--red)}
-.changed-row td{background:var(--bg)}
 /* 주간/월간 버튼 */
 .seg{display:inline-flex;border:1px solid var(--gray-1);border-radius:var(--radius)}
 .seg-button{border:0;background:white;padding:3px 12px;font-size:12px;cursor:pointer;color:var(--ink-2)}
@@ -333,7 +332,8 @@ a.movement-title:hover{text-decoration:underline;text-underline-offset:3px}
 .steps li{flex:1;min-width:34px;text-align:center;font-size:11px;padding:2px 4px;background:var(--line-2);color:var(--muted)}
 .steps li.done{background:var(--k10);color:var(--ink-2)}
 .steps li.current{background:var(--red);color:white;font-weight:600}
-.policy-table td{vertical-align:middle}
+.policy-table td{vertical-align:middle;background:white}
+.policy-table tbody tr:nth-child(even)>td{background:var(--bg)}
 .policy-table th[scope=rowgroup]{vertical-align:middle;white-space:normal}
 .policy-topic{display:block;margin-bottom:8px;font-size:12px;color:var(--muted)}
 .stat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}

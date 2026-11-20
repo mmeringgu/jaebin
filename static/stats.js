@@ -315,6 +315,24 @@ function hospitalProjectKey(project){
  // COPD센터와 중증천식·COPD센터는 같은 호흡기 센터의 축약 표기입니다.
  return project.normalize('NFKC').replace(/\s+/g,'').toLowerCase().replace(/(?:중증)?천식[·,/-]*copd센터/g,'copd센터');
 }
+// 같은 날 보도는 통합·첨단 같은 수식어와 부속 건물 표기 차이를 허용합니다.
+// 암센터와 유방암센터처럼 진료 대상이 다른 시설은 그대로 구분합니다.
+function sameDayHospitalProject(a,b){
+ if(!a.date||a.date!==b.date)return false;
+ const facilities=function(row){
+  return hospitalProjectOf(row).split(' · ').map(function(part){
+   return hospitalProjectKey(part).replace(/^(?:최첨단|첨단|통합|종합|새로운)+/,'');
+  });
+ };
+ const left=facilities(a),right=facilities(b);
+ if(left.includes('병원전체')||right.includes('병원전체'))return false;
+ const buildings=/^(?:[가-힣a-z0-9]*(?:별관|본관|신관|동관|서관|남관|북관))$/;
+ const mainLeft=left.filter(function(key){return !buildings.test(key);});
+ const mainRight=right.filter(function(key){return !buildings.test(key);});
+ // 센터 사업에 건물 설명만 추가된 경우도 같은 사업으로 봅니다.
+ if(!mainLeft.length||!mainRight.length)return false;
+ return mainLeft.length===mainRight.length&&mainLeft.every(function(key){return mainRight.includes(key);});
+}
 // 기사에서 예상 시기(개원·준공 예정 시기)를 찾습니다. 못 찾으면 "–"
 // 예) "2027년 3월 개원 예정" → "2027년 3월", "내년 상반기 준공" → "내년 상반기"
 function openTimeOf(a){
@@ -333,16 +351,25 @@ function isNewHospitalNews(a){
 }
 // 병원명·사업별로 모으고 최신 기사를 대표로 씁니다. 원본 기사는 모두 보존합니다.
 function hospitalProjects(list){
- const groups=new Map();
+ const groups=[];
  list.filter(isNewHospitalNews).slice().sort(NewsRules.compareNewest).forEach(function(a){
   const name=hospitalNameOf(a),project=hospitalProjectOf(a);
-  const key=hospitalKeyOf(name)+'|'+hospitalProjectKey(project);
-  if(!groups.has(key))groups.set(key,{name:name,project:project,main:a,articles:[]});
-  const group=groups.get(key);
+  const matches=groups.filter(function(group){
+   return hospitalKeyOf(group.name)===hospitalKeyOf(name)&&group.articles.some(function(old){
+    return hospitalProjectKey(hospitalProjectOf(old))===hospitalProjectKey(project)||sameDayHospitalProject(old,a);
+   });
+  });
+  const group=matches[0]||{name:name,project:project,main:a,articles:[]};
+  if(!matches.length)groups.push(group);
+  matches.slice(1).forEach(function(other){
+   other.articles.forEach(function(row){if(!group.articles.some(function(old){return old.url===row.url;}))group.articles.push(row);});
+   if(other.project.length>group.project.length)group.project=other.project;
+   groups.splice(groups.indexOf(other),1);
+  });
   if(project.length>group.project.length)group.project=project;
   if(!group.articles.some(function(old){return old.url===a.url;}))group.articles.push(a);
  });
- return Array.from(groups.values());
+ return groups;
 }
 // 신설·증설 병원: 사업당 한 줄, 추가 보도는 같은 줄의 출처로 표시합니다.
 function newHospitals(list){
@@ -401,13 +428,13 @@ function policyBoard(statuses){
  statuses.forEach(function(s){if(!groups.has(s.policy.name))groups.set(s.policy.name,[]);groups.get(s.policy.name).push(s);});
  const rows=Array.from(groups.values()).map(function(group){return group.map(function(s,index){
   const latest=s.latest?linkOf(s.latest)+' <span class="muted">'+shortDate(s.latest.date)+'</span>':'<span class="muted">단계를 알 수 있는 기사가 아직 없습니다.</span>';
-  const name=index===0?'<th scope="rowgroup" rowspan="'+group.length+'" class="trend-name">'+esc(s.policy.name)+(group.some(function(row){return row.changed;})?' <span class="chip chip-notice">이번 주 변화</span>':'')+'</th>':'';
-  return '<tr'+(s.changed?' class="changed-row"':'')+'>'+name+
+  const name=index===0?'<th scope="rowgroup" rowspan="'+group.length+'" class="trend-name">'+esc(s.policy.name)+'</th>':'';
+  return '<tr>'+name+
    '<td>'+(s.policy.topic?'<span class="policy-topic">'+esc(s.policy.topic)+'</span>':'')+(s.now?stageSteps(s.now):'<span class="muted">–</span>')+'</td>'+
    '<td class="trend-latest">'+latest+'</td></tr>';
  }).join('');}).join('');
  return '<div class="stat-box wide"><h3><span class="industry-title-icon" aria-hidden="true">📋</span>정책 현황판</h3>'+
-  '<div class="table-scroll"><table class="trend-table policy-table"><tr><th>정책</th><th>현재 단계</th><th>근거 기사</th></tr>'+rows+'</table></div></div>';
+  '<div class="table-scroll"><table class="trend-table policy-table"><thead><tr><th scope="col">정책</th><th scope="col">현재 단계</th><th scope="col">근거 기사</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
 }
 // 같은 기사·중복 보도는 한 번만 표시하되 정책마다 다른 이전 단계는 유지합니다.
 function policyChangeGroups(statuses){
