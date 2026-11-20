@@ -35,15 +35,35 @@ function highlight(value){
 // 기사 앞부분을 "목록에 보이는 부분(preview)"과 "자세히에서 이어지는 부분(rest)"으로 나눕니다.
 // 자세히를 눌렀을 때 이미 보이는 제목·첫 줄을 다시 보여주지 않기 위해서입니다.
 const PREVIEW_LENGTH=90; // 목록에 보여줄 글자 수 (두 줄 정도)
+// 본문 앞의 발행처·바이라인만 제거하고, 의학 용어와 본문 괄호는 보존합니다.
+function cleanArticleLead(value,source=''){
+ let text=String(value||'').trim();
+ const media=String(source||'').replace(/\s*\(빙 검색\)\s*$/,'').trim();
+ let removed=false;
+ while(true){
+  const match=text.match(/^(?:\[([^\[\]\n]{1,120})\]|\(([^()\n]{1,120})\)|【([^【】\n]{1,120})】)\s*/);
+  if(!match)break;
+  const label=(match[1]||match[2]||match[3]).trim();
+  const metadata=/(?:기자|특파원|통신원|객원기자|리포터|사진\s*[=:：]|연합뉴스|뉴스핌|뉴스|일보|신문|투데이|타임즈|타임스|데일리|싱글리스트|로이터|Reuters|Bloomberg)/i.test(label)
+   ||(media&&label===media)
+   ||/^(?:서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충북|충남|전북|전남|경북|경남|제주|뉴욕|워싱턴|런던|파리|도쿄|베이징|상하이|서울·[가-힣]+)(?:\s*[=＝]\s*[^.!?]+)?$/.test(label);
+  if(!metadata)break;
+  text=text.slice(match[0].length).replace(/^[\s=＝:：|·–—-]+/,'');removed=true;
+ }
+ // (서울=연합뉴스) 홍길동 기자 = 처럼 괄호 밖에 이어지는 바이라인도 제거합니다.
+ if(removed)text=text.replace(/^(?:[가-힣]{2,5}\s*(?:·|,|ㆍ)\s*)*[가-힣]{2,5}\s*(?:기자|특파원|통신원)\s*(?:[=＝:：|–—-]\s*|\n\s*)/,'').trim();
+ return text;
+}
 function splitText(a){
  function clean(value){
-  let text=String(value||'').trim();
+  let text=cleanArticleLead(value,a.source);
   if(text.indexOf(a.title)===0)text=text.slice(a.title.length).trim();
   if(a.subtitle&&text.indexOf(a.subtitle)===0)text=text.slice(a.subtitle.length).trim();
-  return text;
+  return cleanArticleLead(text,a.source);
  }
  const summary=clean(a.summary),body=clean(a.detail_text||a.summary);
- if(a.subtitle)return {preview:a.subtitle,rest:body};
+ const subtitle=cleanArticleLead(a.subtitle,a.source);
+ if(subtitle)return {preview:subtitle,rest:body};
  let cut=summary.length;
  if(cut>PREVIEW_LENGTH){cut=summary.lastIndexOf(' ',PREVIEW_LENGTH);if(cut<40)cut=PREVIEW_LENGTH;}
  const lead=summary.slice(0,cut).replace(/[…]+$/,'').trimEnd();

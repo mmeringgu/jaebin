@@ -33,6 +33,8 @@ const globalNewsHosts=new Set([
  'auntminnie.com','itnonline.com','imagingtechnologynews.com','healthimaging.com','radiologybusiness.com','diagnosticimaging.com','healthcare-in-europe.com','dotmed.com','medtechdive.com','medicaldevice-network.com','fiercebiotech.com','fiercehealthcare.com','beckershospitalreview.com',
  'global.canon','global.medical.canon','jp.medical.canon','siemens-healthineers.com','gehealthcare.com','philips.com'
 ]);
+// 경쟁사 글로벌은 수집 설정에 등록된 공식 글로벌 사이트만 허용합니다.
+const competitorGlobalHosts=new Set(['gehealthcare.com','siemens-healthineers.com','philips.com']);
 function isDomesticMedia(a){
  if(typeof a.domestic_media==='boolean')return a.domestic_media;
  if(['canon_official','mohw','mfds','hira','nhis','kha','snuh','sev','amc','cmc'].includes(a.source_kind))return false;
@@ -47,6 +49,13 @@ function isDomesticMedia(a){
 // 한글 번역 여부와 무관하게 발행처를 기준으로 국내·글로벌 뉴스를 구분합니다.
 // 국내 기관·기업 공식 사이트는 언론 노출 집계 대상과는 별도로 국내에 포함합니다.
 function newsRegion(a){
+ if(a.category==='competitor'){
+  try{
+   const url=new URL(a.url),host=url.hostname.toLowerCase().replace(/^www\./,'');
+   if(['http:','https:'].includes(url.protocol)&&competitorGlobalHosts.has(host))return 'global';
+  }catch{}
+  return 'domestic';
+ }
  // 언론 노출 통계용 domestic_media 값과 분리하고 실제 발행처로 다시 판정합니다.
  if(isDomesticMedia({...a,domestic_media:undefined}))return 'domestic';
  try{

@@ -23,7 +23,7 @@ test('국내·글로벌은 번역 언어가 아닌 발행처를 기준으로 구
  const region=globalThis.NewsRules.newsRegion;
  assert.equal(region(article(1,{title:'GE announces a new MRI system'})),'domestic');
  assert.equal(region(article(2,{title:'한글로 번역한 글로벌 발표',source:'Siemens 공식',url:'https://www.siemens-healthineers.com/press/1',domestic_media:false})),'global');
- assert.equal(region(article(3,{source:'Reuters',url:'https://www.reuters.com/business/1',title:'한글 번역 기사'})),'global');
+ assert.equal(region(article(3,{source:'Reuters',url:'https://www.reuters.com/business/1',title:'한글 번역 기사'})),'domestic');
  assert.equal(region(article(4,{source:'GE 한국 공식',url:'https://www.gehealthcare.co.kr/1',domestic_media:false})),'domestic');
  assert.equal(region(article(5,{source:'The Korea Herald',url:'https://www.koreaherald.com/article/1'})),'domestic');
 });
@@ -33,7 +33,7 @@ test('해외 이슈를 보도한 국내 .com 매체와 한국 이슈를 보도�
   for(const host of ['heraldcorp.com','newstomato.com','ohmynews.com','hankookilbo.com','segye.com','munhwa.com']){
    assert.equal(NewsRules.newsRegion(article(1,{category,title:'미국·일본 의료영상 장비 해외 시장 투자',source:'국내 언론',url:'https://news.'+host+'/1',domestic_media:false})),'domestic');
   }
-  assert.equal(NewsRules.newsRegion(article(2,{category,title:'한국 병원에 MRI 공급',summary:'국내 사업 소식',source:'Reuters',url:'https://www.reuters.com/world/asia-pacific/1',domestic_media:true})),'global');
+  assert.equal(NewsRules.newsRegion(article(2,{category,title:'한국 병원에 MRI 공급',summary:'국내 사업 소식',source:'Reuters',url:'https://www.reuters.com/world/asia-pacific/1',domestic_media:true})),category==='competitor'?'domestic':'global');
   assert.equal(NewsRules.newsRegion(article(3,{category,source:'청년의사',url:'https://www.docdocdoc.co.kr/1',domestic_media:false})),'domestic');
  }
 });
@@ -42,12 +42,12 @@ test('캐논 뉴스는 토글 없이 국내·글로벌을 모두 표시하고 �
  const ui=screen([
   article(1,{category:'company',entity:'캐논',title:'캐논 CT 국내 공급',date:'2026-11-18'}),
   article(2,{category:'company',entity:'캐논',title:'캐논 MRI 신제품 출시',source:'캐논 글로벌 공식',url:'https://global.medical.canon/news/2',domestic_media:false}),
-  article(3,{title:'지멘스 한국 병원 장비 공급',source:'Reuters',url:'https://www.reuters.com/3'})
+  article(3,{title:'지멘스 한국 병원 장비 공급',source:'Siemens 공식',url:'https://www.siemens-healthineers.com/press/3'})
  ]);
  ui.render();const original=ui.get('sections').innerHTML,counts=ui.counts();
  assert.doesNotMatch(original,/data-company-region/);
  assert.match(original,/docdocdoc\.co\.kr/);assert.match(original,/global\.medical\.canon/);
- ui.toggle('global');assert.match(ui.get('competitor').outerHTML,/reuters\.com/);
+ ui.toggle('global');assert.match(ui.get('competitor').outerHTML,/siemens-healthineers\.com/);
  assert.equal(ui.get('sections').innerHTML,original);assert.deepEqual(ui.counts(),counts);
 });
 
@@ -61,10 +61,37 @@ test('보건뉴스는 국내에 표시하며 미등록 .com 출처를 글로벌�
  for(const unknown of ['https://unregistered-press.com/1','https://reuters.com.unregistered-press.com/1','bad-url']){
   assert.equal(NewsRules.newsRegion(article(2,{source:'미확인 매체',url:unknown})),'domestic');
  }
- const ui=screen([article(1,{source:'보건뉴스',url,title:'지멘스 해외 의료사업 확장'}),article(2,{source:'Reuters',url:'https://www.reuters.com/2',title:'지멘스 한국 병원 장비 공급'})]);
+ const ui=screen([article(1,{source:'보건뉴스',url,title:'지멘스 해외 의료사업 확장'}),article(2,{source:'Siemens 공식',url:'https://www.siemens-healthineers.com/press/2',title:'지멘스 한국 병원 장비 공급'})]);
  ui.render();assert.match(ui.get('sections').innerHTML,/bokuennews\.com/);
  ui.toggle('global');assert.doesNotMatch(ui.get('competitor').outerHTML,/bokuennews\.com/);
- assert.match(ui.get('competitor').outerHTML,/reuters\.com/);
+ assert.match(ui.get('competitor').outerHTML,/siemens-healthineers\.com/);
+});
+
+test('경쟁사는 공식 글로벌 사이트만 글로벌에 표시하고 모든 언론·배포 서비스를 국내로 분류합니다',()=>{
+ const domestic=[
+  ['메디컬투데이','https://mdtoday.co.kr/news/1'],
+  ['싱글리스트','https://www.slist.kr/news/1'],
+  ['디지틀조선일보','https://digitalchosun.dizzo.com/news/1'],
+  ['Reuters','https://www.reuters.com/1'],
+  ['PR Newswire','https://www.prnewswire.com/1'],
+  ['MSN · 메디컬투데이','https://www.msn.com/ko-kr/news/1'],
+  ['Yahoo · 싱글리스트','https://news.yahoo.com/1'],
+  ['GE 공식','https://gehealthcare.com.other.com/1'],
+  ['미등록 출처','bad-url']
+ ].map(([source,url],i)=>article(i+1,{source,url,domestic_media:false}));
+ const official=['gehealthcare.com','siemens-healthineers.com','philips.com'].flatMap((host,i)=>[
+  article(100+i,{source:'공식 발표',url:'https://www.'+host+'/press/1',domestic_media:true}),
+  article(200+i,{source:'공식 발표',url:'https://'+host+'/press/2'})
+ ]);
+ domestic.forEach(row=>assert.equal(NewsRules.newsRegion(row),'domestic',row.source));
+ official.forEach(row=>assert.equal(NewsRules.newsRegion(row),'global',row.url));
+ const ui=screen([...domestic,...official]);
+ ui.render();
+ for(const name of ['메디컬투데이','싱글리스트','디지틀조선일보'])assert.ok(ui.get('sections').innerHTML.includes(name));
+ ui.toggle('global');
+ const html=ui.get('competitor').outerHTML;
+ for(const name of ['메디컬투데이','싱글리스트','디지틀조선일보','reuters.com','prnewswire.com','msn.com','yahoo.com'])assert.ok(!html.includes(name),name);
+ for(const host of ['gehealthcare.com','siemens-healthineers.com','philips.com'])assert.ok(html.includes(host),host);
 });
 
 test('국내를 기본으로 표시하고 토글 전환은 경쟁사만 갱신하며 다른 영역·집계는 유지합니다',()=>{

@@ -14,6 +14,22 @@ const { splitText, card } = runInNewContext(shared + "\n" + script.slice(0, scri
 const first = "첫 문단이 짧은 기사입니다.";
 const second = "두 번째 문단에는 병원 장비 도입 일정과 구체적인 사업 계획이 자세하게 설명되어 있습니다.";
 
+test("기사 시작의 언론사·기자·지역 표기를 미리보기와 상세 내용에서 제거합니다", () => {
+  for (const prefix of ["[메디컬투데이=홍길동 기자] ", "[싱글리스트] [김철수 기자] ", "(서울=연합뉴스) 홍길동 기자 = ", "(디지틀조선일보) ", "[서울] ", "【청년의사】 "]) {
+    const row = { title: "기사 제목", source: "청년의사", summary: prefix + first, detail_text: prefix + first + "\n\n" + second };
+    assert.equal(splitText(row).preview, first, prefix);
+    assert.equal(splitText(row).rest, second, prefix);
+    assert.equal(splitText({ ...row, subtitle: prefix + "장비 도입 확대" }).preview, "장비 도입 확대", prefix);
+  }
+  assert.equal(splitText({title:"기사 제목",source:"매체",summary:"[매체] "+first,detail_text:"(서울=연합뉴스) 홍길동 기자 = "+second}).rest, second);
+});
+
+test("본문의 의학 용어·설명 괄호와 문장 중간의 표기는 유지합니다", () => {
+  for (const summary of ["[MRI] 장비를 새로 도입했습니다.", "(자기공명영상) 검사 장비를 도입했습니다.", "(AI 기반) 영상 판독을 시작했습니다.", "[임상 결과] 검사 정확도가 높아졌습니다.", "병원은 (서울 소재) 센터에 장비를 도입했습니다."]) {
+    assert.equal(splitText({ title: "기사 제목", summary }).preview, summary);
+  }
+});
+
 test("짧은 첫 문단 다음 내용을 보여주고 제목·미리보기는 반복하지 않습니다", () => {
   const article = { title: "기사 제목입니다", summary: first, detail_text: first + "\n\n" + second };
   assert.equal(splitText(article).preview, first);
